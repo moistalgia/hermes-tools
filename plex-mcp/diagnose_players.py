@@ -14,6 +14,20 @@ PLEX_URL = os.environ.get("PLEX_URL", "http://host.docker.internal:32400")
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 
 
+def probe(url, timeout=3):
+    """Is the device's Companion listener actually up right now?"""
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{url.rstrip('/')}/resources", timeout=timeout) as r:
+            return f"LISTENING (HTTP {r.status}) - controllable now"
+    except urllib.error.HTTPError as e:
+        return f"LISTENING (HTTP {e.code}) - controllable now"
+    except Exception as e:
+        return f"no listener ({type(e).__name__}) - Plex app is closed on this device"
+
+
 def main():
     if not PLEX_TOKEN:
         print("PLEX_TOKEN is not set in the environment.")
@@ -54,6 +68,11 @@ def main():
             print(f"  {d.name!r}  product={d.product}  platform={d.platform}")
             print(f"      clientIdentifier={d.clientIdentifier}")
             print(f"      provides={d.provides}  lastSeenAt={d.lastSeenAt}")
+            # Registered != reachable. The Companion listener only runs while
+            # the Plex app is open on the device, so this is the check that
+            # actually predicts whether a play command will land.
+            for url in d.connections:
+                print(f"      {url}  ->  {probe(url)}")
     except Exception as exc:
         print(f"  FAILED: {type(exc).__name__}: {exc}")
         print("  (a server-only token cannot read plex.tv; needs an account token)")
@@ -101,10 +120,35 @@ def main():
     return 0
 
 
+def build_relay_client(server, identifier, title="relay"):
+    """A PlexClient that talks to a device through the server, by identifier only.
+
+    The device does not have to appear in /clients. sendCommand puts
+    machineIdentifier in the X-Plex-Target-Client-Identifier header and the
+    server forwards over the Companion connection the device already holds.
+
+    Note the constructor's `identifier=` argument does NOT do this: it only
+    feeds connect()'s client-side lookup, which we are deliberately skipping
+    because dialing the device's LAN IP is exactly what fails from Docker.
+    machineIdentifier has to be set directly.
+    """
+    from plexapi.client import PlexClient
+
+    client = PlexClient(server=server, baseurl=server._baseurl,
+                        token=server._token, connect=False)
+    client.machineIdentifier = identifier
+    client.title = title
+    client.product = ""
+    # Populated from /clients normally; assert them so sendCommand does not
+    # skip on an empty capability list.
+    client.protocolCapabilities = ["timeline", "playback", "navigation", "playqueues"]
+    client.proxyThroughServer(True, server)
+    return client
+
+
 def try_push(identifier, title):
     """Prove whether a device accepts a relayed playMedia while idle."""
     from plexapi.server import PlexServer
-    from plexapi.client import PlexClient
 
     server = PlexServer(PLEX_URL, PLEX_TOKEN, timeout=15)
     results = server.search(title)
@@ -114,18 +158,15 @@ def try_push(identifier, title):
     item = results[0]
     print(f"Matched: {item.title} ({getattr(item, 'year', '?')})  key={item.key}")
 
-    client = PlexClient(server=server, baseurl=server._baseurl,
-                        token=server._token, identifier=identifier,
-                        connect=False)
-    client.proxyThroughServer(True)
+    client = build_relay_client(server, identifier)
     print(f"Sending playback/playMedia to {identifier} via the server relay...")
     try:
         client.playMedia(item)
     except Exception as exc:
-        print(f"REFUSED: {type(exc).__name__}: {exc}")
-        print("This device does not accept relayed playback commands.")
+        print(f"FAILED: {type(exc).__name__}: {exc}")
+        print("The server relay rejected the command or the client never answered.")
         return 1
-    print("ACCEPTED - the command was relayed without error.")
+    print("ACCEPTED - the server relayed the command without error.")
     print("Confirm on the TV. If nothing started, the client swallowed it.")
     return 0
 
