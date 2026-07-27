@@ -121,11 +121,50 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocol
 - **`PLEX_PROXY` defaults on** because a containerized agent usually cannot
   reach the player's LAN IP directly; the Plex server relays instead.
 
-## Known limitation
+## How players are discovered
 
-`list_players` only shows apps with *Advertise as player* enabled. Some newer
-Plex clients (notably recent Apple TV and Plex HTPC builds) never expose the
-control API, so they can appear under `currently_streaming_to` in
-`list_players` while still being impossible to remote-control. If a device is
-missing there, that is a Plex client limitation, not a bug in this server —
-no argument variation will fix it.
+Three endpoints disagree about what a "player" is, and reading only the first
+is why an idle device used to look like it did not exist:
+
+| Source | Contains | Survives idle |
+| --- | --- | --- |
+| `/clients` on the PMS | Companion registrations with *this server* | no |
+| `plex.tv/devices.xml` | everything on the account, plus LAN address | **yes** |
+| `/status/sessions` | what is streaming now | n/a — says nothing about control |
+
+`list_players` merges all three and reports, per device, whether it can be
+driven *right now* and why not. Playback is not required for a device to
+appear. Each entry carries a `route`:
+
+- `server` — the device is in `/clients`; commands are relayed by the PMS.
+- `direct` — not in `/clients`, but its Companion listener answered on the LAN
+  address plex.tv advertises, so commands go straight there.
+
+Browser tabs and controller-only apps (Home Assistant, the Plex web UI) are
+filtered out unless they are streaming; pass `include_all=true` to see them.
+
+## Known limitation: some clients can never be controlled
+
+A device whose plex.tv `provides` field omits `player` cannot be a playback
+target, no matter what it is doing. **Amazon Fire TV is the case that matters
+here** — the Kepler-based app advertises nothing at all.
+
+This was verified against a live Fire TV session, mid-playback:
+
+- `/clients` → empty
+- `protocolCapabilities` on the session → `['']`
+- a relayed read-only `timeline/poll` → **404 not_found**
+- Home Assistant's own Plex integration → `HomeAssistantError: Client is not
+  currently accepting playback controls`
+
+There is no argument variation, alternate endpoint, or `account.resource()`
+trick that changes this — `account.resources()` does not list the Fire TV at
+all. `list_players` reports such devices with `controllable: false` and a
+reason. **Report the reason and stop.**
+
+The only remote-control path to a Fire TV is ADB (Home Assistant's `androidtv`
+integration), which is outside this server's scope.
+
+A device that advertises `player` but is not listening simply has its Plex app
+closed. Open Plex on it and retry — Roku only listens on `:8324` while the app
+is open.

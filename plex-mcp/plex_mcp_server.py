@@ -29,7 +29,11 @@ import inspect
 import json
 import os
 import sys
+import time
 import traceback
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 PLEX_URL = os.environ.get("PLEX_URL", "http://host.docker.internal:32400")
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
@@ -166,16 +170,176 @@ def describe_item(item):
     return out
 
 
-def describe_player(client):
-    return {
-        "name": getattr(client, "title", None),
-        "product": getattr(client, "product", None),
-        "device": getattr(client, "device", None),
-        "platform": getattr(client, "platform", None),
-        "address": getattr(client, "address", None),
-        "machine_identifier": getattr(client, "machineIdentifier", None),
-        "capabilities": getattr(client, "protocolCapabilities", None),
-    }
+# ---------------------------------------------------------------------------
+# Player discovery
+#
+# Three sources disagree about what a "player" is, and using only the first one
+# is why an idle device looks like it does not exist:
+#
+#   /clients            devices that registered Companion with THIS server.
+#                       Empty for most streaming sticks even mid-playback.
+#   plex.tv/devices     everything registered to the account. Survives idle and
+#                       carries the LAN address, so this is the useful list.
+#   /status/sessions    what is streaming now. Says nothing about control.
+#
+# Registered is not the same as reachable: Roku only listens on :8324 while the
+# Plex app is open. And a device whose `provides` omits "player" (Amazon Fire
+# TV) can never be a target no matter what it is doing - verified against a live
+# Fire TV session that returned 404 for even a read-only timeline poll.
+# ---------------------------------------------------------------------------
+
+DEVICE_CACHE_TTL = 30
+PROBE_TIMEOUT = 2.5
+
+_devices_cache = {"at": 0.0, "devices": None}
+
+
+def _probe(url, timeout=PROBE_TIMEOUT):
+    """Is this device's Companion listener up right now?"""
+    try:
+        with urllib.request.urlopen(f"{url.rstrip('/')}/resources", timeout=timeout):
+            return True
+    except urllib.error.HTTPError:
+        return True  # answered, even if it refused the path
+    except Exception:
+        return False
+
+
+def account_devices():
+    """Players known to plex.tv, with a live reachability probe on each.
+
+    Cached briefly: plex.tv is a remote round trip and the agent tends to call
+    list_players immediately before play.
+    """
+    now = time.time()
+    if _devices_cache["devices"] is not None and now - _devices_cache["at"] < DEVICE_CACHE_TTL:
+        return _devices_cache["devices"]
+
+    devices = []
+    try:
+        from plexapi.myplex import MyPlexAccount
+
+        for d in MyPlexAccount(token=PLEX_TOKEN).devices():
+            provides = [x for x in (d.provides or "").split(",") if x]
+            if "server" in provides:
+                continue
+            devices.append({
+                "name": d.name,
+                "product": d.product,
+                "platform": d.platform,
+                "machine_identifier": d.clientIdentifier,
+                "provides": provides,
+                "connections": list(d.connections or []),
+                "last_seen": str(d.lastSeenAt) if d.lastSeenAt else None,
+                "advertises_player": "player" in provides,
+            })
+    except Exception as exc:
+        # A server-only token cannot read plex.tv. Degrade to /clients instead
+        # of failing the call.
+        log(f"plex.tv device lookup failed ({type(exc).__name__}: {exc})")
+        _devices_cache.update(at=now, devices=[])
+        return []
+
+    targets = [d for d in devices if d["advertises_player"] and d["connections"]]
+    if targets:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            reachable = list(pool.map(lambda d: _probe(d["connections"][0]), targets))
+        for d, ok in zip(targets, reachable):
+            d["reachable"] = ok
+    for d in devices:
+        d.setdefault("reachable", False)
+
+    _devices_cache.update(at=now, devices=devices)
+    return devices
+
+
+def discover_players():
+    """Every player the agent could plausibly mean, each with why it can or
+    cannot be driven right now. Ordered: usable first."""
+    p = plex()
+
+    live = {}
+    for c in p.clients():
+        mid = getattr(c, "machineIdentifier", None)
+        live[mid] = c
+
+    streaming = {}
+    for session in p.sessions():
+        for pl in getattr(session, "players", []) or []:
+            streaming[getattr(pl, "machineIdentifier", None)] = getattr(pl, "state", None)
+
+    out = []
+    seen = set()
+    for d in account_devices():
+        mid = d["machine_identifier"]
+        seen.add(mid)
+        entry = dict(d)
+        entry["streaming_now"] = streaming.get(mid)
+        if mid in live:
+            entry.update(controllable=True, route="server",
+                         status="ready (registered with the Plex server)")
+        elif not d["advertises_player"]:
+            entry.update(controllable=False, route=None, status=(
+                "cannot be controlled - this app never advertises itself as a "
+                "player. No API call will work. Reporting this is the answer."))
+        elif d["reachable"]:
+            entry.update(controllable=True, route="direct",
+                         status="ready (reachable on its LAN address)")
+        else:
+            entry.update(controllable=False, route=None, status=(
+                "registered but not listening - the Plex app is closed on this "
+                "device. Open Plex on it, then retry."))
+        # Browser tabs and controller-only apps (Home Assistant, the web UI)
+        # register forever and are never playback targets. Listing them buries
+        # the real players. Keep one only if it is streaming, so the "why can I
+        # not control the thing that is obviously playing" case stays visible.
+        entry["relevant"] = bool(d["advertises_player"] or entry["streaming_now"])
+        out.append(entry)
+
+    # Anything in /clients that plex.tv did not mention.
+    for mid, c in live.items():
+        if mid in seen:
+            continue
+        out.append({
+            "name": c.title, "product": getattr(c, "product", None),
+            "platform": getattr(c, "platform", None), "machine_identifier": mid,
+            "provides": ["player"], "connections": [], "last_seen": None,
+            "advertises_player": True, "reachable": True, "controllable": True,
+            "route": "server", "streaming_now": streaming.get(mid),
+            "status": "ready (registered with the Plex server)", "relevant": True,
+        })
+
+    out.sort(key=lambda d: (not d["controllable"], (d["name"] or "").lower()))
+    return out
+
+
+def build_client(entry):
+    """A command-ready PlexClient for a discovered player.
+
+    `route` decides how commands travel. Note PlexClient(identifier=...) does
+    NOT set machineIdentifier - that argument only feeds connect()'s lookup,
+    which we skip because dialing from a container is what fails. sendCommand
+    reads machineIdentifier for the target header, so set it directly.
+    """
+    from plexapi.client import PlexClient
+
+    p = plex()
+    if entry["route"] == "direct":
+        baseurl = entry["connections"][0]
+        proxy = False
+    else:
+        baseurl = p._baseurl
+        proxy = True
+
+    client = PlexClient(server=p, baseurl=baseurl, token=p._token, connect=False)
+    client.machineIdentifier = entry["machine_identifier"]
+    client.title = entry["name"]
+    client.product = entry.get("product") or ""
+    client.protocolCapabilities = [
+        "timeline", "playback", "navigation", "mirror", "playqueues",
+    ]
+    client.proxyThroughServer(proxy, p)
+    return client
 
 
 # ---------------------------------------------------------------------------
@@ -192,50 +356,86 @@ class ToolError(Exception):
 
 
 def resolve_player(name):
-    """Find a client by exact, prefix, then substring match (case-insensitive).
+    """Find a player by exact, prefix, then substring match (case-insensitive).
 
-    Returns the PlexClient, ready to receive commands. Raises ToolError listing
-    the real available names rather than letting the agent guess.
+    Matches against every known player, not just the controllable ones, so that
+    naming a device which exists but cannot be driven returns the specific
+    reason instead of "no player matches" - the agent should report that reason,
+    not go looking for a workaround.
     """
-    clients = plex().clients()
-    if not clients:
+    players = discover_players()
+    usable = [d for d in players if d["controllable"]]
+    # Error payloads list only plausible targets. Naming all 18 registered
+    # browser tabs teaches the agent nothing and invites it to try them.
+    notable = [d for d in players if d.get("relevant")]
+
+    if not players:
         raise ToolError(
-            "Plex reports zero controllable players. The target app must be open "
-            "and have 'Advertise as player' enabled; some newer Plex clients "
-            "never expose the control API at all."
+            "Plex knows of no players at all on this account. Either PLEX_TOKEN "
+            "is a server-only token that cannot read plex.tv, or no Plex client "
+            "app has ever signed in."
         )
-    names = [c.title for c in clients]
+
     if not name:
-        if len(clients) == 1:
-            chosen = clients[0]
-        else:
+        if len(usable) == 1:
+            return build_client(usable[0])
+        if not usable:
             raise ToolError(
-                "No player specified and more than one is available.",
-                available_players=names,
+                "No player is controllable right now.",
+                players=[{"name": d["name"], "status": d["status"]} for d in notable],
             )
-    else:
-        want = name.strip().lower()
-        matches = [c for c in clients if c.title.lower() == want]
-        if not matches:
-            matches = [c for c in clients if c.title.lower().startswith(want)]
-        if not matches:
-            matches = [c for c in clients if want in c.title.lower()]
-        if not matches:
-            raise ToolError(
-                f"No player matches {name!r}.", available_players=names
-            )
-        if len(matches) > 1:
+        raise ToolError(
+            "No player specified and more than one is available.",
+            available_players=[d["name"] for d in usable],
+        )
+
+    want = name.strip().lower()
+
+    def haystack(d):
+        # Some clients report a useless name - the Fire TV registers as
+        # literally "unknown" - so product and platform have to be searchable
+        # or there is no way to refer to the device at all.
+        return " ".join(
+            filter(None, [d.get("name"), d.get("product"), d.get("platform")])
+        ).lower()
+
+    for match in (
+        lambda d: (d["name"] or "").lower() == want,
+        lambda d: (d["name"] or "").lower().startswith(want),
+        lambda d: want in (d["name"] or "").lower(),
+        lambda d: want in haystack(d),
+    ):
+        matches = [d for d in players if match(d)]
+        if matches:
+            break
+
+    if not matches:
+        raise ToolError(
+            f"No player matches {name!r}.",
+            available_players=[d["name"] for d in usable],
+            all_known_players=[
+                {"name": d["name"], "status": d["status"]} for d in notable
+            ],
+        )
+    if len(matches) > 1:
+        usable_matches = [d for d in matches if d["controllable"]]
+        if len(usable_matches) != 1:
             raise ToolError(
                 f"{name!r} is ambiguous.",
-                candidates=[c.title for c in matches],
+                candidates=[d["name"] for d in matches],
             )
-        chosen = matches[0]
+        matches = usable_matches
 
-    if PLEX_PROXY:
-        # Route commands via the Plex server rather than dialing the player's
-        # LAN IP. Required whenever this process is network-isolated (Docker).
-        chosen.proxyThroughServer(True)
-    return chosen
+    chosen = matches[0]
+    if not chosen["controllable"]:
+        raise ToolError(
+            f"{chosen['name']!r} cannot be controlled: {chosen['status']}",
+            player=chosen["name"],
+            product=chosen.get("product"),
+            streaming_now=chosen.get("streaming_now"),
+            controllable_players=[d["name"] for d in usable],
+        )
+    return build_client(chosen)
 
 
 def find_media(query, media_type=None, limit=10):
@@ -308,7 +508,7 @@ def plex_status():
         {"title": sec.title, "type": sec.type, "items": sec.totalSize}
         for sec in p.library.sections()
     ]
-    players = [c.title for c in p.clients()]
+    players = discover_players()
     return {
         "ok": True,
         "server": p.friendlyName,
@@ -316,30 +516,46 @@ def plex_status():
         "url": PLEX_URL,
         "proxy_through_server": PLEX_PROXY,
         "libraries": sections,
-        "players": players,
+        "players": [d["name"] for d in players if d["controllable"]],
+        "players_unavailable": [
+            {"name": d["name"], "reason": d["status"]}
+            for d in players if not d["controllable"] and d.get("relevant")
+        ],
         "active_sessions": len(p.sessions()),
     }
 
 
-@tool("List Plex players that can be controlled, with their exact names. Use the 'name' value verbatim as the 'player' argument elsewhere.")
-def list_players():
-    p = plex()
-    players = [describe_player(c) for c in p.clients()]
-    playing_on = []
-    for session in p.sessions():
-        for player in getattr(session, "players", []) or []:
-            playing_on.append(
-                {"name": player.title, "product": player.product, "state": player.state}
-            )
+@tool(
+    "List every known Plex player and whether it can be controlled right now. "
+    "Playback is NOT required for a device to appear here. Use the 'name' value "
+    "verbatim as the 'player' argument elsewhere.",
+    {
+        "only_controllable": b("Return only players that can be driven right now."),
+        "include_all": b(
+            "Also list browser tabs and controller-only apps that are never "
+            "playback targets. Rarely useful."
+        ),
+    },
+)
+def list_players(only_controllable=False, include_all=False):
+    players = [
+        d for d in discover_players() if include_all or d.get("relevant")
+    ]
+    usable = [d for d in players if d["controllable"]]
+    shown = usable if only_controllable else players
+    blocked = [d for d in players if not d["controllable"]]
     return {
         "ok": True,
-        "players": players,
-        "count": len(players),
-        "currently_streaming_to": playing_on,
+        "players": shown,
+        "count": len(shown),
+        "controllable": [d["name"] for d in usable],
+        "unavailable": [
+            {"name": d["name"], "reason": d["status"]} for d in blocked
+        ],
         "note": (
-            "Only apps with 'Advertise as player' enabled appear here. A device "
-            "that shows under currently_streaming_to but not under players cannot "
-            "be remote-controlled by this API."
+            "A player with controllable=false cannot be driven. When the reason "
+            "says the app never advertises itself as a player, that is final - "
+            "report it and stop. No argument variation or alternate API fixes it."
         ),
     }
 

@@ -30,7 +30,10 @@ Report the output of each step. If a step fails, report the `error` field **exac
 
 **Standing rules**
 
-- Home Assistant is for lights and blinds only. Never for Plex.
+- Home Assistant is for lights and blinds only. Never for Plex. Its Plex integration hits the exact same wall this server does and adds nothing.
 - Do not call any Home Assistant service that changes state (`stop`, `restart`, `turn_off`, and similar) while testing.
 - Do not edit any skill file until I have personally confirmed the playback test worked.
-- If a device you expect is missing from `list_players`, say so and stop. That is a Plex client limitation and no amount of retrying will fix it.
+- `list_players` reports every device and whether it is controllable. Read the `status` field before doing anything else:
+  - *"registered but not listening"* — the Plex app is closed on that device. Say so and ask me to open it. Do not retry.
+  - *"never advertises itself as a player"* — that device can never be a playback target. This is final. Report it verbatim and stop. Do not try `account.resource()`, timeline tricks, raw HTTP, or Home Assistant; all of them have been tested against a live session and all of them fail.
+- The Amazon Fire TV in the office is in that second category. Playing something on it manually does not make it controllable — it streams while still refusing every command. Do not treat an active session as evidence that control will work.
