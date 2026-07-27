@@ -12,11 +12,16 @@ can be breaking.
 ## Install
 
 Use whatever `python3` / `plexapi` version the container resolves — nothing
-here is version-sensitive.
+here is version-sensitive. Run this **inside the agent container**, since that
+is where the server executes:
 
 ```bash
-pip install -r requirements.txt
+pip install -r /opt/hermes-tools/plex-mcp/requirements.txt
 ```
+
+If pip refuses with `externally-managed-environment`, add
+`--break-system-packages`. The dependency installs into the container's own
+site-packages — the mount stays read-only and untouched.
 
 ## Configure
 
@@ -62,11 +67,15 @@ success, 1 on failure, and the JSON body always carries the real error text.
 
 ## Wire into Hermes
 
+The path here is the path **inside the container**, not the host path you
+cloned to — see [deploying](../README.md#deploying-to-the-media-server). With
+the mount from that guide it is `/opt/hermes-tools/plex-mcp/`.
+
 ```yaml
 mcp_servers:
   plex:
     command: "python3"
-    args: ["/path/to/plex_mcp_server.py", "serve"]
+    args: ["/opt/hermes-tools/plex-mcp/plex_mcp_server.py", "serve"]
     env:
       PLEX_URL: "http://host.docker.internal:32400"
       PLEX_TOKEN: "your-token-here"

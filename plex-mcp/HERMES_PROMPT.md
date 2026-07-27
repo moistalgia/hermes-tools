@@ -4,14 +4,14 @@ Stop iterating on Home Assistant's `media_player.play_media` for Plex — that p
 
 **Install**
 
-1. The file is at `<PATH>/plex_mcp_server.py`. Install its one dependency with whatever works in your container: `pip install plexapi` (add `--break-system-packages` if pip refuses).
+1. The file is at `/opt/hermes-tools/plex-mcp/plex_mcp_server.py`. It is on a read-only mount — read it, run it, do not try to edit it. Install its one dependency with whatever works in your container: `pip install plexapi` (add `--break-system-packages` if pip refuses).
 2. Register it in your MCP config as the server `plex`:
 
 ```yaml
 mcp_servers:
   plex:
     command: "python3"
-    args: ["<PATH>/plex_mcp_server.py", "serve"]
+    args: ["/opt/hermes-tools/plex-mcp/plex_mcp_server.py", "serve"]
     env:
       PLEX_URL: "http://host.docker.internal:32400"
       PLEX_TOKEN: "<token>"
