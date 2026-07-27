@@ -1,0 +1,2 @@
+# Only one dependency. Let the container resolve the version that works there.
+plexapi>=4.15
