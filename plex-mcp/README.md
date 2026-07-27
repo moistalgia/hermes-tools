@@ -31,6 +31,8 @@ site-packages; nothing is written to the mount.
 | `PLEX_TOKEN` | *(required)* | Never read from disk. |
 | `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Keep on inside Docker. |
 | `PLEX_TIMEOUT` | `15` | Seconds. |
+| `PLEX_ALIASES` | `{}` | JSON map of spoken names to Plex player names, e.g. `{"theater":"Streaming Stick 4K","office":"unknown"}`. Rooms outlive hardware; Plex names like `unknown` are unsayable. |
+| `ROKU_PLEX_CHANNEL_ID` | `13535` | Roku channel ID for Plex, used to wake the app. |
 
 ## Manual test sequence
 
@@ -94,11 +96,14 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocol
 | `plex_status` | Connection check, libraries, players, session count. Call first when debugging. |
 | `list_players` | Every known player and whether it can be driven right now. Does not require playback. |
 | `list_libraries` | Library sections. |
+| `library_overview` | Section sizes plus the exact genre/decade/rating vocabulary. Call before `discover`. |
+| `discover` | Filtered browse — genre, decade, rating, unwatched, actor, director. The recommendation workhorse. |
+| `similar_to` | "Something like X", ranked by shared genres. |
 | `search` | Fuzzy title search, returns `rating_key`s. |
 | `play` | Search and play the best match. The main one. |
 | `play_rating_key` | Play an exact item after a disambiguating search. |
 | `play_next_episode` | Next unwatched episode of a show. |
-| `control` | play / pause / stop / next / previous. |
+| `control` | play / pause / stop / next / previous. `stop` works on any streaming device, including ones that refuse all other commands. |
 | `seek` | Jump to a position. |
 | `set_volume` | 0–100, client permitting. |
 | `now_playing` | Active sessions, player, state, position. |
@@ -172,3 +177,36 @@ integration), which is outside this server's scope.
 A device that advertises `player` but is not listening simply has its Plex app
 closed. Open Plex on it and retry — Roku only listens on `:8324` while the app
 is open.
+
+## Waking a sleeping Roku
+
+Roku exposes ECP on port `8060` with no auth, and answers from the home screen.
+The Plex Companion listener on `:8324` only runs while the Plex app is open, so
+a device that is on but idle used to be a dead end. Now `play` detects that
+case, `POST`s `/launch/13535` to open Plex, waits for `:8324` to come up, and
+proceeds. Cold start to playing is roughly 15 seconds.
+
+If the Roku does not answer ECP at all it is powered off, and the tool says so
+rather than retrying.
+
+## Stopping what cannot be controlled
+
+`control action=stop` first tries `/status/sessions/terminate`, which is a
+**server** operation and never touches Companion. It therefore stops playback on
+devices that reject every other command — Amazon Fire TV included. Pause, seek
+and volume still require Companion and remain unavailable there.
+
+## Recommendations
+
+`discover` is the tool for open-ended requests. Two things about Plex filtering
+that are easy to get wrong, both handled here:
+
+- **Multiple genres default to AND.** Plex joins a list with `,` (OR); repeating
+  the parameter is AND. A "fantasy epic" is Fantasy *and* Adventure, so
+  `match_all` defaults true. Set it false to widen.
+- **Listing endpoints truncate tag lists to two entries.** A search result will
+  claim a Fantasy film has genres `['Comedy', 'Animation']`. Anything reporting
+  genres reloads the item first, or it misinforms the agent.
+
+`similar_to` ranks by shared-genre overlap rather than Plex's `similar` field,
+which is empty on this server.

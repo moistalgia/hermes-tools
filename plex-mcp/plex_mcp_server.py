@@ -40,6 +40,24 @@ PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 PLEX_PROXY = os.environ.get("PLEX_PROXY", "1") not in ("0", "false", "False", "")
 PLEX_TIMEOUT = int(os.environ.get("PLEX_TIMEOUT", "15"))
 
+# {"theater": "Streaming Stick 4K", "office": "unknown"} - maps what people say
+# out loud onto what Plex calls the device. Plex names are frequently useless
+# ("unknown", "Sleepy"), and a room name outlives the hardware in it.
+try:
+    PLEX_ALIASES = {
+        str(k).strip().lower(): str(v)
+        for k, v in json.loads(os.environ.get("PLEX_ALIASES", "{}")).items()
+    }
+except (ValueError, AttributeError):
+    PLEX_ALIASES = {}
+    print("[plex-mcp] PLEX_ALIASES is not valid JSON; ignoring it", file=sys.stderr)
+
+# Roku's External Control Protocol. Open on the LAN, no auth, and answers even
+# when the Plex app is closed - which is what lets us wake a device instead of
+# telling the user to go press buttons.
+ROKU_ECP_PORT = 8060
+ROKU_PLEX_CHANNEL_ID = os.environ.get("ROKU_PLEX_CHANNEL_ID", "13535")
+
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "plex"
 SERVER_VERSION = "1.0.0"
@@ -137,8 +155,13 @@ def ms_to_clock(ms):
     return f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
 
 
-def describe_item(item):
-    """Flatten a Plex media object into something an LLM can reason about."""
+def describe_item(item, detailed=False):
+    """Flatten a Plex media object into something an LLM can reason about.
+
+    `detailed` costs one extra request per item and is for when the agent is
+    reasoning *about* media (recommending, comparing). Plain playback replies do
+    not need a plot synopsis, and ten of them is a few thousand wasted tokens.
+    """
     kind = getattr(item, "type", None)
     out = {
         "rating_key": str(getattr(item, "ratingKey", "")),
@@ -164,9 +187,22 @@ def describe_item(item):
         out["label"] = f"{out['artist']} - {out['title']}"
     else:
         out["label"] = f"{out['title']} ({out['year']})" if out["year"] else out["title"]
-    summary = getattr(item, "summary", None)
-    if summary:
-        out["summary"] = summary[:300]
+    if detailed:
+        # Plex truncates tag lists on listing endpoints - a search result shows
+        # only the first two genres. Anything reporting genres has to reload or
+        # it will state confidently that a Fantasy film is not Fantasy.
+        try:
+            item.reload()
+        except Exception:
+            pass
+        out["genres"] = [g.tag for g in (getattr(item, "genres", None) or [])]
+        out["directors"] = [d.tag for d in (getattr(item, "directors", None) or [])][:3]
+        out["rating"] = getattr(item, "rating", None)
+        out["audience_rating"] = getattr(item, "audienceRating", None)
+        out["content_rating"] = getattr(item, "contentRating", None)
+        summary = getattr(item, "summary", None)
+        if summary:
+            out["summary"] = summary[:400]
     return out
 
 
@@ -251,6 +287,55 @@ def account_devices():
 
     _devices_cache.update(at=now, devices=devices)
     return devices
+
+
+def _ecp(entry):
+    """The device's Roku ECP base URL, or None if it is not a Roku."""
+    if "roku" not in (entry.get("platform") or entry.get("product") or "").lower():
+        return None
+    for url in entry.get("connections") or []:
+        host = url.split("//", 1)[-1].split(":", 1)[0]
+        if host:
+            return f"http://{host}:{ROKU_ECP_PORT}"
+    return None
+
+
+def wake_plex(entry, wait_seconds=20):
+    """Launch the Plex channel on a Roku and wait for Companion to come up.
+
+    Returns (ok, detail). A Roku answers ECP from the home screen but only
+    listens on :8324 once Plex is open, so this is the difference between "the
+    app is closed, go turn it on" and just playing the thing.
+    """
+    base = _ecp(entry)
+    if not base:
+        return False, "not a Roku - cannot be woken remotely"
+
+    try:
+        req = urllib.request.Request(
+            f"{base}/launch/{ROKU_PLEX_CHANNEL_ID}", data=b"", method="POST"
+        )
+        urllib.request.urlopen(req, timeout=5).close()
+    except urllib.error.HTTPError as exc:
+        return False, f"Roku refused the launch (HTTP {exc.code})"
+    except Exception as exc:
+        # No ECP response at all means the device is powered off, not busy.
+        return False, (
+            f"no response from the Roku at {base} ({type(exc).__name__}) - "
+            "the device is powered off"
+        )
+
+    target = (entry.get("connections") or [None])[0]
+    deadline = time.time() + wait_seconds
+    while time.time() < deadline:
+        if target and _probe(target, timeout=2):
+            _devices_cache["devices"] = None  # reachability changed
+            return True, "Plex launched and the player is responding"
+        time.sleep(1.5)
+    return False, (
+        f"Plex was launched but the player did not start responding within "
+        f"{wait_seconds}s"
+    )
 
 
 def discover_players():
@@ -390,6 +475,9 @@ def resolve_player(name):
         )
 
     want = name.strip().lower()
+    # A room name ("theater") is what gets said out loud; translate before
+    # matching so aliases work with every downstream match rule.
+    want = PLEX_ALIASES.get(want, want).strip().lower()
 
     def haystack(d):
         # Some clients report a useless name - the Fire TV registers as
@@ -428,6 +516,22 @@ def resolve_player(name):
 
     chosen = matches[0]
     if not chosen["controllable"]:
+        # A Roku with its app closed is a solvable problem, not a refusal.
+        if chosen["advertises_player"] and _ecp(chosen):
+            log(f"{chosen['name']!r} is asleep; launching Plex on it")
+            woke, detail = wake_plex(chosen)
+            if woke:
+                refreshed = [
+                    d for d in discover_players()
+                    if d["machine_identifier"] == chosen["machine_identifier"]
+                ]
+                if refreshed and refreshed[0]["controllable"]:
+                    return build_client(refreshed[0])
+            raise ToolError(
+                f"{chosen['name']!r} could not be woken: {detail}",
+                player=chosen["name"],
+                controllable_players=[d["name"] for d in usable],
+            )
         raise ToolError(
             f"{chosen['name']!r} cannot be controlled: {chosen['status']}",
             player=chosen["name"],
@@ -479,6 +583,86 @@ def find_media(query, media_type=None, limit=10):
 
 def get_by_rating_key(rating_key):
     return plex().fetchItem(int(rating_key))
+
+
+def stop_session(player_name=None):
+    """Terminate a stream from the server side, bypassing Companion entirely.
+
+    Returns None if no matching session is streaming, so the caller can fall
+    back to a normal client stop.
+    """
+    sessions = plex().sessions()
+    if not sessions:
+        return None
+
+    want = (player_name or "").strip().lower()
+    want = PLEX_ALIASES.get(want, want).strip().lower()
+
+    def player_of(session):
+        players = getattr(session, "players", []) or []
+        return players[0] if players else None
+
+    if want:
+        chosen = None
+        for session in sessions:
+            pl = player_of(session)
+            hay = " ".join(
+                filter(None, [getattr(pl, "title", ""), getattr(pl, "product", "")])
+            ).lower()
+            if pl and want in hay:
+                chosen = session
+                break
+        if chosen is None:
+            return None
+    elif len(sessions) == 1:
+        chosen = sessions[0]
+    else:
+        raise ToolError(
+            "More than one thing is playing; say which player to stop.",
+            playing=[
+                {"player": getattr(player_of(x), "title", "?"), "title": x.title}
+                for x in sessions
+            ],
+        )
+
+    pl = player_of(chosen)
+    chosen.stop(reason="Stopped by Hermes")
+    return {
+        "ok": True,
+        "action": "stop",
+        "player": getattr(pl, "title", "?"),
+        "stopped": chosen.title,
+        "method": "server-side session terminate",
+    }
+
+
+def confirm_playback(machine_identifier, item, wait_seconds=8):
+    """Did the thing we asked for actually start?
+
+    A client accepting playMedia is not the same as a client playing something -
+    they diverge often enough that reporting the first as the second is how an
+    agent ends up telling someone a movie is on when the screen is black.
+    """
+    want = str(getattr(item, "ratingKey", ""))
+    deadline = time.time() + wait_seconds
+    last = "no session appeared"
+    while time.time() < deadline:
+        try:
+            for session in plex().sessions():
+                for pl in getattr(session, "players", []) or []:
+                    if getattr(pl, "machineIdentifier", None) != machine_identifier:
+                        continue
+                    if str(getattr(session, "ratingKey", "")) == want:
+                        return {
+                            "confirmed": True,
+                            "detail": f"{getattr(pl, 'state', 'playing')} at "
+                                      f"{ms_to_clock(getattr(session, 'viewOffset', 0))}",
+                        }
+                    last = f"player is on a different title ({session.title!r})"
+        except Exception as exc:
+            last = f"could not read sessions ({type(exc).__name__})"
+        time.sleep(1.5)
+    return {"confirmed": False, "detail": last}
 
 
 def next_unwatched_episode(show):
@@ -560,6 +744,218 @@ def list_players(only_controllable=False, include_all=False):
     }
 
 
+@tool(
+    "Map of what is actually in the libraries: sections, sizes, and the exact "
+    "genre/decade/rating vocabulary each one accepts. Call this before 'discover' "
+    "so filters use real values instead of guesses.",
+    {"library": s("Limit to one library by name. Default: all of them.")},
+)
+def library_overview(library=None):
+    p = plex()
+    out = []
+    for section in p.library.sections():
+        if library and library.strip().lower() not in section.title.lower():
+            continue
+        entry = {
+            "library": section.title,
+            "type": section.type,
+            "total_items": section.totalSize,
+        }
+        for field in ("genre", "decade", "contentRating"):
+            try:
+                entry[f"{field}s" if field != "contentRating" else "content_ratings"] = [
+                    c.title for c in section.listFilterChoices(field)
+                ]
+            except Exception:
+                pass
+        out.append(entry)
+    if not out:
+        raise ToolError(
+            f"No library matches {library!r}.",
+            available=[x.title for x in p.library.sections()],
+        )
+    return {
+        "ok": True,
+        "libraries": out,
+        "note": (
+            "Use these exact genre strings with 'discover'. Genres are "
+            "combinable - a fantasy epic is usually Fantasy plus Adventure."
+        ),
+    }
+
+
+@tool(
+    "Find media by genre, decade, rating and watched state - the tool for open "
+    "requests like 'a fantasy epic' or 'something short and funny I have not "
+    "seen'. Returns full metadata for reasoning. Call library_overview first for "
+    "valid genre names.",
+    {
+        "genre": s("Genre, or several separated by commas (all must match)."),
+        "library": s("Library name. Defaults to Movies if present."),
+        "decade": s("Decade like '1990s', or a plain year like '1994'."),
+        "min_rating": i("Minimum critic rating, 0-10."),
+        "unwatched_only": b("Only things not yet watched."),
+        "actor": s("Filter by actor name."),
+        "director": s("Filter by director name."),
+        "sort": s("rating, random, recent, title, or year. Default rating.", "rating"),
+        "match_all": b(
+            "With several genres, require all of them (a fantasy epic is both "
+            "Fantasy and Adventure). Set false to match any.", True),
+        "limit": i("How many to return. Default 8.", 8),
+    },
+)
+def discover(genre=None, library=None, decade=None, min_rating=None,
+             unwatched_only=False, actor=None, director=None,
+             sort="rating", match_all=True, limit=8):
+    p = plex()
+    sections = p.library.sections()
+    if library:
+        want = library.strip().lower()
+        sections = [x for x in sections if want in x.title.lower()]
+        if not sections:
+            raise ToolError(
+                f"No library matches {library!r}.",
+                available=[x.title for x in p.library.sections()],
+            )
+    else:
+        movies = [x for x in sections if x.type == "movie"]
+        sections = movies or sections
+    section = sections[0]
+
+    sorts = {
+        "rating": "rating:desc",
+        "random": "random",
+        "recent": "addedAt:desc",
+        "newest": "addedAt:desc",
+        "title": "titleSort:asc",
+        "year": "year:desc",
+    }
+    sort_key = sorts.get((sort or "rating").strip().lower())
+    if sort_key is None:
+        raise ToolError(f"Unknown sort {sort!r}.", valid_sorts=sorted(sorts))
+
+    filters = {}
+    genres = [g.strip() for g in (genre or "").split(",") if g.strip()]
+    if genres:
+        # Plex joins a list with "," as OR (genre=6,5). Appending "&" to the
+        # field emits repeated params (genre=6&genre=5), which is AND. "A
+        # fantasy epic" means both tags, so AND is the useful default.
+        filters["genre&" if (match_all and len(genres) > 1) else "genre"] = genres
+    if decade:
+        d = decade.strip()
+        filters["decade" if d.endswith("s") else "year"] = d
+    if min_rating is not None:
+        filters["rating>>"] = float(min_rating)
+    if unwatched_only:
+        filters["unwatched"] = True
+    if actor:
+        filters["actor"] = actor
+    if director:
+        filters["director"] = director
+
+    limit = max(1, min(int(limit or 8), 25))
+    try:
+        results = section.search(
+            filters=filters or None, sort=sort_key, maxresults=limit
+        )
+    except Exception as exc:
+        raise ToolError(
+            f"Plex rejected those filters: {type(exc).__name__}: {exc}",
+            filters_used=filters,
+            hint="Call library_overview for the exact genre and decade values.",
+        )
+
+    if not results:
+        raise ToolError(
+            "Nothing in the library matches those filters.",
+            filters_used=filters,
+            library=section.title,
+            hint="Drop the most specific filter and try again, or report that "
+                 "the library has nothing matching rather than inventing titles.",
+        )
+
+    return {
+        "ok": True,
+        "library": section.title,
+        "filters_used": filters,
+        "sort": sort_key,
+        "count": len(results),
+        "results": [describe_item(x, detailed=True) for x in results],
+    }
+
+
+@tool(
+    "Given something the user liked, find comparable titles in the library, "
+    "ranked by how many genres they share. Use for 'something like X'.",
+    {
+        "title": s("A title the user already likes."),
+        "unwatched_only": b("Only suggest things not yet watched.", True),
+        "limit": i("How many to return. Default 6.", 6),
+    },
+    ["title"],
+)
+def similar_to(title, unwatched_only=True, limit=6):
+    p = plex()
+    seed_matches = find_media(title, None, 3)
+    if not seed_matches:
+        raise ToolError(f"Nothing in the library matches {title!r}.")
+    seed = seed_matches[0]
+    seed.reload()
+    seed_genres = {g.tag for g in (getattr(seed, "genres", None) or [])}
+    if not seed_genres:
+        raise ToolError(
+            f"{seed.title!r} has no genre metadata, so there is nothing to "
+            "compare against. Refresh its metadata in Plex."
+        )
+
+    section = p.library.sectionByID(seed.librarySectionID)
+    pool, seen = [], {str(seed.ratingKey)}
+    # One query per shared genre beats pulling the whole library and is still
+    # only a handful of requests.
+    for tag in list(seed_genres)[:4]:
+        try:
+            found = section.search(
+                filters={"genre": tag, **({"unwatched": True} if unwatched_only else {})},
+                sort="rating:desc", maxresults=40,
+            )
+        except Exception:
+            continue
+        for item in found:
+            key = str(item.ratingKey)
+            if key not in seen:
+                seen.add(key)
+                pool.append(item)
+
+    scored = []
+    for item in pool:
+        try:
+            item.reload()
+        except Exception:
+            continue
+        overlap = seed_genres & {g.tag for g in (getattr(item, "genres", None) or [])}
+        if overlap:
+            scored.append((len(overlap), getattr(item, "rating", 0) or 0, item, overlap))
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+
+    if not scored:
+        raise ToolError(
+            f"Nothing in the library shares a genre with {seed.title!r}.",
+            seed_genres=sorted(seed_genres),
+        )
+
+    limit = max(1, min(int(limit or 6), 15))
+    return {
+        "ok": True,
+        "seed": {"title": seed.title, "year": seed.year, "genres": sorted(seed_genres)},
+        "unwatched_only": unwatched_only,
+        "results": [
+            {**describe_item(item), "shared_genres": sorted(shared),
+             "rating": rating or None}
+            for _, rating, item, shared in scored[:limit]
+        ],
+    }
+
+
 @tool("List the libraries on the Plex server.")
 def list_libraries():
     return {
@@ -615,10 +1011,13 @@ def play(query, player=None, media_type=None, offset_seconds=0):
 
     client = resolve_player(player)
     client.playMedia(target, offset=int(offset_seconds) * 1000)
+    started = confirm_playback(client.machineIdentifier, target)
     return {
         "ok": True,
-        "action": "playing",
+        "action": "playing" if started["confirmed"] else "command accepted",
         "player": client.title,
+        "confirmed_playing": started["confirmed"],
+        "playback_state": started["detail"],
         "now_playing": describe_item(target),
         "other_matches": [describe_item(x) for x in items[1:4]],
     }
@@ -679,6 +1078,16 @@ def play_next_episode(show, player=None):
     ["action"],
 )
 def control(action, player=None):
+    key = action.strip().lower()
+
+    # Stopping is special: /status/sessions/terminate is a SERVER operation and
+    # never touches Companion, so it works on clients that refuse every other
+    # command - Amazon Fire TV included. Try it before giving up on them.
+    if key == "stop":
+        stopped = stop_session(player)
+        if stopped:
+            return stopped
+
     client = resolve_player(player)
     actions = {
         "play": client.play,
@@ -690,7 +1099,6 @@ def control(action, player=None):
         "previous": client.skipPrevious,
         "back": client.skipPrevious,
     }
-    key = action.strip().lower()
     if key not in actions:
         raise ToolError(
             f"Unknown action {action!r}.", valid_actions=sorted(set(actions))
