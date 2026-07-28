@@ -185,18 +185,19 @@ Preferred when Hermes, Plex and this server are on the same box: no HTTP hop, no
 Docker dependency, and the direct-LAN routes to players work without a container
 in the way.
 
-Give it its own directory and venv, outside any tree a `hermes update` manages:
-
-```
-E:\hermes-mcp\plex-mcp\
-```
+Clone it somewhere `hermes update` does not manage, and put the venv inside the
+clone. One directory, one path to remember:
 
 ```bash
 git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
-cd E:/hermes-mcp/plex-mcp
+cd E:/hermes-mcp/hermes-tools/plex-mcp
 uv venv
-uv pip install -e E:/hermes-mcp/hermes-tools/plex-mcp
+uv pip install -e .
 ```
+
+Because the install is editable, `git pull` updates the running server — no
+reinstall, just restart the MCP connection. `.venv/` is gitignored, so it will
+not dirty the tree.
 
 That installs `plexapi` and two entry points into `.venv\Scripts\`:
 
@@ -212,7 +213,7 @@ Hermes reads `%USERPROFILE%\.hermes\config.yaml`:
 ```yaml
 mcp_servers:
   plex:
-    command: "E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp-serve.exe"
+    command: "E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp-serve.exe"
     args: []
     env:
       PLEX_URL: "http://127.0.0.1:32400"
@@ -250,7 +251,7 @@ is about keeping the tool list small rather than fencing off destructive verbs.
 ### Verify before letting the agent near it
 
 ```bash
-E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp.exe plex_status
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe plex_status
 ```
 
 Then the handshake, which should return exactly two lines of JSON and nothing
@@ -258,7 +259,7 @@ else:
 
 ```bash
 printf '%s
-' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp-serve.exe
+' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp-serve.exe
 ```
 
 Any non-JSON on stdout means something is printing where it should not. The
