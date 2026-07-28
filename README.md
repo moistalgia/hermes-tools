@@ -4,7 +4,8 @@ Tools for Hermes/GLADYS, the containerized home agent. One directory per tool.
 
 | Tool | What it does |
 | --- | --- |
-| [plex-mcp](plex-mcp/) | MCP server for Plex playback — search, play, control players. |
+| [plex-mcp](plex-mcp/) | MCP server for Plex playback — search, play, control players, recommend. |
+| [skills/plex-media-playback](skills/plex-media-playback/) | Hermes skill that drives the above. |
 
 ## Deploying to the media server
 
