@@ -28,6 +28,7 @@ site-packages; nothing is written to the mount.
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `PLEX_URL` | `http://host.docker.internal:32400` | Correct when the container runs on the same host as Plex. If Plex lives elsewhere, give its LAN address. Use `http://localhost:32400` when testing on the Plex host itself. |
+| `PLEX_BASEURL` | — | Accepted as an alias for `PLEX_URL`, since that is plexapi's name and what most MCP config examples use. `PLEX_URL` wins if both are set. |
 | `PLEX_TOKEN` | *(required)* | Never read from disk. |
 | `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Keep on inside Docker. |
 | `PLEX_TIMEOUT` | `15` | Seconds. |
@@ -177,6 +178,97 @@ integration), which is outside this server's scope.
 A device that advertises `player` but is not listening simply has its Plex app
 closed. Open Plex on it and retry — Roku only listens on `:8324` while the app
 is open.
+
+## Running on the Windows host (stdio)
+
+Preferred when Hermes, Plex and this server are on the same box: no HTTP hop, no
+Docker dependency, and the direct-LAN routes to players work without a container
+in the way.
+
+Give it its own directory and venv, outside any tree a `hermes update` manages:
+
+```
+E:\hermes-mcp\plex-mcp\
+```
+
+```bash
+git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
+cd E:/hermes-mcp/plex-mcp
+uv venv
+uv pip install -e E:/hermes-mcp/hermes-tools/plex-mcp
+```
+
+That installs `plexapi` and two entry points into `.venv\Scripts\`:
+
+| Entry point | Use |
+| --- | --- |
+| `plex-mcp-serve.exe` | **the MCP server.** Goes straight to the stdio loop, takes no arguments. |
+| `plex-mcp.exe` | the CLI, for proving things work from a shell. |
+
+### Config
+
+Hermes reads `%USERPROFILE%\.hermes\config.yaml`:
+
+```yaml
+mcp_servers:
+  plex:
+    command: "E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp-serve.exe"
+    args: []
+    env:
+      PLEX_URL: "http://127.0.0.1:32400"
+      PLEX_TOKEN: "***"
+      PLEX_ALIASES: '{"theater":"Streaming Stick 4K","office":"unknown"}'
+    timeout: 60
+    connect_timeout: 30
+    tools:
+      include: [plex_status, list_players, play, play_rating_key,
+                play_next_episode, control, now_playing, search,
+                library_overview, discover, similar_to, on_deck,
+                recently_added, seek, set_volume]
+      resources: false
+      prompts: false
+```
+
+Things that will silently break it:
+
+- **Use the real tool names.** `tools.include` is an allowlist — names that do
+  not exist expose nothing. There is no `search_media`, `play_on_client` or
+  `list_clients` here; see the tool table above.
+- **Keep the server named `plex`.** Tools register as `mcp_plex_play`; hyphens
+  and dots become underscores, so `plex-mcp` would give you `mcp_plex_mcp_play`.
+- **`python.exe`, never `pythonw.exe`.** Windowless Python has no usable
+  stdin/stdout and the handshake hangs forever. Using the entry point avoids the
+  question entirely.
+- **Env must be explicit.** stdio servers get only the configured `env` plus a
+  safe baseline, so `PLEX_TOKEN` is not inherited from a shell or `.env` file.
+- Absolute path, forward slashes. Hermes spawns the process directly, not
+  through a shell, so there is no PATH lookup and no venv activation.
+
+Nothing in this server deletes, refreshes or restarts anything, so the allowlist
+is about keeping the tool list small rather than fencing off destructive verbs.
+
+### Verify before letting the agent near it
+
+```bash
+E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp.exe plex_status
+```
+
+Then the handshake, which should return exactly two lines of JSON and nothing
+else:
+
+```bash
+printf '%s
+' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | E:/hermes-mcp/plex-mcp/.venv/Scripts/plex-mcp-serve.exe
+```
+
+Any non-JSON on stdout means something is printing where it should not. The
+server redirects `sys.stdout` to stderr for the lifetime of the stdio loop
+specifically to prevent this, so a stray line points at something writing before
+the loop starts.
+
+Then `hermes dashboard` → MCP → Test, and `/reload-mcp` in a session. Edit
+`config.yaml` from a separate terminal, not mid-conversation — a running session
+auto-reloads MCP connections on change with a 30s timeout.
 
 ## Waking a sleeping Roku
 

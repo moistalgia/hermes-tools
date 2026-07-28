@@ -1,0 +1,3 @@
+[console_scripts]
+plex-mcp = plex_mcp_server:main
+plex-mcp-serve = plex_mcp_server:serve

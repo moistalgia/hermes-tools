@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plex-mcp"
+version = "1.1.0"
+description = "Single-file MCP server for Plex playback, discovery and player control"
+requires-python = ">=3.9"
+dependencies = ["plexapi>=4.15"]
+
+[project.scripts]
+# Straight to the stdio loop, no argument parsing. This is the one to put in an
+# MCP config: it cannot be invoked in a mode that prints usage text to stdout
+# and corrupts the JSON-RPC stream.
+plex-mcp-serve = "plex_mcp_server:serve"
+# The CLI, for proving things work from a shell.
+plex-mcp = "plex_mcp_server:main"
+
+[tool.setuptools]
+# Deliberately a single module, not a package. The whole point of this server is
+# that you can read all of it in one file.
+py-modules = ["plex_mcp_server"]

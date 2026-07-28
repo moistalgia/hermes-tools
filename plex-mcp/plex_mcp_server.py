@@ -35,7 +35,13 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-PLEX_URL = os.environ.get("PLEX_URL", "http://host.docker.internal:32400")
+# PLEX_BASEURL is accepted because that is what plexapi calls it and what most
+# MCP config examples use; PLEX_URL wins if both are set.
+PLEX_URL = (
+    os.environ.get("PLEX_URL")
+    or os.environ.get("PLEX_BASEURL")
+    or "http://host.docker.internal:32400"
+)
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 PLEX_PROXY = os.environ.get("PLEX_PROXY", "1") not in ("0", "false", "False", "")
 PLEX_TIMEOUT = int(os.environ.get("PLEX_TIMEOUT", "15"))
@@ -1251,7 +1257,18 @@ def call_tool(name, args):
 # ---------------------------------------------------------------------------
 
 
+_stdout = sys.stdout
+
+
 def serve():
+    # stdout is the JSON-RPC transport. One stray print() anywhere - here, in a
+    # dependency, in a warning - corrupts the stream and the handshake fails
+    # with no useful error. Hold the real handle for emit() and point sys.stdout
+    # at stderr so accidental writes are merely logged instead of fatal.
+    global _stdout
+    _stdout = sys.stdout
+    sys.stdout = sys.stderr
+
     log(f"serving {len(TOOLS)} tools over stdio; PLEX_URL={PLEX_URL}")
     for line in sys.stdin:
         line = line.strip()
@@ -1319,8 +1336,8 @@ def serve():
 
 
 def emit(payload):
-    sys.stdout.write(json.dumps(payload, default=str) + "\n")
-    sys.stdout.flush()
+    _stdout.write(json.dumps(payload, default=str) + "\n")
+    _stdout.flush()
 
 
 # ---------------------------------------------------------------------------

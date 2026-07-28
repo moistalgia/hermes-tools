@@ -1,0 +1,9 @@
+README.md
+plex_mcp_server.py
+pyproject.toml
+plex_mcp.egg-info/PKG-INFO
+plex_mcp.egg-info/SOURCES.txt
+plex_mcp.egg-info/dependency_links.txt
+plex_mcp.egg-info/entry_points.txt
+plex_mcp.egg-info/requires.txt
+plex_mcp.egg-info/top_level.txt
