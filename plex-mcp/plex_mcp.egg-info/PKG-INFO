@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: plex-mcp
-Version: 1.1.0
-Summary: Single-file MCP server for Plex playback, discovery and player control
-Requires-Python: >=3.9
-Requires-Dist: plexapi>=4.15

@@ -6,3 +6,7 @@ venv/
 
 .env
 *.env
+
+*.egg-info/
+build/
+dist/
