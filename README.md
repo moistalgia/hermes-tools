@@ -2,72 +2,128 @@
 
 Tools for Hermes/GLADYS, the containerized home agent. One directory per tool.
 
-| Tool | What it does |
+[DESIGN.md](DESIGN.md) covers how these fit together, the conventions every
+server here follows, and what gets built next.
+
+| Server | What it does |
 | --- | --- |
-| [plex-mcp](plex-mcp/) | MCP server for Plex playback — search, play, control players, recommend. |
-| [skills/plex-media-playback](skills/plex-media-playback/) | Hermes skill that drives the above. |
+| [plex-mcp](plex-mcp/) | Plex playback — search, play, control players, recommend. |
+| [state-mcp](state-mcp/) | Shared household memory — tasks, shopping, pantry, meals, appointments, facts. No dependencies. |
+| [notify-mcp](notify-mcp/) | Push to your phone, and messages back from it. No dependencies. |
+| [hass-mcp](hass-mcp/) | Home Assistant — lights, blinds, thermostats, scenes. No dependencies. |
+| [mcpkit.py](mcpkit.py) | Shared protocol layer. Not a server; imported by the ones above. |
 
-## Deploying to the media server
-
-The agent runs in Docker and only sees paths mounted into it. It already has one:
-
-| | |
+| Skill | Drives |
 | --- | --- |
-| host | `<somewhere>/hermes-agent/in` |
-| container | `/sandbox/in` |
+| [plex-media-playback](skills/plex-media-playback/) | `plex` |
+| [home-control](skills/home-control/) | `hass` |
+| [household-state](skills/household-state/) | `state` |
+| [meal-planning](skills/meal-planning/) | `state` |
+| [daily-brief](skills/daily-brief/) | everything |
+| [nightly-audit](skills/nightly-audit/) | `state`, `hass`, `notify` |
+| [email-triage](skills/email-triage/) | email, `state` |
 
-Two path spaces, and mixing them up is the usual first failure. You `git pull`
-on the **host** path; the agent's MCP config must name the **container** path.
-
-### Clone into the existing mount
-
-Clone so the repo contents land in a `tools` subdirectory, not at the root of
-`in` — an inbox that something scans or drains is not a safe home for a `.git`:
+Every server is also a CLI. Anything the agent can call, you can run from a
+shell with identical arguments through identical code — so when something
+breaks there is exactly one place it can be breaking:
 
 ```bash
-git clone https://github.com/moistalgia/hermes-tools.git <host>/hermes-agent/in/tools
+python hass-mcp/hass_mcp_server.py set_lights room=office state=on brightness_pct=40
 ```
 
-The agent then sees `/sandbox/in/tools/plex-mcp/plex_mcp_server.py`, which is
-the path that goes in its MCP config.
+## Deploying
 
-**A loose copy of `plex-mcp/` is not enough.** It cannot `git pull`, so it
-silently stays on whatever revision was copied. If `/sandbox/in/plex-mcp`
-already exists as a plain directory, delete it after the clone so there is only
-one copy and no ambiguity about which one the agent loaded.
+Hermes launches MCP servers from its own Python process on the Windows host, so
+**every path in the config is a host path.** There is no container path space
+and nothing needs mounting. If you have read older notes in this repo about
+`/sandbox/in`, ignore them — `plex-mcp`'s README documents that variant, and it
+is not how these run.
 
-### Confirm the container can see it
+### Clone
+
+One clone, anywhere `hermes update` does not manage:
 
 ```bash
-docker exec <agent-container> ls /sandbox/in/tools/plex-mcp
+git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
 ```
 
-The path that just worked is the one to configure. Then follow
-[plex-mcp/README.md](plex-mcp/README.md) to install and register it.
+`state-mcp`, `notify-mcp`, and `hass-mcp` have **no dependencies** — standard
+library only. No venv, no install, no packaging. Hermes runs them with the
+interpreter it already has, straight from the checkout.
 
-### Optional: make it read-only
+`plex-mcp` is the exception: it needs `plexapi`, so it keeps its venv and
+editable install. See [its README](plex-mcp/README.md).
 
-The `in` mount is presumably writable. If you later give the repo its own mount,
-add `:ro` — the agent can still run the tools, but cannot dirty the working
-tree, commit, or scatter `__pycache__` into it. Python skips writing bytecode to
-a non-writable directory and runs normally.
+### Register
+
+`%USERPROFILE%\.hermes\config.yaml`:
+
+```yaml
+mcp_servers:
+  state:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/state-mcp/state_mcp_server.py", "serve"]
+    env:
+      STATE_PERSON: "Nathan"
+  notify:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/notify-mcp/notify_mcp_server.py", "serve"]
+    env:
+      TELEGRAM_TOKEN: "<from @BotFather>"
+      TELEGRAM_CHAT_ID: "<see notify-mcp/README.md>"
+  hass:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/hass-mcp/hass_mcp_server.py", "serve"]
+    env:
+      HASS_URL: "http://192.168.1.x:8123"
+      HASS_TOKEN: "<long-lived token>"
+```
+
+The `serve` argument is required and puts the process straight into the
+JSON-RPC loop. Omitting it prints usage — to **stderr**, deliberately, so a
+mistake in this file produces a readable log rather than a corrupted handshake
+with no explanation.
+
+Forward slashes work fine in YAML on Windows and avoid escaping.
+
+### Where the data lives
+
+Three files default to `%USERPROFILE%\.hermes\`, alongside Hermes' own config:
+
+| File | Server | What it is |
+| --- | --- | --- |
+| `household.db` | `state` | The household's memory |
+| `notify.json` | `notify` | Inbound read cursor |
+| `house.json` | `hass` | Your Home Assistant room map |
+
+None of them live in the checkout, and that is deliberate: `git pull` would
+overwrite `house.json`, and a state store inside a directory you replace is a
+state store you lose. Override any of them with `STATE_DB`, `NOTIFY_STATE`, or
+`HASS_MAP` if you want them elsewhere.
+
+**Back up `household.db`.** It is a single SQLite file, so a scheduled `cp` is a
+complete backup. It becomes the thing you rely on before it becomes the thing
+you think to protect.
 
 ## Updating
 
-Always on the host, never in the container — it has no git and no credentials:
+On the host:
 
 ```bash
-git -C <host>/hermes-agent/in/tools pull
+git -C E:/hermes-mcp/hermes-tools pull
 ```
 
-A bind mount is live, so the container sees new files immediately. A changed
-`.py` still needs the agent to restart its MCP servers to load it.
+The dependency-free servers run from source, so a pull is live — they just need
+their MCP connection restarted to reload the file. `plex-mcp`'s editable install
+behaves the same way.
 
-## If you move the repo
+`house.json` is the exception and needs no restart at all: `hass-mcp` watches
+its modification time and reloads it on the next call, because adding a device
+happens often enough that a restart per bulb would be a real tax.
 
-The container path appears in exactly two places. Change both:
+## Import path
 
-- [plex-mcp/README.md](plex-mcp/README.md) — the `mcp_servers` block
-- [plex-mcp/HERMES_PROMPT.md](plex-mcp/HERMES_PROMPT.md) — the install step
-
-Nothing in the Python reads an install path, so no code changes.
+Each server imports [mcpkit.py](mcpkit.py) from the repo root using a path
+derived from its own `__file__`, never the working directory — so they run
+correctly whatever cwd Hermes launches them with. Keep the directory layout
+intact and this needs no thought.
