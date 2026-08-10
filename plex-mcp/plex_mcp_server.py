@@ -18,11 +18,12 @@ handling, so anything that works on the CLI works over MCP. If it breaks,
 it breaks identically in both, which is the whole point.
 
 Environment:
-    PLEX_URL    default http://host.docker.internal:32400
+    PLEX_URL    default http://127.0.0.1:32400, which is right when Plex runs on
+                the same host as Hermes. Give a LAN address if it does not.
     PLEX_TOKEN  required
     PLEX_PROXY  default 1 - route player commands through the Plex server
-                instead of connecting to the player's LAN IP directly.
-                Keep this on when running inside Docker.
+                instead of connecting to the player's LAN IP directly. Leave it
+                on unless a device is only reachable directly.
 """
 
 import inspect
@@ -40,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 PLEX_URL = (
     os.environ.get("PLEX_URL")
     or os.environ.get("PLEX_BASEURL")
-    or "http://host.docker.internal:32400"
+    or "http://127.0.0.1:32400"
 )
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 PLEX_PROXY = os.environ.get("PLEX_PROXY", "1") not in ("0", "false", "False", "")
@@ -409,8 +410,9 @@ def build_client(entry):
 
     `route` decides how commands travel. Note PlexClient(identifier=...) does
     NOT set machineIdentifier - that argument only feeds connect()'s lookup,
-    which we skip because dialing from a container is what fails. sendCommand
-    reads machineIdentifier for the target header, so set it directly.
+    which we skip because it dials the player directly and that is the step
+    that fails. sendCommand reads machineIdentifier for the target header, so
+    set it directly.
     """
     from plexapi.client import PlexClient
 
