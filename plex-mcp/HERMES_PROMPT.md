@@ -1,19 +1,26 @@
 # Prompt for Hermes
 
+The one-time bootstrap prompt for getting `plex-mcp` installed and proven. Once
+it works, day-to-day behaviour lives in
+[skills/plex-media-playback](../skills/plex-media-playback/SKILL.md) — use that,
+not this.
+
+---
+
 Stop iterating on Home Assistant's `media_player.play_media` for Plex — that path is closed. Do not keep guessing at schema variations, and do not write your own plexapi scripts either. I am giving you a finished MCP server for this; your job is to install it and confirm it works, not to design it.
 
 **Install**
 
-1. The file is at `/sandbox/in/tools/plex-mcp/plex_mcp_server.py`. Read it and run it; do not edit it. It is a git checkout and your edits would be overwritten on the next pull. Install its one dependency with whatever works in your container: `pip install plexapi` (add `--break-system-packages` if pip refuses).
+1. The server is a git checkout on the Windows host, at `E:/hermes-mcp/hermes-tools/plex-mcp/`. Read it and run it; do not edit it — your edits would be overwritten on the next pull. It installs into its own venv inside the clone: `cd E:/hermes-mcp/hermes-tools/plex-mcp && uv venv && uv pip install -e .`
 2. Register it in your MCP config as the server `plex`:
 
 ```yaml
 mcp_servers:
   plex:
-    command: "python3"
-    args: ["/sandbox/in/tools/plex-mcp/plex_mcp_server.py", "serve"]
+    command: "E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp-serve.exe"
+    args: []
     env:
-      PLEX_URL: "http://host.docker.internal:32400"
+      PLEX_URL: "http://127.0.0.1:32400"
       PLEX_TOKEN: "<token>"
 ```
 
@@ -30,7 +37,7 @@ Report the output of each step. If a step fails, report the `error` field **exac
 
 **Standing rules**
 
-- Home Assistant is for lights and blinds only. Never for Plex. Its Plex integration hits the exact same wall this server does and adds nothing.
+- Home Assistant handles lights, blinds, thermostats and scenes, through the `hass` server. Never for Plex. Its Plex integration hits the exact same wall this server does and adds nothing.
 - Do not call any Home Assistant service that changes state (`stop`, `restart`, `turn_off`, and similar) while testing.
 - Do not edit any skill file until I have personally confirmed the playback test worked.
 - `list_players` reports every device and whether it is controllable. Read the `status` field before doing anything else:

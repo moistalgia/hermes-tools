@@ -11,84 +11,71 @@ can be breaking.
 
 ## Install
 
-Use whatever `python3` / `plexapi` version the container resolves — nothing
-here is version-sensitive. Run this **inside the agent container**, since that
-is where the server executes:
+This server runs on the Windows host, from its own venv inside the clone. One
+directory, one path to remember:
 
 ```bash
-pip install -r /sandbox/in/tools/plex-mcp/requirements.txt
+git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
 ```
 
-If pip refuses with `externally-managed-environment`, add
-`--break-system-packages`. The dependency installs into the container's own
-site-packages; nothing is written to the mount.
+```bash
+cd E:/hermes-mcp/hermes-tools/plex-mcp && uv venv && uv pip install -e .
+```
+
+Because the install is editable, `git pull` updates the running server — no
+reinstall, just restart the MCP connection. `.venv/` is gitignored, so it will
+not dirty the tree.
+
+That installs `plexapi` and two entry points into `.venv\Scripts\`:
+
+| Entry point | Use |
+| --- | --- |
+| `plex-mcp-serve.exe` | **the MCP server.** Goes straight to the stdio loop, takes no arguments. |
+| `plex-mcp.exe` | the CLI, for proving things work from a shell. |
+
+`plex-mcp` is the only server here with a dependency. The other three are
+standard library only and run straight from the checkout — see the
+[root README](../README.md#deploying).
 
 ## Configure
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `PLEX_URL` | `http://host.docker.internal:32400` | Correct when the container runs on the same host as Plex. If Plex lives elsewhere, give its LAN address. Use `http://localhost:32400` when testing on the Plex host itself. |
+| `PLEX_URL` | `http://127.0.0.1:32400` | Correct when Plex runs on the same host as Hermes. If Plex lives elsewhere, give its LAN address. |
 | `PLEX_BASEURL` | — | Accepted as an alias for `PLEX_URL`, since that is plexapi's name and what most MCP config examples use. `PLEX_URL` wins if both are set. |
 | `PLEX_TOKEN` | *(required)* | Never read from disk. |
-| `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Keep on inside Docker. |
+| `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Leave it on unless a device is only reachable directly. |
 | `PLEX_TIMEOUT` | `15` | Seconds. |
 | `PLEX_ALIASES` | `{}` | JSON map of spoken names to Plex player names, e.g. `{"theater":"Streaming Stick 4K","office":"unknown"}`. Rooms outlive hardware; Plex names like `unknown` are unsayable. |
 | `ROKU_PLEX_CHANNEL_ID` | `13535` | Roku channel ID for Plex, used to wake the app. |
 
 ## Manual test sequence
 
-Run these in order on the host. Stop at the first one that fails and read the
-error — it names the cause.
+Run these in order. Stop at the first one that fails and read the error — it
+names the cause.
 
 ```bash
-export PLEX_URL=http://localhost:32400
-export PLEX_TOKEN=your-token-here
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe plex_status
 ```
 
 ```bash
-python plex_mcp_server.py plex_status
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe list_players
 ```
 
 ```bash
-python plex_mcp_server.py list_players
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe search query="ready player one"
 ```
 
 ```bash
-python plex_mcp_server.py search query="ready player one"
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe play query="ready player one" player="EXACT NAME FROM list_players"
 ```
 
 ```bash
-python plex_mcp_server.py play query="ready player one" player="EXACT NAME FROM list_players"
-```
-
-```bash
-python plex_mcp_server.py now_playing
+E:/hermes-mcp/hermes-tools/plex-mcp/.venv/Scripts/plex-mcp.exe now_playing
 ```
 
 Arguments are `key=value`. Quote values containing spaces. Exit code is 0 on
 success, 1 on failure, and the JSON body always carries the real error text.
-
-## Wire into Hermes
-
-The path here is the path **inside the container**, not the host path you
-cloned to — see [deploying](../README.md#deploying-to-the-media-server). With
-the mount from that guide it is `/sandbox/in/tools/plex-mcp/`.
-
-```yaml
-mcp_servers:
-  plex:
-    command: "python3"
-    args: ["/sandbox/in/tools/plex-mcp/plex_mcp_server.py", "serve"]
-    env:
-      PLEX_URL: "http://host.docker.internal:32400"
-      PLEX_TOKEN: "your-token-here"
-```
-
-Verify the server end without Hermes:
-
-```bash
-printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | python plex_mcp_server.py serve
-```
 
 ## Tools
 
@@ -179,34 +166,7 @@ A device that advertises `player` but is not listening simply has its Plex app
 closed. Open Plex on it and retry — Roku only listens on `:8324` while the app
 is open.
 
-## Running on the Windows host (stdio)
-
-Preferred when Hermes, Plex and this server are on the same box: no HTTP hop, no
-Docker dependency, and the direct-LAN routes to players work without a container
-in the way.
-
-Clone it somewhere `hermes update` does not manage, and put the venv inside the
-clone. One directory, one path to remember:
-
-```bash
-git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
-cd E:/hermes-mcp/hermes-tools/plex-mcp
-uv venv
-uv pip install -e .
-```
-
-Because the install is editable, `git pull` updates the running server — no
-reinstall, just restart the MCP connection. `.venv/` is gitignored, so it will
-not dirty the tree.
-
-That installs `plexapi` and two entry points into `.venv\Scripts\`:
-
-| Entry point | Use |
-| --- | --- |
-| `plex-mcp-serve.exe` | **the MCP server.** Goes straight to the stdio loop, takes no arguments. |
-| `plex-mcp.exe` | the CLI, for proving things work from a shell. |
-
-### Config
+## Wire into Hermes
 
 Hermes reads `%USERPROFILE%\.hermes\config.yaml`:
 

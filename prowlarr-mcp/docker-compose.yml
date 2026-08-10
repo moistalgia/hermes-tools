@@ -1,0 +1,53 @@
+# Prowlarr, and the proxy it uses for indexers that sit behind a challenge.
+#
+# This file is for the human running the host. Nothing in hermes-tools starts,
+# stops, or reads it — the MCP server is a client of a Prowlarr that is already
+# up, and it stays that way on purpose. See README.md for what to do after
+# `docker compose up -d`.
+#
+#   docker compose up -d
+#   docker compose logs -f prowlarr
+#
+# Both services join the default compose network, which is the only reason the
+# proxy URL inside Prowlarr is `http://flaresolverr:8191` and not a host
+# address: containers on one compose network resolve each other by service
+# name. Publishing 8191 below is purely so you can curl it while debugging.
+
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      # Ignored by Docker Desktop on Windows; kept so this file also works on a
+      # Linux host without edits.
+      - PUID=1000
+      - PGID=1000
+      # Set this. Prowlarr timestamps indexer failures, and a container running
+      # in UTC while you read the logs in local time makes a fresh failure look
+      # like an old one.
+      - TZ=Etc/UTC
+    volumes:
+      # The named volume holds the API key, the indexer definitions, and their
+      # credentials. Losing it means re-adding every indexer by hand, so it is
+      # deliberately not a bind mount into the checkout — a `git clean` must
+      # never be able to take it.
+      - prowlarr-config:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=Etc/UTC
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+    # It is a headless browser and it is the heaviest thing here by a wide
+    # margin. Idle it costs nothing; during a search it will take a core.
+    mem_limit: 1g
+
+volumes:
+  prowlarr-config:

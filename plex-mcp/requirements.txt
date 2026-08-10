@@ -1,2 +1,3 @@
-# Only one dependency. Let the container resolve the version that works there.
+# Only one dependency, and nothing here is version-sensitive. Normally installed
+# via `uv pip install -e .` from pyproject.toml; this file is for pip users.
 plexapi>=4.15

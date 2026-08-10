@@ -17,9 +17,10 @@ against this exact hardware and they fail — see
 tried and the errors each returned. If a tool fails, the fix is never a
 different transport.
 
-**Home Assistant is for blinds. Nothing else.** Its Plex integration hits the
-same limits this server does and adds a layer of indirection on top. Never
-reach for it here.
+**Home Assistant is not a media path.** It handles lights, blinds, thermostats
+and scenes through the `hass` server, and that is all it is for. Its Plex
+integration hits the same limits this server does and adds a layer of
+indirection on top. Never reach for it here.
 
 ## Tools
 

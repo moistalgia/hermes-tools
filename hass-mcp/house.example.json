@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "Copy this to house.json and replace every entity id with your own.",
+    "This file is the semantic layer: the only place a spoken room name meets",
+    "a Home Assistant entity id. Nothing else in the system knows entity ids.",
+    "",
+    "Rules that keep it useful:",
+    "  - Room keys are what you say out loud. 'office', not 'office_area_2'.",
+    "  - Put every other name you use in aliases. A room you call two things",
+    "    is normal; a room the agent rejects because you used the other name",
+    "    is a bug in this file, not in your speech.",
+    "  - Map only what you would ever address by voice. Forty entities is a",
+    "    working system. Four hundred is a system that guesses.",
+    "  - When you swap a bulb, edit the line here. Every past conversation",
+    "    keeps working, because none of them ever named the old entity.",
+    "",
+    "Run `hass_status` after editing. It lists every entity named here that",
+    "Home Assistant does not actually have, which is the usual first mistake."
+  ],
+
+  "rooms": {
+    "office": {
+      "aliases": ["study", "back room"],
+      "lights": ["light.office_ceiling", "light.office_lamp"],
+      "covers": ["cover.office_blind"],
+      "climate": ["climate.upstairs"],
+      "sensors": ["sensor.office_temperature"]
+    },
+    "kitchen": {
+      "aliases": [],
+      "lights": ["light.kitchen_main", "light.kitchen_under_cabinet"],
+      "covers": []
+    },
+    "living room": {
+      "aliases": ["lounge", "front room"],
+      "lights": ["light.living_room"],
+      "covers": ["cover.living_room_blind_left", "cover.living_room_blind_right"],
+      "climate": ["climate.downstairs"]
+    },
+    "bedroom": {
+      "aliases": ["primary", "master"],
+      "lights": ["light.bedroom_ceiling"],
+      "covers": ["cover.bedroom_blackout"]
+    }
+  },
+
+  "scenes": {
+    "wind down": "scene.wind_down",
+    "movie night": "scene.movie_night",
+    "morning": "scene.morning"
+  }
+}

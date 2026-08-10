@@ -1,4 +1,4 @@
-# Authored on Windows, run in a Linux container. Everything checks out LF so a
-# shebang never arrives with a trailing \r.
+# Authored on Windows. Everything checks out LF so a shebang never arrives with
+# a trailing \r if a file is ever run somewhere POSIX.
 * text=auto eol=lf
 *.py[cod] binary
