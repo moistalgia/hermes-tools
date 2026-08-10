@@ -23,12 +23,16 @@ Two ways to run it:
          python state_mcp_server.py shopping_add item="olive oil" actor=Sam
 
 Environment:
-    STATE_DB      path to the SQLite file. Default /sandbox/state/household.db
+    STATE_DB      path to the SQLite file. Defaults to ~/.hermes/household.db,
+                  beside Hermes' own config and deliberately outside the git
+                  checkout - a `git pull` must never touch the household's
+                  memory. Back this file up; see scripts/backup_state.py.
     STATE_PERSON  who this agent instance speaks for, used when a call does not
                   name an actor. Set it per agent, not per household.
-    STATE_TZ_NOTE this server uses the container's local time for "today".
-                  If dates look a day off, the container's TZ is wrong; fix it
-                  there rather than adding offsets here.
+
+"Today" is the local calendar date of the account running Hermes. If dates look
+a day off, that account's timezone is wrong; fix it there rather than adding
+offsets here.
 
 No dependencies. sqlite3 and the standard library only.
 """
@@ -37,6 +41,7 @@ import os
 import re
 import sqlite3
 import sys
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -185,10 +190,41 @@ def q(sql, args=()):
     return db().execute(sql, args).fetchall()
 
 
+_in_transaction = False
+
+
 def write(sql, args=()):
     cur = db().execute(sql, args)
-    db().commit()
+    if not _in_transaction:
+        db().commit()
     return cur
+
+
+@contextmanager
+def transaction():
+    """Group several writes so a failure part-way through leaves none of them.
+
+    Committing per statement is right for the single-statement tools and wrong
+    for the ones that write twice. task_complete marks a task done and then
+    creates its recurrence follow-on: a failure between the two left a task
+    completed with its recurrence silently gone, which is the worst possible
+    outcome because nothing looks broken until the chore never comes back.
+    """
+    global _in_transaction
+    if _in_transaction:  # nested; the outermost block owns the commit
+        yield
+        return
+    conn = db()
+    _in_transaction = True
+    try:
+        yield
+    except BaseException:
+        conn.rollback()
+        raise
+    else:
+        conn.commit()
+    finally:
+        _in_transaction = False
 
 
 # ---------------------------------------------------------------------------
@@ -217,21 +253,33 @@ def now_iso():
     return datetime.now().replace(microsecond=0).isoformat(sep=" ")
 
 
+def days_in_month(year, month):
+    if month == 2:
+        leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+        return 29 if leap else 28
+    return [31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+
+
 def add_interval(anchor, n, unit):
+    """Anchor plus n units, clamped to the last valid day of the target month.
+
+    Both the month and year paths have to clamp. 31 Jan + 1 month is 28 Feb, and
+    - the case that actually bit - 29 Feb + 1 year is 28 Feb, not a ValueError.
+    A yearly task completed on a leap day is a real thing that happens once
+    every four years, and it used to raise out of task_complete.
+    """
     unit = unit.rstrip("s")
     if unit == "day":
         return anchor + timedelta(days=n)
     if unit == "week":
         return anchor + timedelta(weeks=n)
     if unit == "year":
-        return anchor.replace(year=anchor.year + n)
-    # Months, clamped: 31 Jan + 1 month is 28 Feb, not an exception.
+        year = anchor.year + n
+        return date(year, anchor.month, min(anchor.day, days_in_month(year, anchor.month)))
     month = anchor.month - 1 + n
     year = anchor.year + month // 12
     month = month % 12 + 1
-    last = [31, 29 if year % 4 == 0 and (year % 100 or year % 400 == 0) else 28,
-            31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
-    return date(year, month, min(anchor.day, last))
+    return date(year, month, min(anchor.day, days_in_month(year, month)))
 
 
 def parse_date(text, field="date"):
@@ -340,9 +388,19 @@ def valid_area(area):
     return area
 
 
+# Annotations rather than data: worth saying when there is something to say,
+# noise in every payload otherwise. Everything else keeps its shape - a list
+# tool that returns no `items` key on an empty list is a tool whose caller has
+# to special-case the commonest outcome, and that special case gets forgotten.
+ANNOTATION_KEYS = {"notes", "warnings"}
+
+
 def ok(summary, **extra):
     payload = {"ok": True, "summary": summary}
-    payload.update({k: v for k, v in extra.items() if v not in (None, [], "")})
+    payload.update({
+        k: v for k, v in extra.items()
+        if v is not None and v != "" and not (k in ANNOTATION_KEYS and not v)
+    })
     return payload
 
 
@@ -588,24 +646,105 @@ def task_complete(task_id, actor=None, notes=None):
         return ok(f"#{task_id} {task['title']} was already completed by "
                   f"{task['completed_by'] or 'someone'} on {task['completed_at']}.")
     who, notes_out = actor_note(actor)
-    write("UPDATE tasks SET status='done', completed_by=?, completed_at=?, notes=COALESCE(?, notes) WHERE id=?",
-          (who, now_iso(), notes, task_id))
-
-    follow_on = None
     recur = parse_recurrence(task["recurrence"])
-    if recur:
-        next_due = add_interval(today(), *recur)
-        cur = write(
-            "INSERT INTO tasks (title, area, assignee, due, recurrence, notes, created_by, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?)",
-            (task["title"], task["area"], task["assignee"], next_due.isoformat(),
-             task["recurrence"], task["notes"], who, now_iso()),
-        )
-        follow_on = {"task_id": cur.lastrowid, "due": next_due.isoformat()}
+
+    # Completing and re-creating are one operation. Rolled back together, so a
+    # recurring task can never end up done with its next occurrence missing.
+    follow_on = None
+    with transaction():
+        write("UPDATE tasks SET status='done', completed_by=?, completed_at=?, notes=COALESCE(?, notes) WHERE id=?",
+              (who, now_iso(), notes, task_id))
+        if recur:
+            next_due = add_interval(today(), *recur)
+            cur = write(
+                "INSERT INTO tasks (title, area, assignee, due, recurrence, notes, created_by, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (task["title"], task["area"], task["assignee"], next_due.isoformat(),
+                 task["recurrence"], task["notes"], who, now_iso()),
+            )
+            follow_on = {"task_id": cur.lastrowid, "due": next_due.isoformat()}
     summary = f"Done: {task['title']} ({who})."
     if follow_on:
         summary += f" Next one is #{follow_on['task_id']}, due {human_date(follow_on['due'])}."
     return ok(summary, next_task=follow_on, notes=notes_out)
+
+
+@tool(
+    "Change an existing task — reschedule it, reassign it, retitle it, or "
+    "adjust its recurrence. Only the fields you pass are touched; everything "
+    "else is left alone. Use this rather than dropping a task and adding a new "
+    "one, which loses who created it and when.",
+    {"task_id": i("The id from task_add or task_list."),
+     "title": s("New title."),
+     "area": s("New area.", enum=AREAS),
+     "assignee": s("Who is responsible now. Pass 'none' to unassign."),
+     "due": s("New due date, or 'none' to clear it."),
+     "recurrence": s("New recurrence, or 'none' to stop it repeating."),
+     "notes": s("Replacement notes."),
+     "actor": s("Who is making the change.")},
+    required=["task_id"],
+)
+def task_update(task_id, title=None, area=None, assignee=None, due=None,
+                recurrence=None, notes=None, actor=None):
+    rows = q("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    if not rows:
+        open_ids = [f"#{r['id']} {r['title']}" for r in
+                    q("SELECT id, title FROM tasks WHERE status='open' ORDER BY id LIMIT 8")]
+        raise ToolError(f"No task #{task_id}.", open_tasks=open_ids)
+    task = rows[0]
+    if task["status"] != "open":
+        raise ToolError(
+            f"#{task_id} is {task['status']}, not open. Editing a finished task "
+            "would rewrite history. Add a new task if it needs doing again.")
+
+    who, notes_out = actor_note(actor)
+    sets, args, changed = [], [], []
+
+    # 'none' is the explicit clear. Leaving a field out means "don't touch it",
+    # so there has to be some way to say "make this empty" - and an empty string
+    # is indistinguishable from an omitted argument by the time it arrives here.
+    def clearing(value):
+        return str(value).strip().lower() in ("none", "null", "clear", "-")
+
+    if title is not None and title.strip():
+        sets.append("title=?"); args.append(title.strip())
+        changed.append(f"title → {title.strip()}")
+    if area is not None:
+        sets.append("area=?"); args.append(valid_area(area))
+        changed.append(f"area → {valid_area(area)}")
+    if assignee is not None:
+        if clearing(assignee):
+            sets.append("assignee=NULL"); changed.append("unassigned")
+        else:
+            who_r = resolve_person(assignee, notes_out)
+            sets.append("assignee=?"); args.append(who_r)
+            changed.append(f"assigned to {who_r}")
+    if due is not None:
+        if clearing(due):
+            sets.append("due=NULL"); changed.append("due date cleared")
+        else:
+            due_d = parse_date(due, "due")
+            sets.append("due=?"); args.append(due_d.isoformat())
+            changed.append(f"due {human_date(due_d.isoformat())}")
+    if recurrence is not None:
+        if clearing(recurrence):
+            sets.append("recurrence=NULL"); changed.append("no longer repeats")
+        else:
+            parse_recurrence(recurrence)  # validate before storing
+            sets.append("recurrence=?"); args.append(recurrence)
+            changed.append(f"repeats {recurrence}")
+    if notes is not None:
+        sets.append("notes=?"); args.append(notes if not clearing(notes) else None)
+        changed.append("notes updated")
+
+    if not sets:
+        raise ToolError(
+            f"Nothing to change on #{task_id}. Pass at least one of title, area, "
+            "assignee, due, recurrence, or notes.")
+    args.append(task_id)
+    write(f"UPDATE tasks SET {', '.join(sets)} WHERE id=?", args)
+    return ok(f"#{task_id} {task['title']}: " + ", ".join(changed) + f" ({who}).",
+              task_id=task_id, changed=changed, notes=notes_out)
 
 
 @tool(
@@ -654,7 +793,8 @@ def shopping_add(item, qty=None, store=None, actor=None):
     cur = write("INSERT INTO shopping (item, qty, store, added_by, added_at) VALUES (?,?,?,?,?)",
                 (item, qty, store, who, now_iso()))
     count = q("SELECT COUNT(*) c FROM shopping WHERE status='needed'")[0]["c"]
-    return ok(f"Added {item}{f' ({qty})' if qty else ''} to the list. {count} items now.",
+    return ok(f"Added {item}{f' ({qty})' if qty else ''} to the list. "
+              f"{count} item{'s' if count != 1 else ''} now.",
               item_id=cur.lastrowid, notes=notes_out)
 
 
@@ -699,16 +839,52 @@ def shopping_bought(items=None, all=False, actor=None):
             raise ToolError("None of those are on the list.", on_list=[r["item"] for r in rows])
         if missed:
             notes_out.append("Not on the list, so ignored: " + ", ".join(missed))
-    for r in targets:
-        write("UPDATE shopping SET status='bought', bought_by=?, bought_at=? WHERE id=?",
-              (who, now_iso(), r["id"]))
-        # Buying a staple restocks it. The pantry is the reason to bother.
-        if q("SELECT 1 FROM pantry WHERE LOWER(item)=?", (r["item"].lower(),)):
-            write("UPDATE pantry SET qty = MAX(qty, threshold + 1), last_restocked=?, "
-                  "updated_by=?, updated_at=? WHERE LOWER(item)=?",
-                  (today().isoformat(), who, now_iso(), r["item"].lower()))
+    # One shop is one operation: a half-marked list after an interrupted call
+    # is how you end up buying the same thing twice.
+    with transaction():
+        for r in targets:
+            write("UPDATE shopping SET status='bought', bought_by=?, bought_at=? WHERE id=?",
+                  (who, now_iso(), r["id"]))
+            # Buying a staple restocks it. The pantry is the reason to bother.
+            if q("SELECT 1 FROM pantry WHERE LOWER(item)=?", (r["item"].lower(),)):
+                write("UPDATE pantry SET qty = MAX(qty, threshold + 1), last_restocked=?, "
+                      "updated_by=?, updated_at=? WHERE LOWER(item)=?",
+                      (today().isoformat(), who, now_iso(), r["item"].lower()))
     left = q("SELECT COUNT(*) c FROM shopping WHERE status='needed'")[0]["c"]
     return ok(f"Marked {len(targets)} bought ({who}). {left} left on the list.", notes=notes_out)
+
+
+@tool(
+    "Take something off the shopping list without pretending it was bought. "
+    "This is the tool for a typo, a duplicate, or a change of mind — do NOT "
+    "use shopping_bought for those, because buying a staple restocks the "
+    "pantry and would leave the house believing it has something it does not.",
+    {"items": s("Comma-separated item names, as they appear on the list."),
+     "reason": s("Why it is coming off: 'typo', 'already have some', 'changed my mind'."),
+     "actor": s("Who is removing it.")},
+    required=["items"],
+)
+def shopping_remove(items, reason=None, actor=None):
+    who, notes_out = actor_note(actor)
+    rows = q("SELECT * FROM shopping WHERE status='needed'")
+    if not rows:
+        return ok("Shopping list is already empty.")
+    wanted = [x.strip().lower() for x in (items or "").split(",") if x.strip()]
+    if not wanted:
+        raise ToolError("Name the items to remove.", on_list=[r["item"] for r in rows])
+    targets = [r for r in rows if r["item"].lower() in wanted]
+    if not targets:
+        raise ToolError("None of those are on the list.", on_list=[r["item"] for r in rows])
+    missed = [w for w in wanted if w not in [r["item"].lower() for r in rows]]
+    if missed:
+        notes_out.append("Not on the list, so ignored: " + ", ".join(missed))
+    with transaction():
+        for r in targets:
+            write("UPDATE shopping SET status='removed', bought_by=?, bought_at=? WHERE id=?",
+                  (who, now_iso(), r["id"]))
+    left = q("SELECT COUNT(*) c FROM shopping WHERE status='needed'")[0]["c"]
+    return ok(f"Removed {', '.join(r['item'] for r in targets)} from the list ({who})"
+              + (f" — {reason}" if reason else "") + f". {left} left.", notes=notes_out)
 
 
 @tool(
@@ -743,6 +919,29 @@ def pantry_set(item, qty=None, location=None, unit=None, staple=False, threshold
     warn = " Below threshold — worth adding to the shopping list." if staple and qty_v <= thr_v else ""
     return ok(f"{item}: {qty_v:g}{' ' + unit if unit else ''}"
               f"{' in ' + location if location else ''}.{warn}", notes=notes_out)
+
+
+@tool(
+    "Delete a pantry row entirely — for something recorded by mistake or no "
+    "longer kept in the house. To say something has run out, use pantry_set "
+    "with qty=0 instead: that keeps the threshold and the restock history, and "
+    "a staple at zero is what puts it on the shopping list.",
+    {"item": s("The pantry item to delete."), "actor": s("Who is removing it.")},
+    required=["item"],
+)
+def pantry_remove(item, actor=None):
+    item = (item or "").strip()
+    rows = q("SELECT * FROM pantry WHERE LOWER(item)=?", (item.lower(),))
+    if not rows:
+        known = [r["item"] for r in q("SELECT item FROM pantry ORDER BY item LIMIT 15")]
+        raise ToolError(f"Nothing in the pantry called {item!r}.", in_pantry=known)
+    row = rows[0]
+    who, notes_out = actor_note(actor)
+    write("DELETE FROM pantry WHERE LOWER(item)=?", (item.lower(),))
+    warn = ""
+    if row["staple"]:
+        warn = (" It was a staple, so nothing will warn when it runs low any more.")
+    return ok(f"Removed {row['item']} from the pantry ({who}).{warn}", notes=notes_out)
 
 
 @tool("Staples at or below their threshold — what to put on the shopping list.")
@@ -872,6 +1071,36 @@ def appointment_list(days=14, who=None):
     parts = [f"{human_date(r['date'])}{' ' + r['time'] if r['time'] else ''} {r['what']}"
              f"{' (' + r['who'] + ')' if r['who'] else ''}" for r in rows]
     return ok("; ".join(parts), appointments=[dict(r) for r in rows])
+
+
+@tool(
+    "Cancel a household appointment. Deleted rather than marked cancelled: an "
+    "appointment nobody is going to is noise on a calendar everyone reads.",
+    {"appointment_id": i("The id from appointment_add or appointment_list."),
+     "reason": s("Why, if it is worth recording."),
+     "actor": s("Who cancelled it.")},
+    required=["appointment_id"],
+)
+def appointment_cancel(appointment_id, reason=None, actor=None):
+    rows = q("SELECT * FROM appointments WHERE id=?", (appointment_id,))
+    if not rows:
+        upcoming = [f"#{r['id']} {r['what']} {human_date(r['date'])}" for r in
+                    q("SELECT * FROM appointments WHERE date >= ? ORDER BY date LIMIT 8",
+                      (today().isoformat(),))]
+        raise ToolError(f"No appointment #{appointment_id}.", upcoming=upcoming)
+    appt = rows[0]
+    who, notes_out = actor_note(actor)
+    with transaction():
+        write("DELETE FROM appointments WHERE id=?", (appointment_id,))
+        # Cancellations are the thing someone asks about a week later, so this
+        # one deletion is worth a journal line the digest will never show.
+        write("INSERT INTO journal (ts, actor, action, target, detail, outcome) "
+              "VALUES (?,?,?,?,?,?)",
+              (now_iso(), who, "appointment_cancel", appt["what"],
+               f"{appt['date']}{' ' + appt['time'] if appt['time'] else ''}"
+               + (f" — {reason}" if reason else ""), "ok"))
+    return ok(f"Cancelled {appt['what']} on {human_date(appt['date'])} ({who})."
+              + (f" Reason: {reason}" if reason else ""), notes=notes_out)
 
 
 # ---------------------------------------------------------------------------

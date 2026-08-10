@@ -42,10 +42,11 @@ host's timezone is wrong — fix it there, not with offsets here.
 | **What is going on right now** | `household_digest` |
 | Who is in the household | `people_list`, `person_add` |
 | Add / see / finish / drop a task | `task_add`, `task_list`, `task_complete`, `task_drop` |
-| Shopping list | `shopping_add`, `shopping_list`, `shopping_bought` |
-| What is in the house | `pantry_set`, `pantry_low` |
+| Reschedule or reassign a task | `task_update` |
+| Shopping list | `shopping_add`, `shopping_list`, `shopping_bought`, `shopping_remove` |
+| What is in the house | `pantry_set`, `pantry_low`, `pantry_remove` |
 | Meal plan | `meal_plan`, `meal_week` |
-| Household calendar | `appointment_add`, `appointment_list` |
+| Household calendar | `appointment_add`, `appointment_list`, `appointment_cancel` |
 | Facts about the house | `fact_record`, `fact_lookup` |
 | Unsorted incoming | `capture_add`, `capture_pending`, `capture_file` |
 | What the agent did | `journal_record`, `journal_review` |
@@ -65,6 +66,15 @@ Completing a recurring task creates the next one and tells you its id.
 
 **Buying a staple restocks the pantry.** `shopping_bought` updates any matching
 pantry row, which is the only reason to keep both tables in sync by hand.
+
+**Correcting a mistake is its own operation.** A typo on the shopping list comes
+off with `shopping_remove`, not `shopping_bought` — marking it bought would
+restock the pantry and leave the house believing it has something it does not.
+Same shape elsewhere: `task_update` to reschedule or reassign rather than drop
+and re-add (which loses who created it and when), `appointment_cancel` for a
+calendar entry, and `pantry_remove` only for a row recorded in error. Something
+that has merely *run out* is `pantry_set qty=0`, which keeps the threshold and
+is what puts a staple back on the list.
 
 **Shopping list and pantry are separate on purpose.** The list is what to buy;
 the pantry is what is in the house. Collapse them and "we have olive oil" starts

@@ -1,0 +1,72 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    # Both, on purpose. These run on a Windows host in real life, but the LF
+    # checkout and the shebangs only matter somewhere POSIX - and a path bug
+    # shows up on exactly one of the two.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Every file at least parses
+        # Catches the class of mistake that would otherwise be found by an
+        # agent at 7am, as a failed MCP handshake with no useful error.
+        run: python -m compileall -q mcpkit.py hass-mcp state-mcp notify-mcp plex-mcp prowlarr-mcp scripts tests
+
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Usage goes to stderr, never stdout
+        # A config typo that drops the `serve` argument must not put usage text
+        # on the protocol channel. Asserted here as well as in the suite,
+        # because it is the failure with the least readable symptom.
+        shell: bash
+        run: |
+          for server in state-mcp/state_mcp_server.py notify-mcp/notify_mcp_server.py hass-mcp/hass_mcp_server.py prowlarr-mcp/prowlarr_mcp_server.py; do
+            out=$(python "$server" 2>/dev/null)
+            if [ -n "$out" ]; then
+              echo "$server wrote to stdout without arguments:"; echo "$out"; exit 1
+            fi
+          done
+
+      - name: prowlarr-mcp runs from a directory of its own
+        # It ships a copy of mcpkit.py so the folder is drop-in. That copy is
+        # only worth having if it is the thing actually exercised, so this runs
+        # the server from a scratch directory with no repo root above it - the
+        # exact shape it has once copied into an MCP folder. A test asserts the
+        # copy matches; this asserts the copy is sufficient.
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/dropin"
+          cp prowlarr-mcp/prowlarr_mcp_server.py prowlarr-mcp/mcpkit.py "$RUNNER_TEMP/dropin/"
+          out=$(python "$RUNNER_TEMP/dropin/prowlarr_mcp_server.py" 2>/dev/null)
+          if [ -n "$out" ]; then
+            echo "the drop-in copy wrote to stdout without arguments:"; echo "$out"; exit 1
+          fi
+          python "$RUNNER_TEMP/dropin/prowlarr_mcp_server.py" 2>&1 >/dev/null \
+            | grep -q "prowlarr-mcp - MCP server"
+
+      - name: The backup script runs end to end
+        shell: bash
+        run: |
+          export STATE_DB="$RUNNER_TEMP/household.db"
+          python state-mcp/state_mcp_server.py task_add title="ci smoke test" > /dev/null
+          python scripts/backup_state.py --to "$RUNNER_TEMP/backups" --keep 3
+          python scripts/backup_state.py --to "$RUNNER_TEMP/backups" --check

@@ -35,7 +35,7 @@ cp house.example.json "$USERPROFILE/.hermes/house.json"
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `HASS_URL` | `http://homeassistant.local:8123` | The LAN address of your Home Assistant. |
+| `HASS_URL` | `http://homeassistant.local:8123` | The LAN address of your Home Assistant. Almost never localhost — it is a separate machine. |
 | `HASS_TOKEN` | *(required)* | A long-lived access token from your Home Assistant profile page. Never read from disk. |
 | `HASS_MAP` | `%USERPROFILE%\.hermes\house.json` | The semantic layer. See below. Deliberately not in the checkout — it holds your real entity ids and `git pull` would overwrite it. |
 | `HASS_TIMEOUT` | `10` | Seconds for one HTTP call. Separate from confirmation waits. |
@@ -70,8 +70,12 @@ an entity it cannot get wrong.
 working, because none of them ever named the old entity. This is the reason the
 indirection exists.
 
-Run `hass_status` after every edit — it lists every entity named in the map that
-Home Assistant does not actually have, which is the usual mistake.
+Run `hass_status` after every edit. It lists every entity named in the map that
+Home Assistant does not actually have — the usual mistake — and every room key
+it cannot read, which is the second one. `"light"` instead of `"lights"` maps
+nothing at all: the room still resolves, the server reports no error, and the
+bulb is merely absent. That is the hardest kind of wrong to notice, so it is
+called out by name.
 
 **The map reloads on its own.** The server watches its modification time and
 picks up changes on the next call, so adding a device does not need a restart.
@@ -130,8 +134,10 @@ refuses those domains outright rather than listing things that cannot be used.
 | **Is the house alright?** | `home_status` |
 | What is going on in one room | `room_status` |
 | Lights on/off/dimmed | `set_lights` |
-| Blinds to a position | `set_cover` |
+| Blinds up or down | `set_cover` |
+| Venetian slat angle | `set_cover_tilt` |
 | Thermostat setpoint | `set_thermostat` |
+| Everything, at once | `all_lights`, `all_covers` |
 | A named scene | `activate_scene` |
 
 Verbs, not a service dispatcher. There is deliberately no `call_service` — a
@@ -173,6 +179,29 @@ guessed at.
 `SET_POSITION` still opens and shuts, so 0 and 100 work and anything between
 fails with the reason and the list of covers that *can* be positioned. Silently
 rounding 40% to "open" would be worse than refusing.
+
+**`position_pct` measures how open a blind is: 0 closed, 100 open.** People say
+the opposite at least as often — "75% closed" is 25 — so the tool description
+says this twice and the skill converts before calling. The direction is the
+same in `all_covers`, on purpose: two tools with opposite conventions would be
+a guaranteed mistake eventually.
+
+**Height and tilt are separate axes.** A venetian blind can be fully down and
+still let all the light in, so "closed" is two different questions. `set_cover`
+raises and lowers; `set_cover_tilt` angles the slats. A room whose covers have
+no slats gets a plain refusal naming `set_cover`, rather than a tilt call that
+silently does nothing.
+
+**Colour temperature is verified like everything else.** A fixed-white bulb
+accepts `color_temp_kelvin` and ignores it. Confirming only the brightness
+would report success for a colour that never changed — the exact class of lie
+this server exists to prevent.
+
+**House-wide writes report room by room.** `all_lights` and `all_covers` exist
+because "close all the blinds" is the most common thing anyone says to a house
+at night, and a fan-out over `list_rooms` leaves the caller to invent both the
+loop and the way to describe a partial result. A stuck bedroom blind is named;
+it does not disappear into "blinds closed".
 
 **A room that exists but lacks the thing asked for says so.** "The kitchen has
 no covers in the map" ends the conversation. "Unknown room" sends the agent

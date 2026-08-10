@@ -10,7 +10,7 @@ difference between the two runs tells you which source to build on.
 import os
 import sys
 
-PLEX_URL = os.environ.get("PLEX_URL", "http://host.docker.internal:32400")
+PLEX_URL = os.environ.get("PLEX_URL", "http://127.0.0.1:32400")
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 
 
@@ -129,7 +129,7 @@ def build_relay_client(server, identifier, title="relay"):
 
     Note the constructor's `identifier=` argument does NOT do this: it only
     feeds connect()'s client-side lookup, which we are deliberately skipping
-    because dialing the device's LAN IP is exactly what fails from Docker.
+    because dialing the device's LAN IP directly is exactly what fails.
     machineIdentifier has to be set directly.
     """
     from plexapi.client import PlexClient
