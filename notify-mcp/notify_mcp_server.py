@@ -132,8 +132,9 @@ def http(url, data=None, headers=None, method=None):
     except urllib.error.URLError as exc:
         raise ToolError(
             f"Could not reach {urllib.parse.urlparse(url).netloc}: {exc.reason}. "
-            "The container has no route to it, or the server name is wrong. "
-            "Check from inside the container before changing anything here."
+            "This host has no route to it, or the server address is wrong. "
+            "Report this and stop - the backend is unreachable and no argument "
+            "variation changes that."
         )
 
 

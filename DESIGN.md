@@ -45,6 +45,22 @@ framework. The protocol is ~250 readable lines and a framework would hide the
 layer that breaks most often. `plex-mcp` predates `mcpkit` and carries its own
 copy; that is fine and not worth churning working code over.
 
+`prowlarr-mcp` carries a copy too, and that one is on purpose: it is meant to be
+copied out of this repo as a directory and dropped into an MCP folder by itself,
+which a `../mcpkit.py` import makes impossible. The duplication is only
+tolerable because it is checked — a test compares the two files, and CI runs the
+server from a scratch directory with no repo above it. An unchecked copy would
+mean a server that behaves differently deployed than it does under test, which
+is the worst available place for a difference to live. Do not add a third
+without the same guards.
+
+**Test the things that fail quietly.** A tool that errors is a tool someone
+fixes. The ones worth tests are the ones that return a confident wrong answer:
+date arithmetic, room resolution, partial writes. [tests/](tests/) is standard
+library only, and its fake Home Assistant can be *deaf* — accepting every call
+and changing nothing — because that is the failure §3 exists to catch and the
+one you cannot stage on real hardware.
+
 **Every tool is also a CLI subcommand, through the same dispatch path.** The
 highest-leverage convention in the repo. You prove a call works from a shell,
 the agent makes the identical call over MCP, and there is exactly one place it
@@ -85,6 +101,21 @@ never tested.
 require reading state first, and forcing that into two visible steps means the
 reasoning is in the transcript instead of guessed at.
 
+**One direction, stated twice.** Where a number could be read either way, the
+tool description says which way it goes and the skill converts before calling.
+`position_pct` is how *open* a blind is, and people say the opposite at least
+as often — "75% closed" is 25. Two tools with opposite conventions for the same
+quantity is a mistake waiting for a tired evening, so `all_covers` measures the
+same direction as `set_cover`. The skill also owes the user an answer in *their*
+frame: "three-quarters down", not "25%".
+
+**Every write surface needs an undo.** Not a transaction log — a tool for the
+ordinary case of having got it wrong. Without `shopping_remove`, taking a typo
+off the list means marking it *bought*, which restocks the pantry and leaves
+the house believing it has something it does not. An add-only surface does not
+prevent corrections; it just routes them through whichever tool is closest,
+and that tool has side effects.
+
 **Read back after every write.** See §3.
 
 **Errors teach.** `ToolError` exists so the agent reads a sentence, not a status
@@ -98,6 +129,15 @@ code:
 
 An error that names the cause and the next move is how the agent stops flailing.
 One that does neither is how you get four wrong tools tried in a row.
+
+**An empty result is a diagnosis, not a value.** Zero rows because nothing
+matched, zero rows because a filter removed everything, and zero rows because
+every backend the query touched is down are identical over the wire and need
+opposite responses — try another title, loosen the filter, stop and report.
+`prowlarr-mcp` asks *why* before returning empty and says which one it is,
+because "nothing found" sends an agent hunting for a better query against a
+system that is simply broken. Any tool that can return an empty collection for
+more than one reason owes the caller the reason.
 
 **Error payloads list plausible options only.** `resolve_player` filters to
 `relevant` devices because *naming all 18 registered browser tabs teaches the
@@ -150,11 +190,17 @@ confirms that the **setpoint** changed and explicitly not that the room is warm.
 | [plex-mcp](plex-mcp/) | Media playback | Plex, `plexapi` |
 | [state-mcp](state-mcp/) | Shared household memory | SQLite. Nothing else |
 | [notify-mcp](notify-mcp/) | Push out, messages in | ntfy / Telegram / Pushover |
-| [hass-mcp](hass-mcp/) | Lights, blinds, thermostats, scenes | Home Assistant |
+| [hass-mcp](hass-mcp/) | Lights, blinds, tilt, thermostats, scenes | Home Assistant |
+| [prowlarr-mcp](prowlarr-mcp/) | Indexer search, returning magnets | Prowlarr |
+
+Plus [tests/](tests/) and [scripts/backup_state.py](scripts/backup_state.py),
+neither of which the agent ever touches — they are for the human running the
+host.
 
 | Skill | Drives |
 | --- | --- |
 | [plex-media-playback](skills/plex-media-playback/) | `plex` |
+| [media-acquisition](skills/media-acquisition/) | `prowlarr` |
 | [home-control](skills/home-control/) | `hass` |
 | [household-state](skills/household-state/) | `state` |
 | [meal-planning](skills/meal-planning/) | `state` |
@@ -302,10 +348,14 @@ Steps 3 and 4 are in that order on purpose.
 
 ## 10. Open questions
 
-- **Is `household.db` backed up?** A state store you lose is worse than none,
-  because by then you rely on it. It is a single SQLite file in
-  `%USERPROFILE%\.hermes\`, so `cp` on a schedule is a complete backup — but
-  somebody has to set that up, and the moment to do it is before it matters.
+- ~~**Is `household.db` backed up?**~~ Answered:
+  [scripts/backup_state.py](scripts/backup_state.py) takes verified, rotating
+  snapshots, and `--check` reports when the newest one has gone stale — because
+  a scheduled job that quietly stopped running looks exactly like one that is
+  working. It uses SQLite's backup API rather than `cp`: copying a live
+  database can capture a torn page, and the copy looks fine until the day you
+  need it. **Still needs scheduling on the host**, which is the half a script
+  cannot do for itself.
 - **One agent or several?** A single agent with every server attached has a
   large tool surface and gets vaguer as this grows. Worth revisiting now that
   there are four servers and seven skills.
