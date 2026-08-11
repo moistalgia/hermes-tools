@@ -1,8 +1,13 @@
-"""state-mcp: dates, recurrence, and the writes that have to be honest.
+"""state-mcp: dates, recurrence, identity, and the writes that have to be honest.
 
 The date arithmetic gets the most attention here because it is where the
 silent wrongness lives. A task due on the wrong day still looks like a working
 system; you only find out when the chore does not come back.
+
+Attribution is the same shape of problem. One bot serves the whole house, so a
+write credited to the wrong person is not an error anyone sees - it is a
+shopping list that quietly says the wrong thing about who wanted what. Hence
+`STATE_PERSON` deliberately set below: the tests prove it is ignored.
 """
 
 import os
@@ -217,21 +222,182 @@ class TestShoppingAndPantry(StateCase):
         self.assertEqual(caught.exception.extra["on_list"], ["milk"])
 
     def test_pantry_remove_warns_when_it_was_a_staple(self):
-        state.pantry_set(item="olive oil", qty=2, staple=True)
-        result = state.pantry_remove(item="olive oil")
+        state.pantry_set(item="sriracha", qty=2, staple=True)
+        result = state.pantry_remove(item="sriracha")
         self.assertIn("nothing will warn", result["summary"])
-        self.assertEqual(state.q("SELECT COUNT(*) c FROM pantry")[0]["c"], 0)
+        self.assertEqual(state.q("SELECT COUNT(*) c FROM pantry WHERE item='sriracha'")[0]["c"], 0)
 
-    def test_pantry_remove_on_an_unknown_item_lists_what_is_there(self):
-        state.pantry_set(item="flour", qty=1)
+    def test_pantry_remove_on_an_unknown_item_lists_only_real_stock(self):
+        # The seeded assumed staples are a standing decision not to shop for
+        # something, not stock. Offering them here would suggest deleting salt
+        # to fix a typo about flour.
+        state.pantry_set(item="sriracha", qty=1)
         with self.assertRaises(state.ToolError) as caught:
             state.pantry_remove(item="saffron")
-        self.assertEqual(caught.exception.extra["in_pantry"], ["flour"])
+        self.assertEqual(caught.exception.extra["in_pantry"], ["sriracha"])
 
     def test_quantity_must_be_a_number(self):
         with self.assertRaises(state.ToolError) as caught:
             state.pantry_set(item="rice", qty="a lot")
         self.assertIn("unit field", str(caught.exception))
+
+
+class TestIngredients(StateCase):
+    """Turning a recipe line into something you can look for in a cupboard."""
+
+    def test_measurements_and_prep_are_stripped(self):
+        self.assertEqual(state.normalize_ingredient("2 tbsp olive oil"), "olive oil")
+        self.assertEqual(state.normalize_ingredient("400g spaghetti"), "spaghetti")
+        self.assertEqual(state.normalize_ingredient("3 cloves garlic, minced"), "garlic")
+        self.assertEqual(state.normalize_ingredient("1 1/2 cups flour"), "flour")
+        self.assertEqual(state.normalize_ingredient("a pinch of saffron"), "saffron")
+        self.assertEqual(state.normalize_ingredient("4 large eggs"), "eggs")
+        self.assertEqual(state.normalize_ingredient("1 onion (finely chopped)"), "onion")
+
+    def test_a_qualifier_still_matches_but_a_different_product_does_not(self):
+        # Suffix matching alone reads as obviously correct and is wrong for
+        # exactly the ingredients worth getting right. "extra virgin" describes
+        # olive oil; "rice" makes vinegar a different bottle.
+        self.assertTrue(state.ingredient_matches("olive oil", "extra virgin olive oil"))
+        self.assertTrue(state.ingredient_matches("salt", "sea salt"))
+        self.assertTrue(state.ingredient_matches("pepper", "black pepper"))
+        self.assertFalse(state.ingredient_matches("vinegar", "rice vinegar"))
+        self.assertFalse(state.ingredient_matches("butter", "peanut butter"))
+        self.assertFalse(state.ingredient_matches("rice", "rice vinegar"))
+        self.assertFalse(state.ingredient_matches("sesame oil", "olive oil"))
+
+    def test_a_prepared_form_is_its_own_product(self):
+        # "chopped" is what you do to the onion after you get home. "ground",
+        # "diced" and "grated" are things you buy as such, and flattening them
+        # sends someone to the wrong shelf - or worse, spares the ingredient
+        # entirely because the pantry has the unprepared version.
+        self.assertEqual(state.normalize_ingredient("1 onion, finely chopped"), "onion")
+        self.assertEqual(state.normalize_ingredient("500g ground beef"), "ground beef")
+        self.assertEqual(state.normalize_ingredient("1 can diced tomatoes"), "diced tomatoes")
+        self.assertFalse(state.ingredient_matches("beef", "ground beef"))
+        self.assertFalse(state.ingredient_matches("tomatoes", "diced tomatoes"))
+        self.assertTrue(state.ingredient_matches("beef", "beef"))
+
+
+class TestRecipeShopping(StateCase):
+    def test_kitchen_staples_do_not_reach_the_shopping_list(self):
+        # The whole point. A list of nineteen items including salt gets
+        # ignored, and then you have lost the list itself.
+        result = state.shopping_add_recipe(
+            dish="carbonara",
+            ingredients="400g spaghetti\n200g guanciale, diced\n4 large eggs\n"
+                        "2 tbsp extra virgin olive oil\nsalt and pepper to taste")
+        self.assertEqual(result["to_buy"], ["spaghetti", "guanciale", "eggs"])
+        self.assertEqual(result["assumed"], ["extra virgin olive oil", "salt", "pepper"])
+        self.assertIn("Assumed you have", result["summary"])
+
+    def test_something_in_the_pantry_is_not_bought_again(self):
+        state.pantry_set(item="rice", qty=5, staple=True, threshold=1)
+        result = state.shopping_add_recipe(ingredients="300g rice; 2 chicken breasts")
+        self.assertEqual(result["to_buy"], ["chicken breasts"])
+        self.assertEqual(result["in_pantry"], ["rice (5)"])
+
+    def test_a_tracked_staple_that_is_out_goes_on_the_list(self):
+        # A measurement outranks an assumption. Having a row for soy sauce that
+        # says zero is strictly better information than assuming a kitchen.
+        state.pantry_set(item="soy sauce", qty=0, staple=True, threshold=1)
+        result = state.shopping_add_recipe(ingredients="3 tbsp soy sauce")
+        self.assertEqual(result["to_buy"], ["soy sauce"])
+
+    def test_preview_writes_nothing(self):
+        result = state.shopping_add_recipe(ingredients="400g spaghetti", preview=True)
+        self.assertEqual(result["to_buy"], ["spaghetti"])
+        self.assertIn("Would add", result["summary"])
+        self.assertEqual(state.shopping_list()["items"], [])
+
+    def test_something_already_on_the_list_is_not_duplicated(self):
+        state.shopping_add(item="spaghetti")
+        result = state.shopping_add_recipe(ingredients="400g spaghetti; 4 eggs")
+        self.assertEqual(result["to_buy"], ["eggs"])
+        self.assertEqual(result["already_listed"], ["spaghetti"])
+        self.assertEqual(len(state.shopping_list()["items"]), 2)
+
+    def test_the_list_says_which_dish_an_item_is_for(self):
+        state.shopping_add_recipe(dish="carbonara", ingredients="200g guanciale")
+        self.assertIn("for carbonara", state.shopping_list()["summary"])
+
+    def test_the_same_ingredient_twice_is_added_once(self):
+        result = state.shopping_add_recipe(ingredients="2 eggs; 4 large eggs")
+        self.assertEqual(result["to_buy"], ["eggs"])
+
+    def test_an_empty_recipe_says_what_it_wanted(self):
+        with self.assertRaises(state.ToolError) as caught:
+            state.shopping_add_recipe(ingredients="   ")
+        self.assertIn("ingredient list", str(caught.exception))
+
+    def test_assumptions_survive_a_quantity_update(self):
+        # `assumed` is a standing decision about an item, not an observation of
+        # it, so recording how much salt is in the jar must not cancel it.
+        state.pantry_set(item="salt", qty=2, location="pantry")
+        self.assertEqual(state.q("SELECT assumed FROM pantry WHERE item='salt'")[0]["assumed"], 1)
+        state.pantry_set(item="salt", assumed=False)
+        result = state.shopping_add_recipe(ingredients="1 tsp salt")
+        self.assertEqual(result["to_buy"], ["salt"])
+
+    def test_seeding_happens_once_and_not_on_an_existing_database(self):
+        # Re-seeding would resurrect items the household had deliberately
+        # removed, and salt would reappear months later with nobody able to
+        # say why.
+        state.pantry_remove(item="salt")
+        state._conn.close()
+        state._conn = None
+        state.db()
+        self.assertEqual(state.q("SELECT COUNT(*) c FROM pantry WHERE item='salt'")[0]["c"], 0)
+
+
+class TestHistory(StateCase):
+    def test_who_did_what(self):
+        state.person_add(name="Nick")
+        state.person_add(name="Sarah")
+        state.task_add(title="mow the lawn")
+        state.task_add(title="clean gutters")
+        state.task_complete(task_id=1, actor="Nick")
+        state.task_complete(task_id=2, actor="Sarah")
+        state.shopping_add(item="milk")
+        state.shopping_bought(all=True, actor="Nick")
+        state.meal_plan(date="today", dish="risotto", cook="Sarah")
+
+        history = state.household_history()
+        self.assertEqual([t["title"] for t in history["chores"]],
+                         ["clean gutters", "mow the lawn"])
+        self.assertEqual(history["by_person"]["Nick"], {"chores": 1, "shopping": 1, "meals": 0})
+        self.assertEqual(history["by_person"]["Sarah"], {"chores": 1, "shopping": 0, "meals": 1})
+
+    def test_one_person_only(self):
+        state.task_add(title="mow the lawn")
+        state.task_add(title="clean gutters")
+        state.task_complete(task_id=1, actor="Nick")
+        state.task_complete(task_id=2, actor="Sarah")
+        history = state.household_history(person="Nick")
+        self.assertEqual([t["title"] for t in history["chores"]], ["mow the lawn"])
+
+    def test_the_agents_own_work_is_left_out_by_default(self):
+        # "Who did what" is a question about people. The agent completing its
+        # own scheduled task is not an answer to it.
+        state.task_add(title="nightly audit")
+        state.task_complete(task_id=1)          # no actor -> the agent
+        state.task_add(title="mow the lawn")
+        state.task_complete(task_id=2, actor="Nick")
+        self.assertEqual([t["title"] for t in state.household_history()["chores"]],
+                         ["mow the lawn"])
+        self.assertEqual(len(state.household_history(include_agent=True)["chores"]), 2)
+
+    def test_a_quiet_week_says_so_rather_than_returning_nothing(self):
+        history = state.household_history()
+        self.assertIn("Nothing recorded", history["summary"])
+        self.assertEqual(history["chores"], [])
+
+    def test_dropped_tasks_are_reported_separately_from_done_ones(self):
+        state.task_add(title="call the dentist")
+        state.task_drop(task_id=1, reason="they called us", actor="Sarah")
+        history = state.household_history()
+        self.assertEqual(history["chores"], [])
+        self.assertEqual([t["title"] for t in history["dropped"]], ["call the dentist"])
 
 
 class TestAppointments(StateCase):
@@ -267,6 +433,178 @@ class TestPeople(StateCase):
         self.assertEqual(state.resolve_person("Wilhelmina", notes), "Wilhelmina")
         self.assertIn("not on the roster", notes[0])
         self.assertIn("Wilhelmina", [r["name"] for r in state.q("SELECT name FROM people")])
+
+    def test_the_agent_cannot_be_added_as_a_housemate(self):
+        with self.assertRaises(state.ToolError) as caught:
+            state.person_add(name="hermes")
+        self.assertIn("agent's own name", str(caught.exception))
+
+
+class TestIdentity(StateCase):
+    """Who wrote this, when one bot serves two people."""
+
+    SARAH = "389104857203441664"
+    NATHAN = "201938475610293847"
+
+    def test_an_env_var_default_person_is_ignored(self):
+        # The bug this whole design exists for. STATE_PERSON is one value for
+        # the whole process, so with a shared bot it credited every
+        # unattributed write to whichever housemate configured the server -
+        # silently, and wrongly half the time.
+        self.assertEqual(state.LEGACY_PERSON, "Nathan")
+        state.shopping_add(item="milk")
+        added_by = state.q("SELECT added_by FROM shopping WHERE id=1")[0]["added_by"]
+        self.assertEqual(added_by, "hermes")
+
+    def test_an_unattributed_write_says_it_was_the_agent(self):
+        result = state.task_add(title="restock salt")
+        self.assertIn("No actor was given", result["notes"][0])
+        self.assertEqual(state.q("SELECT created_by FROM tasks WHERE id=1")[0]["created_by"],
+                         "hermes")
+
+    def test_a_bare_discord_id_is_an_account_and_not_a_name(self):
+        self.assertEqual(state.parse_identity(self.SARAH), ("discord", self.SARAH))
+        self.assertEqual(state.parse_identity("telegram:12345"), ("telegram", "12345"))
+        self.assertIsNone(state.parse_identity("Sarah"))
+        # A house number is not a snowflake, and nobody is called 4.
+        self.assertIsNone(state.parse_identity("42"))
+
+    def test_an_unlinked_account_is_not_invented_as_a_person(self):
+        result = state.shopping_add(item="oat milk", actor=self.SARAH)
+        self.assertIn("No one is linked to", result["notes"][0])
+        added_by = state.q("SELECT added_by FROM shopping WHERE id=1")[0]["added_by"]
+        self.assertEqual(added_by, f"discord:{self.SARAH}")
+        # Not a person called "389104857203441664".
+        self.assertEqual([r["name"] for r in state.q("SELECT name FROM people")],
+                         [f"discord:{self.SARAH}"])
+
+    def test_linking_late_re_attributes_what_they_already_wrote(self):
+        # The reason an unlinked account is allowed to write at all. Refusing
+        # would make a new person's first message an error; guessing would put
+        # it on someone else. Holding it under the raw id keeps it recoverable.
+        state.shopping_add(item="oat milk", actor=self.SARAH)
+        state.task_add(title="book the vet", actor=self.SARAH)
+        result = state.person_link(name="Sarah", discord_id=self.SARAH)
+        self.assertEqual(result["reattributed"], 2)
+        self.assertEqual(state.q("SELECT added_by FROM shopping WHERE id=1")[0]["added_by"], "Sarah")
+        self.assertEqual(state.q("SELECT created_by FROM tasks WHERE id=1")[0]["created_by"], "Sarah")
+        # The placeholder is gone, not left beside the real person.
+        self.assertEqual([r["name"] for r in state.q("SELECT name FROM people")], ["Sarah"])
+
+    def test_two_people_on_one_bot_keep_their_own_records(self):
+        state.person_link(name="Sarah", discord_id=self.SARAH)
+        state.person_link(name="Nathan", discord_id=self.NATHAN)
+        state.shopping_add(item="oat milk", actor=self.SARAH)
+        state.shopping_add(item="coffee", actor=self.NATHAN)
+        rows = {r["item"]: r["added_by"] for r in state.q("SELECT item, added_by FROM shopping")}
+        self.assertEqual(rows, {"oat milk": "Sarah", "coffee": "Nathan"})
+
+    def test_an_id_works_anywhere_a_name_does(self):
+        state.person_link(name="Sarah", discord_id=self.SARAH)
+        state.task_add(title="clean gutters", assignee=self.SARAH, actor=self.NATHAN)
+        self.assertEqual(state.q("SELECT assignee FROM tasks WHERE id=1")[0]["assignee"], "Sarah")
+        self.assertEqual(len(state.task_list(person=self.SARAH)["tasks"]), 1)
+
+    def test_person_identify_says_what_to_do_about_a_stranger(self):
+        unknown = state.person_identify(discord_id=self.SARAH)
+        self.assertFalse(unknown["linked"])
+        self.assertIn("person_link", unknown["summary"])
+        state.person_link(name="Sarah", discord_id=self.SARAH)
+        known = state.person_identify(discord_id=self.SARAH)
+        self.assertTrue(known["linked"])
+        self.assertEqual(known["person"], "Sarah")
+
+    def test_a_handle_is_refused_as_an_account_id(self):
+        with self.assertRaises(state.ToolError) as caught:
+            state.person_link(name="Sarah", discord_id="sarah#1234")
+        self.assertIn("not a Discord user id", str(caught.exception))
+
+    def test_a_merge_moves_every_column_that_names_a_person(self):
+        # Thirteen columns name a person. A merge that misses one leaves rows
+        # pointing at a name no longer on the roster, and every individual
+        # query still returns rows so nothing looks wrong.
+        state.task_add(title="call the plumber", assignee="Sarha", actor="Sarha")
+        state.task_complete(task_id=1, actor="Sarha")
+        state.shopping_add(item="capers", actor="Sarha")
+        state.pantry_set(item="rice", qty=2, actor="Sarha")
+        state.meal_plan(date="today", dish="risotto", cook="Sarha", actor="Sarha")
+        state.appointment_add(what="vet", date="tomorrow", who="Sarha", actor="Sarha")
+        state.fact_record(subject="boiler", fact="serviced 2026-01", actor="Sarha")
+        state.capture_add(raw="get bin bags", from_person="Sarha")
+        state.journal_record(action="sent brief", actor="Sarha")
+
+        state.person_merge(from_person="Sarha", into="Sarah")
+
+        for table, column in state.ATTRIBUTION:
+            left = state.q(f"SELECT COUNT(*) c FROM {table} WHERE {column}='Sarha'")[0]["c"]
+            self.assertEqual(left, 0, f"{table}.{column} still says Sarha")
+        self.assertNotIn("Sarha", [r["name"] for r in state.q("SELECT name FROM people")])
+
+    def test_a_merge_takes_the_linked_account_with_it(self):
+        # Otherwise the next message from that account recreates the row the
+        # merge just deleted, and the correction silently undoes itself.
+        state.shopping_add(item="oat milk", actor=self.SARAH)
+        state.person_merge(from_person=f"discord:{self.SARAH}", into="Sarah")
+        state.shopping_add(item="coffee", actor=self.SARAH)
+        self.assertEqual(
+            [r["added_by"] for r in state.q("SELECT added_by FROM shopping ORDER BY id")],
+            ["Sarah", "Sarah"])
+
+    def test_merging_someone_into_themselves_is_refused(self):
+        state.person_add(name="Sarah", aliases="Sarah-Jane")
+        with self.assertRaises(state.ToolError) as caught:
+            state.person_merge(from_person="Sarah-Jane", into="Sarah")
+        self.assertIn("already resolve to the same person", str(caught.exception))
+
+    def test_relinking_an_account_reports_the_person_it_moved_from(self):
+        state.person_link(name="Sarah", discord_id=self.SARAH)
+        result = state.person_link(name="Nathan", discord_id=self.SARAH)
+        self.assertIn("previously linked to Sarah", result["summary"])
+        self.assertIn("person_merge", " ".join(result["notes"]))
+
+    def test_a_read_never_registers_a_person(self):
+        # The digest is the most-called tool here. If a mistyped name created a
+        # housemate, the roster would fill up from the one place nobody looks.
+        before = state.q("SELECT COUNT(*) c FROM people")[0]["c"]
+        digest = state.household_digest(person="my wife")
+        self.assertIn("Nobody here is called", digest["notes"][0])
+        state.task_list(person="Wilhelmina")
+        state.appointment_list(who="Wilhelmina")
+        self.assertEqual(state.q("SELECT COUNT(*) c FROM people")[0]["c"], before)
+
+    def test_status_flags_accounts_nobody_has_claimed(self):
+        state.shopping_add(item="oat milk", actor=self.SARAH)
+        status = state.state_status()
+        self.assertEqual(status["unresolved"], [f"discord:{self.SARAH}"])
+        self.assertIn("without being introduced", " ".join(status["warnings"]))
+
+    def test_status_says_the_obsolete_env_var_is_ignored(self):
+        self.assertIn("STATE_PERSON", " ".join(state.state_status()["warnings"]))
+
+
+class TestMigration(StateCase):
+    def test_a_database_from_before_identities_still_opens(self):
+        # The household database is the one thing here that must survive every
+        # upgrade. A new column on an existing table fails at the first write,
+        # not at startup, which is the worst time to find out.
+        import sqlite3
+
+        path = os.path.join(TMP, "legacy.db")
+        legacy = sqlite3.connect(path)
+        legacy.executescript(
+            "CREATE TABLE people (name TEXT PRIMARY KEY, aliases TEXT DEFAULT '', "
+            "created_at TEXT NOT NULL);"
+            "INSERT INTO people VALUES ('Nathan', 'Nate', '2026-01-01 10:00:00');")
+        legacy.commit()
+        legacy.close()
+
+        state._conn.close()  # setUp opened the empty one; point at the old file
+        state._conn = None
+        state.DB_PATH = path
+        self.assertEqual(state.resolve_person("nate"), "Nathan")
+        state.person_link(name="Nathan", discord_id="201938475610293847")
+        self.assertEqual(state.person_identify(discord_id="201938475610293847")["person"],
+                         "Nathan")
 
 
 class TestDigest(StateCase):

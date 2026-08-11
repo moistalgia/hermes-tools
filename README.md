@@ -72,8 +72,6 @@ mcp_servers:
   state:
     command: "python"
     args: ["E:/hermes-mcp/hermes-tools/state-mcp/state_mcp_server.py", "serve"]
-    env:
-      STATE_PERSON: "Nathan"
   notify:
     command: "python"
     args: ["E:/hermes-mcp/hermes-tools/notify-mcp/notify_mcp_server.py", "serve"]

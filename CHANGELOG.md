@@ -5,6 +5,82 @@ follow lives in [DESIGN.md](DESIGN.md).
 
 ## Unreleased
 
+### Added
+
+- **`household_history`** — "who did what this week" in one call: chores
+  finished, shopping bought, meals planned, tasks dropped, with a per-person
+  tally. The data was always recorded and mostly unreadable: `bought_by` and
+  `bought_at` had been written since the beginning and **no tool ever read them
+  back**, and completed tasks were reachable only through `task_list
+  include_done` on a hardcoded seven-day window. Meals are reported as *planned*
+  rather than cooked, because nothing in the system records that dinner
+  happened, and the agent's own work is excluded by default — "who did what" is
+  a question about people.
+- **`shopping_add_recipe`** — hand it a whole ingredient list, measurements and
+  prep notes included, and it adds only what the house does not already have.
+  The failure mode it exists to prevent is a nineteen-item list that includes
+  salt, because that list gets ignored and then the list itself is lost.
+  - **An ingredient is spared three ways**: a new `assumed` pantry flag ("the
+    kitchen always has this and nobody counts it"), a tracked pantry row with a
+    quantity, or being on the list already. A tracked staple that is *low* goes
+    on the list anyway — a measurement outranks an assumption.
+  - **Matching is by whole-word suffix, and the prefix must be a qualifier.**
+    Suffix alone was the first attempt and reads as obviously correct: `olive
+    oil` covers `extra virgin olive oil`. It also silently made `vinegar` cover
+    `rice vinegar` and `butter` cover `peanut butter` — dropping the one
+    ingredient the dish was about. "Extra virgin" describes olive oil; "rice"
+    makes vinegar a different bottle.
+  - **Every spared ingredient is returned in `assumed`.** The rule cannot tell
+    whether the vinegar in the cupboard is the right vinegar, so the assumption
+    is always visible rather than silent.
+  - New databases are seeded with a short assumed list; existing ones are not,
+    because re-seeding would resurrect items a household had deliberately
+    removed and salt would reappear months later with nothing to explain it.
+  - `preview=true` answers "do we have everything for carbonara?" without
+    writing. `shopping.for_dish` records why an item is on the list, which is
+    the question asked in the shop in front of the shelf.
+
+### Fixed
+
+- **A pantry row at zero counted as having some.** Anything not flagged a staple
+  was treated as in stock regardless of quantity, so an ingredient someone had
+  carefully recorded running out of was spared from the shopping list.
+- `household_history`'s queries tie-break on `id`, so two chores completed in
+  the same second come back in a stable order rather than an arbitrary one.
+
+### Changed
+
+- **`state-mcp` learned who is talking.** The store was built as household
+  memory but identified people the way a single-user tool does: `STATE_PERSON`,
+  one value read from the environment at startup. One bot instance serves the
+  whole household, so that value was a constant — every write that did not
+  name an actor was credited to whoever configured the server, regardless of
+  who was speaking. Nothing about that failure is visible. The shopping list
+  looks correct; it is just wrong about who wanted what, and stays wrong.
+
+  Identity now arrives with the message. `actor` accepts a Discord user id
+  anywhere it accepts a name, resolved through a new `identities` table.
+  - **An unclaimed account is held, not guessed and not refused.** It resolves
+    to a provisional `discord:<id>` person and the write succeeds, because
+    refusing would make a new housemate's first message an error, and inventing
+    a person named `389104857203441664` gives you a roster of numbers.
+    `person_link` then names them *and rewrites everything they wrote before
+    the link*, which is what makes linking late free.
+  - **`person_merge` moves all thirteen columns that name a person, and the
+    linked account with them.** Leaving the account behind meant the next
+    message from it rebuilt the row the merge had just deleted — a correction
+    that silently undid itself and had to be made again forever.
+  - **A write with no actor is recorded as the agent (`hermes`), and says so.**
+    True, and visible. The old default was neither.
+  - **Reads no longer register people.** `household_digest`, `task_list` and
+    `appointment_list` resolved their person filter through the write path, so
+    a mistyped name in the most-called tool in the server quietly created a
+    housemate. They now report an unknown name instead.
+  - `state_status` lists accounts nobody has claimed, and says outright that
+    `STATE_PERSON` is being ignored if it is still set. Existing databases
+    migrate in place on open.
+  - New: `person_identify`, `person_link`, `person_merge`.
+
 ### Fixed
 
 - **A yearly recurring task completed on 29 February raised `ValueError`.**
