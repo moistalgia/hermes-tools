@@ -21,12 +21,37 @@ that is what you get.
 
 What this server adds on top is the part Prowlarr's raw API does not do:
 
-**It returns a magnet, or says why it cannot.** Prowlarr leaves `magnetUrl`
-null for plenty of indexers and hands back a proxied `.torrent` URL instead.
-Where an info hash is present the magnet is rebuilt from it; where it is not,
-the row says so plainly. A `.torrent` link is never returned in the magnet
-slot — everything downstream takes a magnet, and a near-miss is the kind of
-failure that surfaces three steps later with nothing pointing back at the cause.
+**It returns a magnet, or says why it cannot.** This is most of the work.
+Prowlarr's `magnetUrl` is null for a great many indexers — often for every
+result of a search — and what it hands back instead is a proxy link to a
+`.torrent`. The magnet is recovered in four stages, cheapest first:
+
+| Stage | Source | Cost |
+| --- | --- | --- |
+| 1 | `magnetUrl`, when the indexer supplied one | free |
+| 2 | `infoHash`, rebuilt into a magnet | free |
+| 3 | the `link=` parameter inside Prowlarr's own proxy URL | free |
+| 4 | fetching the download link itself | one request |
+
+**Stage 3 is the one that matters.** Prowlarr wraps every download behind its
+own proxy so it can attach credentials, and Base64-encodes the indexer's real
+link into the query string. For a magnet-based tracker that link *is* the
+magnet — it simply never appears in `magnetUrl`. Decoding it costs nothing.
+
+Stage 4 is the universal fallback and the reason the promise can be kept at
+all. The download link either redirects to a magnet, or serves the `.torrent`,
+and a `.torrent` contains everything a magnet needs: the info hash is the SHA-1
+of its `info` dictionary, and the name and trackers come along with it. The
+hash is taken over those bytes exactly as they arrived — decoding and
+re-encoding would produce a different hash for any file whose encoder ordered
+keys differently, and that hash would be silently wrong rather than obviously
+broken.
+
+Only stage 4 touches the network, only for the releases actually being
+returned, and up to four at a time. A `.torrent` link is never returned in the
+magnet slot — everything downstream takes a magnet, and a near-miss is the kind
+of failure that surfaces three steps later with nothing pointing back at the
+cause.
 
 **It parses the title.** Raw search returns hundreds of rows whose only
 structure is a filename convention. Resolution, source, codec, size, seeders and
@@ -117,6 +142,7 @@ anywhere and point the config at it. It carries everything it needs.
 | `PROWLARR_URL` | `http://127.0.0.1:9696` | Prowlarr is a container but the port is published, so this is an ordinary host address. |
 | `PROWLARR_API_KEY` | *(unset)* | **Settings → General → API Key.** Put the literal value in the MCP config for this server. Not a `.env` file — the server is launched as a subprocess and will not read one. |
 | `PROWLARR_TIMEOUT` | `90` | Seconds for a search. Not generous: a query reaching a challenged indexer goes through a solver, and thirty seconds is an ordinary result rather than a hang. |
+| `PROWLARR_RESOLVE_TIMEOUT` | `45` | Seconds to spend fetching one download link while deriving a magnet. Up to four run at once. |
 | `PROWLARR_FETCH_PREFIX` | `!fetch` | Prepended to each magnet as a ready-to-send `fetch_command`. Set it empty to drop the field. |
 
 **Quote the values under `env:` in the YAML.** Quoting `command` and `args` is
@@ -152,6 +178,7 @@ rows, and a wider surface is a wider set of ways to pick the wrong call.
 | `min_seeders` | Default 1. |
 | `limit` | Default 10. |
 | `sort` | `best` (resolution, then health), `seeders`, `size`, `newest`. |
+| `resolve_magnets` | Default on. Derive a magnet for returned releases that lack one. Off is for browsing titles quickly, and returns rows that cannot be handed off. |
 
 Each result carries `title`, `resolution`, `source`, `codec`, `hdr`, `cam`,
 `size`, `seeders`, `age`, `indexer`, `magnet`, and — unless the prefix is
@@ -220,9 +247,15 @@ python prowlarr_mcp_server.py search query="a show you own" kind=tv season=1 epi
 ```
 
 The last two are the real test: every row should carry a `magnet` beginning
-`magnet:?xt=urn:btih:`. A row with `magnet: null` and a note about `.torrent`
-files means that indexer cannot feed the handoff, which is worth knowing before
-the agent discovers it.
+`magnet:?xt=urn:btih:`, and the response's `without_magnet` should be `0`. Each
+row's `magnet_note` says which of the four stages produced it, which is the
+quickest way to see what your indexers actually supply — `taken from the
+indexer's own download link` means stage 3 and cost nothing; `computed from the
+.torrent file` means stage 4 and cost a request each.
+
+If rows still come back with `magnet: null`, the note names the exception. A
+row that cannot produce a magnet cannot feed the handoff, and that is worth
+knowing here rather than discovering downstream.
 
 Arguments are `key=value`. Quote values containing spaces. Exit code is 0 on
 success, 1 on failure, and the JSON body carries the real error text.

@@ -47,12 +47,20 @@ follow lives in [DESIGN.md](DESIGN.md).
     definitions and the proxy for challenged indexers all live in Prowlarr. None
     of that is reimplemented here, and a failing indexer is reported as a
     failing indexer rather than worked around.
-  - **A magnet, or an explanation.** Prowlarr leaves `magnetUrl` null for plenty
-    of indexers and returns a proxied `.torrent` URL instead. The magnet is
-    rebuilt from the info hash where there is one; where there is not, the row
-    says so. A `.torrent` link is never returned in the magnet slot — everything
-    downstream takes a magnet, and a near-miss surfaces three steps later with
-    nothing pointing back at the cause.
+  - **A magnet, or an explanation.** Prowlarr's `magnetUrl` is null for a great
+    many indexers — often for every result of a search — and what it returns
+    instead is a proxy link to a `.torrent`. The magnet is recovered in four
+    stages: `magnetUrl`, then `infoHash`, then the indexer's own link
+    Base64-encoded inside Prowlarr's proxy URL (free, and the common case),
+    then fetching the download link and either following its redirect to a
+    magnet or computing the info hash from the `.torrent` itself. Only the last
+    touches the network, only for the releases being returned, four at a time.
+    The hash is taken over the `info` dictionary's bytes exactly as they
+    arrived — re-encoding would produce a different hash for any file whose
+    encoder ordered keys differently, and that hash would be silently wrong
+    rather than obviously broken. A `.torrent` link is never returned in the
+    magnet slot; everything downstream takes a magnet, and a near-miss surfaces
+    three steps later with nothing pointing back at the cause.
   - **Titles are parsed into fields** — resolution, source, codec, HDR, size,
     seeders, age — so choosing happens against data. Cam rips are detected and
     ranked last regardless of seeder count.

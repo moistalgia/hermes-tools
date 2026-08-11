@@ -11,12 +11,27 @@ the honest answer is "that indexer is failing", and that is what it says.
 
 Three things make this more than a REST wrapper:
 
-  1. It returns a **magnet**, always, or says plainly that it cannot. Prowlarr
-     leaves `magnetUrl` null for plenty of indexers and hands back a proxied
-     `.torrent` URL instead. Where an info hash is present the magnet is
-     reconstructed; where it is not, the row says so rather than handing back a
-     link that looks like a magnet and is not one. Everything downstream of
-     here takes a magnet, so a near-miss is worse than a refusal.
+  1. It returns a **magnet**, or says plainly that it cannot. This is most of
+     the work. Prowlarr's `magnetUrl` is null for a great many indexers - often
+     for every result of a search - and what it hands back instead is a proxy
+     link to a `.torrent`. So the magnet is recovered in four stages, cheapest
+     first:
+
+         magnetUrl                    - when the indexer supplied one
+         infoHash                     - rebuild from the hash
+         the proxy link's `link=`     - Prowlarr Base64s the indexer's own
+                                        download link into its own URL, and for
+                                        a magnet-based tracker that link IS the
+                                        magnet. Free, and the common case.
+         fetch the .torrent           - follow the download link; either it
+                                        redirects to a magnet, or the file
+                                        arrives and the info hash is the SHA-1
+                                        of its `info` dictionary.
+
+     Only the last one touches the network, and only for the releases actually
+     being returned. A `.torrent` URL is never returned in the magnet slot:
+     everything downstream takes a magnet, so a near-miss is worse than a
+     refusal - it is discovered three steps later with nothing pointing back.
 
   2. It **parses the title**. Raw Prowlarr search returns hundreds of rows whose
      only structure is a filename convention. Resolution, source, codec, size,
@@ -53,6 +68,9 @@ Environment:
                       generous: a query that fans out to a Cloudflare-gated
                       indexer goes through a solver, and thirty seconds is an
                       ordinary result rather than a hang.
+    PROWLARR_RESOLVE_TIMEOUT
+                      Seconds to spend fetching one download link while deriving
+                      a magnet. Default 45. Up to four run at once.
     PROWLARR_FETCH_PREFIX
                       Prepended to each magnet as a ready-to-send `fetch_command`
                       field. Default `!fetch`. Set it empty to drop the field.
@@ -60,7 +78,10 @@ Environment:
 No dependencies. urllib and the standard library only.
 """
 
+import base64
+import concurrent.futures
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -76,16 +97,25 @@ import urllib.request
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(_HERE))
 sys.path.insert(0, _HERE)
-from mcpkit import ToolError, i, run, s, tool  # noqa: E402
+from mcpkit import ToolError, b, i, run, s, tool  # noqa: E402
 
 PROWLARR_URL = os.environ.get("PROWLARR_URL", "http://127.0.0.1:9696").rstrip("/")
 PROWLARR_API_KEY = os.environ.get("PROWLARR_API_KEY", "")
 PROWLARR_TIMEOUT = int(os.environ.get("PROWLARR_TIMEOUT", "90"))
+RESOLVE_TIMEOUT = int(os.environ.get("PROWLARR_RESOLVE_TIMEOUT", "45"))
 FETCH_PREFIX = os.environ.get("PROWLARR_FETCH_PREFIX", "!fetch").strip()
 
 # A status call that hangs for the full search timeout is a status call nobody
 # runs when they most need it. Prowlarr answers these from memory.
 STATUS_TIMEOUT = 15
+
+# How many download links to resolve at once. Each one makes Prowlarr reach out
+# to the indexer, so this is politeness as much as speed - and the whole point
+# is to overlap the waiting, not to hammer anyone.
+RESOLVE_WORKERS = 4
+# A .torrent for a season pack is a few hundred KB. Anything past this is not a
+# torrent file and should not be read into memory to find out.
+MAX_TORRENT_BYTES = 4 * 1024 * 1024
 
 
 # ---------------------------------------------------------------------------
@@ -260,23 +290,184 @@ def human_age(published):
     return f"{int(hours // 24 // 365)}y" if hours > 24 * 365 else f"{int(hours // 24 // 30)}mo"
 
 
-def magnet_for(release):
-    """The magnet, reconstructed if Prowlarr did not supply one.
+def build_magnet(info_hash, name, trackers=()):
+    parts = [f"magnet:?xt=urn:btih:{info_hash.lower()}"]
+    if name:
+        parts.append("dn=" + urllib.parse.quote(name))
+    seen = []
+    for tracker in trackers:
+        text = tracker.decode("utf-8", "replace") if isinstance(tracker, bytes) else str(tracker)
+        if text and text not in seen:
+            seen.append(text)
+    # Enough for a client to find peers without turning the magnet into a wall
+    # of text. DHT does the rest.
+    parts.extend("tr=" + urllib.parse.quote(t, safe="") for t in seen[:8])
+    return "&".join(parts)
 
-    Returns (magnet, note). A `.torrent` URL is deliberately **not** returned in
-    the magnet slot: everything downstream takes a magnet, and a link that is
-    almost one is the failure that gets discovered three steps later.
+
+def magnet_for(release):
+    """The magnet, from whatever the release actually carries. No network.
+
+    Returns (magnet, note, download_url). Four sources, cheapest first — the
+    third is the one that matters in practice, because Prowlarr's proxy link
+    carries the indexer's own download link Base64-encoded inside it, and for a
+    magnet-based indexer that link *is* the magnet. It just never appears in
+    `magnetUrl`.
+
+    A `.torrent` URL is deliberately never returned in the magnet slot:
+    everything downstream takes a magnet, and a link that is almost one is the
+    failure that gets discovered three steps later.
     """
     magnet = (release.get("magnetUrl") or "").strip()
     if magnet.startswith("magnet:"):
-        return magnet, None
+        return magnet, None, None
+
     info_hash = (release.get("infoHash") or "").strip()
     if re.fullmatch(r"[0-9a-fA-F]{40}", info_hash):
-        name = urllib.parse.quote(release.get("title") or "")
-        return f"magnet:?xt=urn:btih:{info_hash.lower()}&dn={name}", "rebuilt from the info hash"
-    return None, (
-        "no magnet and no info hash - this indexer returns a .torrent file, so "
-        "this release cannot be handed off as a magnet")
+        return build_magnet(info_hash, release.get("title")), "rebuilt from the info hash", None
+
+    download_url = (release.get("downloadUrl") or "").strip()
+    for candidate in (unwrap_proxy_link(download_url), (release.get("guid") or "").strip()):
+        if candidate.startswith("magnet:"):
+            return candidate, "taken from the indexer's own download link", None
+
+    return None, None, download_url or None
+
+
+def unwrap_proxy_link(download_url):
+    """The original indexer link out of a Prowlarr `/download?link=...` URL.
+
+    Prowlarr wraps every download behind its own proxy so it can add
+    credentials, and Base64s the real link into the query string. Decoding it
+    costs nothing and saves a round trip through the indexer for every
+    magnet-based tracker.
+    """
+    if not download_url:
+        return ""
+    try:
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(download_url).query)
+    except ValueError:
+        return ""
+    value = (query.get("link") or query.get("Link") or [""])[0]
+    if not value:
+        return ""
+    try:
+        # Prowlarr uses the URL-safe alphabet and strips the padding.
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, TypeError):
+        return ""
+    return raw.decode("utf-8", "replace").strip()
+
+
+# ---------------------------------------------------------------------------
+# Resolving a magnet from the .torrent itself
+#
+# The universal fallback, and the reason this server can promise a magnet at
+# all. A magnet is an info hash plus a name plus trackers, and every one of
+# those is inside the .torrent file — the info hash being the SHA-1 of the
+# `info` dictionary exactly as it appears on the wire. So the bytes have to be
+# hashed in place; decoding and re-encoding would produce a different hash for
+# any file whose encoder ordered keys differently, and that hash would be
+# silently wrong rather than obviously broken.
+# ---------------------------------------------------------------------------
+
+
+def bdecode(data, start=0):
+    """Minimal bencode reader. Returns (value, index after it)."""
+    char = data[start:start + 1]
+    if char == b"i":
+        end = data.index(b"e", start)
+        return int(data[start + 1:end]), end + 1
+    if char == b"l":
+        out, index = [], start + 1
+        while data[index:index + 1] != b"e":
+            value, index = bdecode(data, index)
+            out.append(value)
+        return out, index + 1
+    if char == b"d":
+        out, index = {}, start + 1
+        while data[index:index + 1] != b"e":
+            key, index = bdecode(data, index)
+            value, index = bdecode(data, index)
+            out[key] = value
+        return out, index + 1
+    if char.isdigit():
+        colon = data.index(b":", start)
+        length = int(data[start:colon])
+        end = colon + 1 + length
+        return data[colon + 1:end], end
+    raise ValueError(f"not bencoded data at byte {start}")
+
+
+def info_span(data):
+    """Where the `info` dictionary starts and ends in the raw bytes."""
+    if data[0:1] != b"d":
+        raise ValueError("a .torrent is a bencoded dictionary; this is not one")
+    index = 1
+    while data[index:index + 1] != b"e":
+        key, index = bdecode(data, index)
+        start = index
+        _value, index = bdecode(data, index)
+        if key == b"info":
+            return start, index
+    raise ValueError("no info dictionary in this .torrent")
+
+
+def magnet_from_torrent(data):
+    start, end = info_span(data)
+    info_hash = hashlib.sha1(data[start:end]).hexdigest()
+    info, _ = bdecode(data, start)
+    meta, _ = bdecode(data)
+    name = (info.get(b"name") or b"").decode("utf-8", "replace")
+    trackers = [meta[b"announce"]] if meta.get(b"announce") else []
+    for tier in meta.get(b"announce-list") or []:
+        trackers.extend(tier if isinstance(tier, list) else [tier])
+    return build_magnet(info_hash, name, trackers)
+
+
+class KeepRedirect(urllib.request.HTTPRedirectHandler):
+    """Do not follow. A redirect to `magnet:` is the answer, not a detour.
+
+    urllib cannot open a `magnet:` URL and would raise `unknown url type`,
+    which reads like a bug in this server rather than the success it is.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_download(url):
+    """Follow a Prowlarr download link. Returns ('magnet', str) or ('torrent', bytes)."""
+    opener = urllib.request.build_opener(KeepRedirect)
+    request = urllib.request.Request(url, headers={"X-Api-Key": PROWLARR_API_KEY})
+    try:
+        with opener.open(request, timeout=RESOLVE_TIMEOUT) as resp:
+            return "torrent", resp.read(MAX_TORRENT_BYTES)
+    except urllib.error.HTTPError as exc:
+        location = (exc.headers.get("Location") or "") if exc.headers else ""
+        exc.close()
+        if 300 <= exc.code < 400 and location.startswith("magnet:"):
+            return "magnet", location
+        raise
+
+
+def resolve_magnet(row):
+    """Turn one magnet-less row into a magnet, over the network. Never raises."""
+    try:
+        kind, payload = fetch_download(row["download_url"])
+        if kind == "magnet":
+            row["magnet"] = payload
+            row["magnet_note"] = "followed the download link to a magnet"
+        else:
+            row["magnet"] = magnet_from_torrent(payload)
+            row["magnet_note"] = "computed from the .torrent file"
+    except Exception as exc:
+        # One release failing to resolve must not fail the search. The row keeps
+        # magnet: null and says why, which is exactly what it said before.
+        row["magnet_note"] = (
+            f"no magnet from this indexer, and its .torrent could not be read "
+            f"({type(exc).__name__}). Pick another release.")
+    return row
 
 
 # ---------------------------------------------------------------------------
@@ -523,11 +714,15 @@ def collapse(rows):
                 minimum=1, maximum=50),
      "sort": s("How to rank. 'best' is resolution then health, and is what you "
                "want unless asked otherwise.", default="best",
-               enum=["best", "seeders", "size", "newest"])},
+               enum=["best", "seeders", "size", "newest"]),
+     "resolve_magnets": b("Fetch the download link for any returned release "
+                          "that has no magnet, and derive one. Leave this on — "
+                          "without it many indexers return nothing usable. Turn "
+                          "it off only to browse titles quickly.", default=True)},
     required=["query"],
 )
 def search(query, kind="any", season=None, episode=None, year=None, indexer=None,
-           min_seeders=1, limit=10, sort="best"):
+           min_seeders=1, limit=10, sort="best", resolve_magnets=True):
     kind = (kind or "any").strip().lower()
     if kind not in CATEGORIES:
         raise ToolError(f"kind must be one of {', '.join(sorted(CATEGORIES))}, got {kind!r}.")
@@ -583,16 +778,14 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
     if not isinstance(raw, list):
         raise ToolError(f"Prowlarr returned something unexpected for a search: {raw!r:.200}")
 
-    rows, unusable = [], 0
+    rows = []
     for release in raw:
         seeders = release.get("seeders")
         # Usenet has no seeders at all, so `None` must not be read as zero and
         # filtered away. Only an actual number is compared.
         if isinstance(seeders, int) and seeders < min_seeders:
             continue
-        magnet, note = magnet_for(release)
-        if magnet is None:
-            unusable += 1
+        magnet, note, download_url = magnet_for(release)
         parsed = read_title(release.get("title") or "")
         rows.append(dict(parsed, **{
             "title": release.get("title"),
@@ -607,12 +800,28 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
             "info_hash": (release.get("infoHash") or "").lower() or None,
             "magnet": magnet,
             "magnet_note": note,
+            "download_url": download_url,
             "also_on": [],
         }))
 
     rows = collapse(rows)
     rows.sort(key=lambda r: rank_key(r, sort), reverse=True)
     rows = rows[:limit]
+
+    # Only now, and only for what is actually being returned. Each of these
+    # makes Prowlarr reach out to the indexer, so resolving all 63 matches to
+    # hand back 10 would be sixty wasted round trips through a solver.
+    pending = [r for r in rows if r["magnet"] is None and r["download_url"]]
+    if resolve_magnets and pending:
+        workers = min(RESOLVE_WORKERS, len(pending))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(resolve_magnet, pending))
+    elif pending:
+        for row in pending:
+            row["magnet_note"] = ("no magnet from this indexer, and resolve_magnets "
+                                  "was off, so none was derived")
+
+    unusable = sum(1 for r in rows if r["magnet"] is None)
     for rank, row in enumerate(rows, 1):
         row["n"] = rank
         if FETCH_PREFIX and row["magnet"]:
@@ -623,11 +832,11 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
 
     lines = []
     for row in rows:
-        bits = [b for b in (
+        bits = [part for part in (
             f"{row['resolution']}p" if row["resolution"] else None,
             row["source"], row["codec"], "HDR" if row["hdr"] else None, row["size"],
             f"{row['seeders']} seeders" if isinstance(row["seeders"], int) else None,
-            row["age"], row["indexer"]) if b]
+            row["age"], row["indexer"]) if part]
         warn = " ** CAM — do not use **" if row["cam"] else (
             f" ** {row['magnet_note']} **" if row["magnet"] is None else "")
         lines.append(f"{row['n']}. {row['title']}\n     " + " · ".join(bits) + warn)
@@ -635,8 +844,9 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
     summary = f"{len(rows)} release(s) for {text!r}" \
               + (f" on {scoped['name']}" if scoped else "") + ":\n  " + "\n  ".join(lines)
     if unusable:
-        summary += (f"\n\n{unusable} result(s) were dropped or flagged for having no "
-                    "magnet — those indexers serve .torrent files only.")
+        summary += (f"\n\n{unusable} of these has no usable magnet and cannot be "
+                    "handed off — the note on the row says why. Pick one of the "
+                    "others.")
 
     return {
         "ok": True,
@@ -644,8 +854,10 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
         "query_sent": text,
         "results": rows,
         "total_before_ranking": len(raw),
-        "note": "Every result carries a magnet in `magnet`"
-                + (" and a ready-to-send line in `fetch_command`." if FETCH_PREFIX else "."),
+        "without_magnet": unusable,
+        "note": f"{len(rows) - unusable} of {len(rows)} results carry a magnet in "
+                "`magnet`" + (" with a ready-to-send line in `fetch_command`."
+                              if FETCH_PREFIX else "."),
     }
 
 
@@ -695,6 +907,7 @@ def banner():
     return (f"PROWLARR_URL={PROWLARR_URL}  "
             f"PROWLARR_API_KEY={'set' if PROWLARR_API_KEY else 'MISSING'}  "
             f"PROWLARR_TIMEOUT={PROWLARR_TIMEOUT}s  "
+            f"PROWLARR_RESOLVE_TIMEOUT={RESOLVE_TIMEOUT}s  "
             f"fetch prefix={FETCH_PREFIX or '(none)'}")
 
 

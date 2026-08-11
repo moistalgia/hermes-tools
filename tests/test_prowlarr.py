@@ -15,6 +15,8 @@ The fake Prowlarr is deliberately dumb. It does no matching and no ranking,
 because those are exactly the parts under test.
 """
 
+import base64
+import hashlib
 import io
 import json
 import os
@@ -133,27 +135,209 @@ class TestMagnets(unittest.TestCase):
 
     def test_a_real_magnet_is_passed_through_untouched(self):
         magnet = "magnet:?xt=urn:btih:" + "b" * 40 + "&dn=Thing"
-        got, note = self.server.magnet_for(release("Thing", magnetUrl=magnet))
+        got, note, url = self.server.magnet_for(release("Thing", magnetUrl=magnet))
         self.assertEqual(got, magnet)
         self.assertIsNone(note)
+        self.assertIsNone(url)
 
     def test_a_missing_magnet_is_rebuilt_from_the_info_hash(self):
-        got, note = self.server.magnet_for(release("Some Film 2019", infoHash="C" * 40))
+        got, note, _url = self.server.magnet_for(release("Some Film 2019", infoHash="C" * 40))
         self.assertTrue(got.startswith("magnet:?xt=urn:btih:" + "c" * 40))
         self.assertIn("dn=Some%20Film%202019", got)
         self.assertIn("info hash", note)
 
+    def test_the_magnet_is_unwrapped_from_prowlarrs_proxy_link(self):
+        # The one that matters in practice. Prowlarr Base64s the indexer's own
+        # download link into its proxy URL, and for a magnet-based tracker that
+        # link IS the magnet — it just never appears in magnetUrl.
+        magnet = "magnet:?xt=urn:btih:" + "d" * 40 + "&dn=Thing&tr=udp%3A%2F%2Ftracker%3A80"
+        encoded = base64.urlsafe_b64encode(magnet.encode()).decode().rstrip("=")
+        got, note, url = self.server.magnet_for(release(
+            "Thing", infoHash=None, magnetUrl=None,
+            downloadUrl=f"http://prowlarr.test:9696/1/download?apikey=k&link={encoded}&file=Thing"))
+        self.assertEqual(got, magnet)
+        self.assertIn("download link", note)
+        self.assertIsNone(url)
+
+    def test_a_guid_that_is_a_magnet_is_used(self):
+        magnet = "magnet:?xt=urn:btih:" + "e" * 40
+        got, _note, _url = self.server.magnet_for(release(
+            "Thing", infoHash=None, magnetUrl=None, downloadUrl="", guid=magnet))
+        self.assertEqual(got, magnet)
+
     def test_a_torrent_url_is_never_returned_as_a_magnet(self):
         # The failure this prevents: something that looks like a magnet slot
         # being filled with an http link, discovered three steps downstream.
-        got, note = self.server.magnet_for(
-            release("Thing", infoHash=None, magnetUrl=None))
+        got, _note, url = self.server.magnet_for(release(
+            "Thing", infoHash=None, magnetUrl=None,
+            downloadUrl="http://prowlarr.test:9696/1/download?apikey=k&file=Thing"))
         self.assertIsNone(got)
-        self.assertIn(".torrent", note)
+        # Handed back separately, so the resolver can use it and the caller
+        # cannot mistake it for a magnet.
+        self.assertTrue(url.startswith("http://"))
 
     def test_a_malformed_info_hash_is_not_dressed_up_as_one(self):
-        got, _note = self.server.magnet_for(release("Thing", infoHash="not-a-hash"))
+        got, _note, _url = self.server.magnet_for(
+            release("Thing", infoHash="not-a-hash", downloadUrl=""))
         self.assertIsNone(got)
+
+    def test_a_proxy_link_that_is_not_base64_is_ignored_rather_than_crashing(self):
+        got, _note, url = self.server.magnet_for(release(
+            "Thing", infoHash=None, magnetUrl=None,
+            downloadUrl="http://prowlarr.test:9696/1/download?link=!!!not-base64!!!"))
+        self.assertIsNone(got)
+        self.assertTrue(url.startswith("http://"))
+
+
+def bencode(value):
+    """Only what the tests need, and deliberately not the server's own code."""
+    if isinstance(value, int):
+        return b"i%de" % value
+    if isinstance(value, bytes):
+        return b"%d:%s" % (len(value), value)
+    if isinstance(value, list):
+        return b"l" + b"".join(bencode(v) for v in value) + b"e"
+    if isinstance(value, dict):
+        return b"d" + b"".join(bencode(k) + bencode(v)
+                               for k, v in value.items()) + b"e"
+    raise AssertionError(value)
+
+
+class TestTorrentFiles(unittest.TestCase):
+    """The universal fallback: a magnet derived from the .torrent itself."""
+
+    def setUp(self):
+        self.server = load()
+        self.info = {b"name": b"Some Film 2019 1080p", b"piece length": 262144,
+                     b"length": 1234567, b"pieces": b"\x00" * 20}
+        self.torrent = bencode({
+            b"announce": b"udp://tracker.one:80/announce",
+            b"announce-list": [[b"udp://tracker.one:80/announce"],
+                               [b"udp://tracker.two:6969/announce"]],
+            b"comment": b"irrelevant",
+            b"info": self.info,
+        })
+
+    def test_the_info_hash_is_the_sha1_of_the_info_dict_as_it_appears_on_the_wire(self):
+        # Not of a re-encoded copy. A torrent whose encoder ordered keys
+        # differently would hash differently, and the wrong hash produces a
+        # magnet that silently finds no peers rather than one that errors.
+        expected = hashlib.sha1(bencode(self.info)).hexdigest()
+        magnet = self.server.magnet_from_torrent(self.torrent)
+        self.assertIn(f"xt=urn:btih:{expected}", magnet)
+
+    def test_the_name_and_trackers_come_along(self):
+        magnet = self.server.magnet_from_torrent(self.torrent)
+        self.assertIn("dn=Some%20Film%202019%201080p", magnet)
+        self.assertIn("tracker.one", magnet)
+        self.assertIn("tracker.two", magnet)
+
+    def test_a_tracker_is_not_repeated_when_announce_repeats_it(self):
+        self.assertEqual(self.server.magnet_from_torrent(self.torrent).count("tracker.one"), 1)
+
+    def test_a_torrent_with_no_trackers_still_yields_a_magnet(self):
+        bare = bencode({b"info": self.info})
+        magnet = self.server.magnet_from_torrent(bare)
+        self.assertIn("xt=urn:btih:", magnet)
+        self.assertNotIn("tr=", magnet)
+
+    def test_something_that_is_not_a_torrent_is_refused_not_guessed_at(self):
+        for junk in (b"<html>404</html>", b"", b"d3:foo3:bare"):
+            with self.subTest(junk=junk):
+                with self.assertRaises(ValueError):
+                    self.server.magnet_from_torrent(junk)
+
+
+class TestResolvingMagnetsDuringSearch(unittest.TestCase):
+    """The network half: rows that arrive without a magnet, leaving with one."""
+
+    def setUp(self):
+        self.server = load()
+        self.fetched = []
+
+    def answer(self, result):
+        def fetch(url):
+            self.fetched.append(url)
+            if isinstance(result, Exception):
+                raise result
+            return result
+        self.server.fetch_download = fetch
+
+    def bare(self, n, **extra):
+        """A release with no magnet, no info hash, and a plain proxy link."""
+        return release(f"Film.2026.1080p.BluRay.x264-G{n}", infoHash=None, magnetUrl=None,
+                       downloadUrl=f"http://prowlarr.test:9696/1/download?apikey=k&file={n}",
+                       **extra)
+
+    def test_a_download_link_that_redirects_to_a_magnet_is_followed(self):
+        FakeProwlarr(releases=[self.bare(1)]).install(self.server)
+        magnet = "magnet:?xt=urn:btih:" + "f" * 40
+        self.answer(("magnet", magnet))
+
+        row = self.server.search(query="Film")["results"][0]
+        self.assertEqual(row["magnet"], magnet)
+        self.assertIn("followed the download link", row["magnet_note"])
+        self.assertEqual(row["fetch_command"], f"!fetch {magnet}")
+
+    def test_a_torrent_file_is_turned_into_a_magnet(self):
+        FakeProwlarr(releases=[self.bare(1)]).install(self.server)
+        info = {b"name": b"Film 2026", b"length": 1, b"piece length": 1, b"pieces": b"\x00" * 20}
+        self.answer(("torrent", bencode({b"announce": b"udp://t:80", b"info": info})))
+
+        row = self.server.search(query="Film")["results"][0]
+        expected = hashlib.sha1(bencode(info)).hexdigest()
+        self.assertIn(f"xt=urn:btih:{expected}", row["magnet"])
+        self.assertIn("computed from the .torrent", row["magnet_note"])
+
+    def test_only_the_returned_rows_are_fetched(self):
+        # The efficiency claim, and it is not a small one: resolving all 63
+        # matches to hand back 10 would be 53 wasted round trips through a
+        # solver, each of them seconds long.
+        FakeProwlarr(releases=[self.bare(n) for n in range(30)]).install(self.server)
+        self.answer(("magnet", "magnet:?xt=urn:btih:" + "f" * 40))
+
+        result = self.server.search(query="Film", limit=4)
+        self.assertEqual(len(result["results"]), 4)
+        self.assertEqual(len(self.fetched), 4)
+
+    def test_rows_that_already_have_a_magnet_are_not_fetched_at_all(self):
+        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", infoHash="a" * 40)]) \
+            .install(self.server)
+        self.answer(("magnet", "magnet:?xt=urn:btih:" + "f" * 40))
+        self.server.search(query="Film")
+        self.assertEqual(self.fetched, [])
+
+    def test_one_release_failing_to_resolve_does_not_fail_the_search(self):
+        FakeProwlarr(releases=[self.bare(1)]).install(self.server)
+        self.answer(urllib.error.URLError("connection refused"))
+
+        result = self.server.search(query="Film")
+        self.assertTrue(result["ok"])
+        row = result["results"][0]
+        self.assertIsNone(row["magnet"])
+        self.assertNotIn("fetch_command", row)
+        self.assertIn("could not be read", row["magnet_note"])
+        self.assertEqual(result["without_magnet"], 1)
+
+    def test_turning_resolution_off_skips_the_network_and_says_so(self):
+        FakeProwlarr(releases=[self.bare(1)]).install(self.server)
+        self.answer(("magnet", "magnet:?xt=urn:btih:" + "f" * 40))
+
+        row = self.server.search(query="Film", resolve_magnets=False)["results"][0]
+        self.assertEqual(self.fetched, [])
+        self.assertIsNone(row["magnet"])
+        self.assertIn("resolve_magnets was off", row["magnet_note"])
+
+    def test_the_summary_counts_what_cannot_be_handed_off(self):
+        FakeProwlarr(releases=[
+            self.bare(1),
+            release("Film.2026.720p.WEB-DL.x264", infoHash="b" * 40, seeders=5),
+        ]).install(self.server)
+        self.answer(urllib.error.URLError("nope"))
+
+        result = self.server.search(query="Film")
+        self.assertIn("1 of these has no usable magnet", result["summary"])
+        self.assertIn("1 of 2 results carry a magnet", result["note"])
 
 
 class TestQueryBuilding(unittest.TestCase):

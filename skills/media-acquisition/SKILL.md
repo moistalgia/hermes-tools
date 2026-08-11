@@ -104,10 +104,16 @@ quality and the largest by a wide margin — offer it, do not default to it.
 **Say something when the size is odd.** A 1080p film at 1.5GB has been squeezed;
 a 1080p episode at 12GB has not. Neither is wrong, both are worth a word.
 
-**A row with `magnet: null` cannot be used.** That indexer serves `.torrent`
-files, not magnets, and the handoff takes a magnet. Pick another release and
-mention why. Never build a magnet yourself from an info hash you found
-somewhere, and never pass a `download_url` along as if it were a magnet.
+**A row with `magnet: null` cannot be used.** The server tries four ways to
+produce one, including fetching the `.torrent` and computing the hash itself,
+so this is now rare — and when it happens `magnet_note` names the reason. Pick
+another release and mention why. Never build a magnet yourself from an info
+hash you found somewhere, and never pass a `download_url` along as if it were a
+magnet.
+
+**Do not turn `resolve_magnets` off** unless someone only wants to know whether
+a thing exists. It is what makes most results usable at all, and a search with
+it off returns rows you cannot hand off.
 
 ## Presenting and handing off
 
