@@ -33,15 +33,79 @@ That gives you `python server.py serve` for the agent and
 Import path note: the `sys.path` line above resolves from `__file__`, not the
 working directory, so it holds wherever the process is started from. That
 matters because MCP clients launch servers with an unpredictable cwd.
+
+Opt-in capture: set HERMES_CAPTURE=1 to append one JSON line per tool call to
+~/.hermes/training/<server>.jsonl (override base dir with HERMES_CAPTURE_DIR).
+Call capture_reasoning(text) before a tool call to attach reasoning to that
+record; it is cleared automatically after each capture.
 """
 
+import datetime
 import inspect
 import json
 import os
 import sys
+import threading
 import traceback
 
 PROTOCOL_VERSION = "2024-11-05"
+
+
+# ---------------------------------------------------------------------------
+# Opt-in capture (HERMES_CAPTURE=1)
+# ---------------------------------------------------------------------------
+
+_capture_local = threading.local()
+
+
+def capture_reasoning(text):
+    """Attach a reasoning string to the next captured tool call.
+
+    The caller (orchestrator / agent layer) may call this before invoking a
+    tool so that the reasoning trace rides along in the JSONL record.  mcpkit
+    itself never calls this — it knows nothing about what "reasoning" means.
+    The slot is cleared automatically after each capture so stale text never
+    leaks into an unrelated call.
+    """
+    _capture_local.reasoning = text
+
+
+def _capture(server, tool_name, args, result):
+    """Append one JSON line to the per-server capture file.
+
+    Called at the end of call_tool() when HERMES_CAPTURE is set.  Any failure
+    here is logged to stderr and swallowed — a capture write error must never
+    affect the tool result the caller receives.
+    """
+    # Consume reasoning unconditionally so stale text never leaks into a later
+    # call even if capture is currently disabled.
+    reasoning = getattr(_capture_local, "reasoning", None)
+    _capture_local.reasoning = None
+    if not os.environ.get("HERMES_CAPTURE", "").strip():
+        return
+    base = os.environ.get("HERMES_CAPTURE_DIR", "").strip()
+    if not base:
+        base = os.path.join(os.path.expanduser("~"), ".hermes", "training")
+    record = {
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        ),
+        "server": server,
+        "tool": tool_name,
+        "args": args,
+        "result": result,
+        "ok": bool(result.get("ok", False)),
+    }
+    if reasoning is not None:
+        record["reasoning"] = reasoning
+    try:
+        os.makedirs(base, exist_ok=True)
+        path = os.path.join(base, f"{server}.jsonl")
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, default=str) + "\n")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[{server}] capture write failed ({exc}); tool result unaffected",
+              file=sys.stderr, flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +238,9 @@ def call_tool(name, args):
     """Run a tool. Never raises: failures come back as ok:false with real text."""
     entry = TOOLS.get(name)
     if entry is None:
-        return {"ok": False, "error": f"Unknown tool {name!r}", "available_tools": sorted(TOOLS)}
+        result = {"ok": False, "error": f"Unknown tool {name!r}", "available_tools": sorted(TOOLS)}
+        _capture(_server_name, name, args or {}, result)
+        return result
     try:
         signature = inspect.signature(entry["fn"])
         accepted = {k: v for k, v in coerce(entry, args or {}).items() if k in signature.parameters}
@@ -187,13 +253,11 @@ def call_tool(name, args):
             # Loud, because a silently dropped argument looks like the tool
             # ignoring an instruction rather than a caller typo.
             result["ignored_arguments"] = rejected
-        return result
     except ToolError as exc:
-        payload = {"ok": False, "error": str(exc)}
-        payload.update(exc.extra)
-        return payload
+        result = {"ok": False, "error": str(exc)}
+        result.update(exc.extra)
     except Exception as exc:
-        return {
+        result = {
             "ok": False,
             "error": f"{type(exc).__name__}: {exc}",
             "hint": (
@@ -201,6 +265,8 @@ def call_tool(name, args):
                 "until the cause is understood."
             ),
         }
+    _capture(_server_name, name, args or {}, result)
+    return result
 
 
 # ---------------------------------------------------------------------------

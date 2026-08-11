@@ -27,6 +27,7 @@ server here follows, and what gets built next.
 | [daily-brief](skills/daily-brief/) | everything |
 | [nightly-audit](skills/nightly-audit/) | `state`, `hass`, `notify` |
 | [email-triage](skills/email-triage/) | email, `state` |
+| [training-data-curation](skills/training-data-curation/) | capture logs from all servers |
 
 Every server is also a CLI. Anything the agent can call, you can run from a
 shell with identical arguments through identical code — so when something
