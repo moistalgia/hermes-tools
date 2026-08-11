@@ -190,6 +190,7 @@ confirms that the **setpoint** changed and explicitly not that the room is warm.
 | [plex-mcp](plex-mcp/) | Media playback | Plex, `plexapi` |
 | [state-mcp](state-mcp/) | Shared household memory | SQLite. Nothing else |
 | [notify-mcp](notify-mcp/) | Push out, messages in | ntfy / Telegram / Pushover |
+| [discord-mcp](discord-mcp/) | DM one named person, not the home channel | Discord, same bot token as Gladys |
 | [hass-mcp](hass-mcp/) | Lights, blinds, tilt, thermostats, scenes | Home Assistant |
 | [prowlarr-mcp](prowlarr-mcp/) | Indexer search, returning magnets | Prowlarr |
 | [qbt-mcp](qbt-mcp/) | Starting a download, and confirming it | qBittorrent |
@@ -281,6 +282,18 @@ being something you sit down at.
 Transport and meaning stay separate. `inbox_fetch` returns messages and files
 nothing; the skill decides what a message *is* and writes it through `state`.
 Otherwise `notify-mcp` quietly becomes a second, worse state store.
+
+**A scheduled job's delivery target and a tool call are not the same
+channel.** `hermes cron ... --deliver discord` posts the run's final response
+to the configured home channel regardless of what the skill did during the
+run — so a skill that correctly calls a DM tool can still have its output
+echoed into a channel the whole household shares, if the cron job is also
+configured to deliver there. [discord-mcp](discord-mcp/) exists because
+Gladys' own reply-on-originating-surface and Hermes' channel delivery are
+both room-shaped, and a daily brief is not a household announcement — it is
+addressed to the person it was written for. Bot-to-bot DMs are blocked by
+Discord itself; bot-to-*user* DMs are not, so this needed no more than a
+closed, named recipient list and two API calls.
 
 Two rules that protect the channel, both enforced in skills rather than code
 because they are judgment:

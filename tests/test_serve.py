@@ -25,6 +25,9 @@ SERVERS = {
     "state": ("state-mcp/state_mcp_server.py", {"STATE_DB": os.path.join(TMP, "household.db")}),
     "notify": ("notify-mcp/notify_mcp_server.py", {"NOTIFY_STATE": os.path.join(TMP, "notify.json")}),
     "hass": ("hass-mcp/hass_mcp_server.py", {"HASS_MAP": os.path.join(TMP, "house.json")}),
+    # No credentials on purpose, same reasoning as prowlarr below - the
+    # handshake and tool list must come up before anything is configured.
+    "discord": ("discord-mcp/discord_mcp_server.py", {"DISCORD_BOT_TOKEN": "", "DISCORD_DM_USERS": ""}),
     # No credentials on purpose. The handshake and the tool list must come up
     # without them - a server that needs a working backend before it can
     # advertise its tools fails at startup with nothing to read.

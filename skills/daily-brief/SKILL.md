@@ -1,6 +1,6 @@
 ---
 name: daily-brief
-description: Assemble and send the morning household brief — what changed, what's due, what's on, what needs a decision. Use when the scheduled brief fires, or when someone asks for their brief, rundown, or "what's my day look like". Pulls from calendar, email, the `state` server, and the `hass` server, and sends through the `notify` server.
+description: Assemble and send the morning household brief — what changed, what's due, what's on, what needs a decision. Use when the scheduled brief fires, or when someone asks for their brief, rundown, or "what's my day look like". Pulls from calendar, email, the `state` server, and the `hass` server, and sends through the `discord` server as a DM.
 tags: []
 related_skills: []
 ---
@@ -64,12 +64,21 @@ Write in whole sentences, but short ones. This is a text message, not a report.
 
 ## Send
 
-Send through `notify` on the `notify` server, `priority=normal`.
+Send through `discord_dm` on the `discord` server, to the person the brief is
+for. **Never let this land in a shared channel** — not the channel a
+conversation happened to start on, not a home channel a scheduled delivery
+posts to by default. This brief is addressed to one person, not an
+announcement to the household, and a brief that reads like it went to
+everyone is a brief that starts getting skimmed.
 
-Never `urgent` for a brief, even when it contains something bad — urgent
-bypasses quiet hours and burns the one signal that means "get up". If something
-genuinely cannot wait until they wake, that is a separate `urgent` message sent
-when it happens, not a loud brief in the morning.
+If `notify` is also configured, that channel is for two-way traffic (shopping
+items texted in from the shop) rather than the brief itself — don't send the
+brief there too just because it exists.
+
+There is no `urgent` here — a DM has no priority levels to bypass quiet hours
+with, which is fine: a brief should never be urgent anyway. If something
+genuinely cannot wait until they wake, that is a separate `urgent` message
+through `notify` sent when it happens, not a loud brief in the morning.
 
 Then `journal_record action="daily brief" outcome=ok` with a one-line note of
 what led it. If the send fails, log `outcome=failed` — a brief nobody received

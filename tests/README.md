@@ -27,6 +27,7 @@ for those.
 | [test_state.py](test_state.py) | Date and recurrence arithmetic, and the writes that have to be honest. |
 | [test_hass.py](test_hass.py) | Room resolution and read-back verification, against a fake Home Assistant. |
 | [test_notify.py](test_notify.py) | The inbound read cursor and per-backend priority mapping. |
+| [test_discord.py](test_discord.py) | The closed recipient list, and that a DM never posts before the channel it's posting to exists. |
 | [test_prowlarr.py](test_prowlarr.py) | Title parsing, magnet reconstruction, and the four different reasons a search returns nothing. |
 | [test_qbt.py](test_qbt.py) | Which library a release lands in, read-back after adding, and the stall that reads as progress. |
 | [test_serve.py](test_serve.py) | The stdio handshake, run as a real subprocess. |

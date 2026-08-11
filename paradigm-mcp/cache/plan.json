@@ -1,5 +1,5 @@
 {
- "fetched_at": "2026-08-11T12:14:33-04:00",
+ "fetched_at": "2026-08-11T15:18:26-04:00",
  "user_id": "usr_01kt1y3db3fhybcjffv83ba3rv",
  "requested_range": {
   "start": "2026-07-12",
@@ -9,8 +9,8 @@
   "start": "2026-07-30",
   "end": "2027-02-07"
  },
- "session_count": 282,
- "detailed_count": 33,
+ "session_count": 280,
+ "detailed_count": 32,
  "sessions": [
   {
    "id": "ts_01ky7vs28yecnsbrmbab0grcz6",
@@ -4698,7 +4698,7 @@
   {
    "id": "ts_01ky7vs3d3e1bt43tskjc561j8",
    "name": "Ideal Circuit",
-   "date": "2026-08-11",
+   "date": "2026-08-12",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -5077,8 +5077,8 @@
   {
    "id": "ts_01ky7vs3d3e1bt43tskjc561k2",
    "name": "Legs/Core Supplementals",
-   "date": "2026-08-11",
-   "position": 1,
+   "date": "2026-08-12",
+   "position": 2,
    "optional": false,
    "cycle": 1,
    "cycle_length": 8,
@@ -5334,7 +5334,7 @@
   {
    "id": "ts_01ky7vs3d3e1bt43tskjc561kd",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-12",
+   "date": "2026-08-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -5658,7 +5658,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1c2",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-13",
+   "date": "2026-08-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -6015,7 +6015,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1cv",
    "name": "Pull Supplementals",
-   "date": "2026-08-13",
+   "date": "2026-08-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -6425,7 +6425,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1dc",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-14",
+   "date": "2026-08-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -6557,7 +6557,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1dk",
    "name": "Movement Capacity Builder",
-   "date": "2026-08-15",
+   "date": "2026-08-16",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -6902,7 +6902,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1eb",
    "name": "Push Supplementals",
-   "date": "2026-08-15",
+   "date": "2026-08-16",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7208,7 +7208,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndke98",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-16",
+   "date": "2026-08-17",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7532,7 +7532,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndke9q",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-08-17",
+   "date": "2026-08-18",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7934,7 +7934,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndkeak",
    "name": "Pull Supplementals",
-   "date": "2026-08-17",
+   "date": "2026-08-18",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8344,7 +8344,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4dt",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-08-18",
+   "date": "2026-08-19",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8449,7 +8449,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4dz",
    "name": "Ideal Circuit",
-   "date": "2026-08-19",
+   "date": "2026-08-20",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8828,7 +8828,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4es",
    "name": "Legs/Core Supplementals",
-   "date": "2026-08-19",
+   "date": "2026-08-20",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9085,7 +9085,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4f4",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-20",
+   "date": "2026-08-21",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9409,7 +9409,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4fk",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-21",
+   "date": "2026-08-22",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9766,7 +9766,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pnh",
    "name": "Pull Supplementals",
-   "date": "2026-08-21",
+   "date": "2026-08-22",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -10176,7 +10176,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pp2",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-22",
+   "date": "2026-08-23",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -10308,7 +10308,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pp9",
    "name": "Movement Capacity Builder",
-   "date": "2026-08-23",
+   "date": "2026-08-24",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -10653,7 +10653,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tsn",
    "name": "Push Supplementals",
-   "date": "2026-08-23",
+   "date": "2026-08-24",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -10959,7 +10959,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tt2",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-24",
+   "date": "2026-08-25",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -11283,7 +11283,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tth",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-08-25",
+   "date": "2026-08-26",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -11685,7 +11685,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tvd",
    "name": "Pull Supplementals",
-   "date": "2026-08-25",
+   "date": "2026-08-26",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12095,7 +12095,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tvy",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-08-26",
+   "date": "2026-08-27",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12200,7 +12200,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea24h",
    "name": "Ideal Circuit",
-   "date": "2026-08-27",
+   "date": "2026-08-28",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12579,7 +12579,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea25b",
    "name": "Legs/Core Supplementals",
-   "date": "2026-08-27",
+   "date": "2026-08-28",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12836,7 +12836,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea25p",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-28",
+   "date": "2026-08-29",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13160,7 +13160,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea265",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-29",
+   "date": "2026-08-30",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13517,7 +13517,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea26y",
    "name": "Pull Supplementals",
-   "date": "2026-08-29",
+   "date": "2026-08-30",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13927,7 +13927,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkyrj",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-30",
+   "date": "2026-08-31",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -14059,7 +14059,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkyrs",
    "name": "Movement Capacity Builder",
-   "date": "2026-08-31",
+   "date": "2026-09-01",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14404,7 +14404,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkysh",
    "name": "Push Supplementals",
-   "date": "2026-08-31",
+   "date": "2026-09-01",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14710,7 +14710,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwgy",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-01",
+   "date": "2026-09-02",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14722,60 +14722,21 @@
     "max": 60.0
    },
    "duration_label": "1h",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 10m",
-    "Workout 55m"
+    "Workout 50m"
    ],
-   "exercise_count": 7,
+   "exercise_count": 6,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 8.0,
-      "max": 10.0
-     },
-     "duration_label": "10m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 2,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": 8.0,
-        "max": 10.0
-       },
-       "exercises": [
-        {
-         "name": "Mobility Warm-Up",
-         "exercise_id": "tex_01kh7qg20sem4teh7qfcypf53e",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 8.0,
-          "max": 10.0
-         },
-         "video": "https://www.youtube.com/watch?v=bWDwARgnDSQ",
-         "prescription": "10m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
      "duration_min": {
-      "min": 55.0,
-      "max": 55.0
+      "min": 50.0,
+      "max": 50.0
      },
-     "duration_label": "55m",
+     "duration_label": "50m",
      "choose_from": null,
      "groups": [
       {
@@ -14913,7 +14874,7 @@
          "name": "Isometric Side Split",
          "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
          "type": "timed_repetition",
-         "position": 1,
+         "position": 4,
          "sets": {
           "min": null,
           "max": 2
@@ -14930,8 +14891,8 @@
           "min": null,
           "max": 1.0
          },
-         "rep_duration_min": 0.667,
-         "cycle_note": "1",
+         "rep_duration_min": 0.917,
+         "cycle_note": "4",
          "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
          "prescription": "2 sets x 1 reps"
         }
@@ -14991,31 +14952,27 @@
        },
        "duration_min": {
         "min": null,
-        "max": 10.0
+        "max": 5.0
        },
        "exercises": [
         {
          "name": "Step Ups",
          "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
          "type": "repetition",
-         "position": 1,
+         "position": 4,
          "sets": {
           "min": null,
-          "max": 3
+          "max": 1
          },
          "reps": {
           "min": null,
-          "max": 6
+          "max": 7
          },
          "duration_min": {
           "min": null,
-          "max": 10.0
+          "max": 5.0
          },
-         "set_rest_min": {
-          "min": null,
-          "max": 1.0
-         },
-         "cycle_note": "1",
+         "cycle_note": "4",
          "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
          "intensity": {
           "type": "other",
@@ -15023,7 +14980,7 @@
           "max": null,
           "reference": "mildStretch"
          },
-         "prescription": "3 sets x 6 reps"
+         "prescription": "1 sets x 7 reps"
         }
        ]
       }
@@ -15034,7 +14991,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwhd",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-09-02",
+   "date": "2026-09-03",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15240,7 +15197,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwj9",
    "name": "Pull Supplementals",
-   "date": "2026-09-02",
+   "date": "2026-09-03",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15611,7 +15568,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq5r",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-09-03",
+   "date": "2026-09-04",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15675,7 +15632,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq5x",
    "name": "Ideal Circuit",
-   "date": "2026-09-04",
+   "date": "2026-09-05",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15858,7 +15815,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq6q",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-04",
+   "date": "2026-09-05",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16076,7 +16033,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq72",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-05",
+   "date": "2026-09-06",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16357,7 +16314,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq7h",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-06",
+   "date": "2026-09-07",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16518,7 +16475,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq8a",
    "name": "Pull Supplementals",
-   "date": "2026-09-06",
+   "date": "2026-09-07",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16889,7 +16846,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwfp",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-07",
+   "date": "2026-09-08",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16980,7 +16937,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwfx",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-08",
+   "date": "2026-09-09",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17067,7 +17024,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgh",
    "name": "Goal Reflection",
-   "date": "2026-09-08",
+   "date": "2026-09-09",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17128,7 +17085,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgm",
    "name": "Recovery + Movement",
-   "date": "2026-09-09",
+   "date": "2026-09-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17192,7 +17149,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgs",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-10",
+   "date": "2026-09-11",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17279,7 +17236,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhd",
    "name": "Recovery + Movement",
-   "date": "2026-09-11",
+   "date": "2026-09-12",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17341,7 +17298,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhj",
    "name": "End of Deload Check-In",
-   "date": "2026-09-12",
+   "date": "2026-09-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17402,7 +17359,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhn",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-12",
+   "date": "2026-09-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17489,7 +17446,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwj9",
    "name": "Recovery + Movement",
-   "date": "2026-09-13",
+   "date": "2026-09-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17551,7 +17508,7 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqat6",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-14",
+   "date": "2026-09-15",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -17700,7 +17657,7 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqaty",
    "name": "Push Supplementals",
-   "date": "2026-09-14",
+   "date": "2026-09-15",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -17967,288 +17924,28 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqavb",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-15",
+   "date": "2026-09-16",
    "position": 1,
    "optional": false,
    "cycle": 5,
    "cycle_length": 8,
    "note": null,
-   "description": "Phase 1 is about building control before range.\nThe goal of this phase is to establish correct positioning, active tension, and left–right symmetry in wide stances and high-step positions before chasing deeper mobility. Rather than forcing flexibility, Phase 1 teaches you how to support yourself at the edges of your current range through slow, controlled reps and isometric holds. This creates tissue tolerance, improves coordination, and reduces injury risk, setting the foundation for all deeper range, load, and speed work later in the year.\n\nSession Intention\nBuild hip mobility and end-range strength that improves climbing positions. Move slowly and intentionally. This is not a stretching session — it’s strength training for mobility.\nThese exercises train positions that climbers constantly struggle with:\n• high feet\n• wide stances\n• drop knees\n• compression positions\n\nInstead of forcing flexibility, you are teaching your body to control these positions under load. Move slowly. Pause in the end ranges. Focus on breathing and balance.\nWhen this work is done consistently, climbers often notice that:\n• high steps feel easier\n• hips stay closer to the wall\n• tension becomes easier to maintain",
+   "description": null,
    "duration_min": {
     "min": 68.0,
     "max": 70.0
    },
    "duration_label": "1h 10m",
    "detailed": false,
-   "prescribed": true,
-   "section_summary": [
-    "Workout 1h"
-   ],
-   "exercise_count": 6,
-   "sections": [
-    {
-     "kind": "Workout",
-     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
-     "duration_min": {
-      "min": 60.0,
-      "max": 60.0
-     },
-     "duration_label": "1h",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 3,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 15.0
-       },
-       "exercises": [
-        {
-         "name": "Horse Stance Slides",
-         "exercise_id": "tex_01kh7qk5qfftfrhke54dn58zh0",
-         "type": "timed_repetition",
-         "position": 1,
-         "sets": {
-          "min": 1,
-          "max": 1
-         },
-         "reps": {
-          "min": null,
-          "max": 8
-         },
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "rep_rest_min": 0.167,
-         "rep_duration_min": 0.1,
-         "video": "https://www.youtube.com/watch?v=9bYyJPA0tGQ",
-         "prescription": "1 sets x 8 reps"
-        }
-       ]
-      },
-      {
-       "position": 2,
-       "number": 4,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 10.0
-       },
-       "exercises": [
-        {
-         "name": "Taylors Pose",
-         "exercise_id": "tex_01jmjzahfve09t1hwnmj9ky120",
-         "type": "repetition",
-         "position": 1,
-         "sets": {
-          "min": null,
-          "max": 3
-         },
-         "reps": {
-          "min": null,
-          "max": 8
-         },
-         "duration_min": {
-          "min": null,
-          "max": 10.0
-         },
-         "set_rest_min": {
-          "min": null,
-          "max": 1.25
-         },
-         "video": "https://www.youtube.com/watch?v=RAfCOcAaBSs",
-         "intensity": {
-          "type": "other",
-          "min": null,
-          "max": null,
-          "reference": "mildStretch"
-         },
-         "prescription": "3 sets x 8 reps"
-        }
-       ]
-      },
-      {
-       "position": 3,
-       "number": 5,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 5.0
-       },
-       "exercises": [
-        {
-         "name": "Drop-Stance Squats",
-         "exercise_id": "tex_01kh7qz0rzem88zzcs9g2q095g",
-         "type": "repetition",
-         "position": 1,
-         "per_side": true,
-         "sets": {
-          "min": null,
-          "max": 2
-         },
-         "reps": {
-          "min": null,
-          "max": 8
-         },
-         "duration_min": {
-          "min": null,
-          "max": 5.0
-         },
-         "set_rest_min": {
-          "min": null,
-          "max": 0.75
-         },
-         "video": "https://www.youtube.com/watch?v=rtBH4Z9eBzo",
-         "prescription": "2 sets x 8 reps per side"
-        }
-       ]
-      },
-      {
-       "position": 4,
-       "number": 6,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 5.0
-       },
-       "exercises": [
-        {
-         "name": "Isometric Side Split",
-         "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
-         "type": "timed_repetition",
-         "position": 5,
-         "sets": {
-          "min": null,
-          "max": 1
-         },
-         "reps": {
-          "min": 1,
-          "max": 1
-         },
-         "duration_min": {
-          "min": null,
-          "max": 5.0
-         },
-         "rep_duration_min": 1.0,
-         "cycle_note": "5",
-         "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
-         "prescription": "1 sets x 1 reps"
-        }
-       ]
-      },
-      {
-       "position": 5,
-       "number": 7,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 10.0
-       },
-       "exercises": [
-        {
-         "name": "Cable Pull-In",
-         "exercise_id": "tex_01j9aqbqmjega9wyc8bnfjfcnd",
-         "type": "repetition",
-         "position": 1,
-         "sets": {
-          "min": null,
-          "max": 3
-         },
-         "reps": {
-          "min": null,
-          "max": 8
-         },
-         "duration_min": {
-          "min": null,
-          "max": 10.0
-         },
-         "set_rest_min": {
-          "min": 0.75,
-          "max": 1.0
-         },
-         "note": "If you don't have a cable machine, use a resistance band around a pole instead.",
-         "video": "https://www.youtube.com/watch?v=CTFPbhPWVOk",
-         "intensity": {
-          "type": "other",
-          "min": null,
-          "max": null,
-          "reference": "mildStretch"
-         },
-         "prescription": "3 sets x 8 reps"
-        }
-       ]
-      },
-      {
-       "position": 6,
-       "number": 8,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 15.0
-       },
-       "exercises": [
-        {
-         "name": "Step Ups",
-         "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
-         "type": "repetition",
-         "position": 5,
-         "sets": {
-          "min": null,
-          "max": 3
-         },
-         "reps": {
-          "min": null,
-          "max": 7
-         },
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "set_rest_min": {
-          "min": 2.0,
-          "max": 5.0
-         },
-         "cycle_note": "5",
-         "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
-         "intensity": {
-          "type": "other",
-          "min": null,
-          "max": null,
-          "reference": "mildStretch"
-         },
-         "prescription": "3 sets x 7 reps"
-        }
-       ]
-      }
-     ]
-    }
-   ]
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
   },
   {
    "id": "ts_01ky7vs3defg0sc387s12mqavt",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-09-16",
+   "date": "2026-09-17",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18269,7 +17966,7 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqawp",
    "name": "Pull Supplementals",
-   "date": "2026-09-16",
+   "date": "2026-09-17",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18290,7 +17987,7 @@
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b79",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-09-17",
+   "date": "2026-09-18",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18311,7 +18008,7 @@
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b7e",
    "name": "Ideal Circuit",
-   "date": "2026-09-18",
+   "date": "2026-09-19",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18332,7 +18029,7 @@
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b88",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-18",
+   "date": "2026-09-19",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18353,7 +18050,7 @@
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b8k",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-19",
+   "date": "2026-09-20",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18374,7 +18071,7 @@
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b92",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-20",
+   "date": "2026-09-21",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18395,7 +18092,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpxr",
    "name": "Pull Supplementals",
-   "date": "2026-09-20",
+   "date": "2026-09-21",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18416,7 +18113,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpy9",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-21",
+   "date": "2026-09-22",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18437,7 +18134,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpyg",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-22",
+   "date": "2026-09-23",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18458,7 +18155,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpz8",
    "name": "Push Supplementals",
-   "date": "2026-09-22",
+   "date": "2026-09-23",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18479,7 +18176,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpzn",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-23",
+   "date": "2026-09-24",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18500,7 +18197,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anq04",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-09-24",
+   "date": "2026-09-25",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18521,7 +18218,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anq10",
    "name": "Pull Supplementals",
-   "date": "2026-09-24",
+   "date": "2026-09-25",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18542,7 +18239,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sq8",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-09-25",
+   "date": "2026-09-26",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18563,7 +18260,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sqd",
    "name": "Ideal Circuit",
-   "date": "2026-09-26",
+   "date": "2026-09-27",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18584,7 +18281,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sr7",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-26",
+   "date": "2026-09-27",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18605,7 +18302,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55srj",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-27",
+   "date": "2026-09-28",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18626,7 +18323,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55ss1",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-28",
+   "date": "2026-09-29",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18647,7 +18344,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sst",
    "name": "Pull Supplementals",
-   "date": "2026-09-28",
+   "date": "2026-09-29",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18668,7 +18365,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55stb",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-29",
+   "date": "2026-09-30",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18689,7 +18386,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55stj",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-30",
+   "date": "2026-10-01",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18710,7 +18407,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sva",
    "name": "Push Supplementals",
-   "date": "2026-09-30",
+   "date": "2026-10-01",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18731,7 +18428,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55svq",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-10-01",
+   "date": "2026-10-02",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18752,7 +18449,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sw6",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-10-02",
+   "date": "2026-10-03",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18773,7 +18470,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr422a",
    "name": "Pull Supplementals",
-   "date": "2026-10-02",
+   "date": "2026-10-03",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18794,7 +18491,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr422v",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-10-03",
+   "date": "2026-10-04",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18815,7 +18512,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4230",
    "name": "Ideal Circuit",
-   "date": "2026-10-04",
+   "date": "2026-10-05",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18836,7 +18533,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr423t",
    "name": "Legs/Core Supplementals",
-   "date": "2026-10-04",
+   "date": "2026-10-05",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18857,7 +18554,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4245",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-10-05",
+   "date": "2026-10-06",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18878,7 +18575,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr424m",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-10-06",
+   "date": "2026-10-07",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18899,7 +18596,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr425d",
    "name": "Pull Supplementals",
-   "date": "2026-10-06",
+   "date": "2026-10-07",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18920,7 +18617,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr425y",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-10-07",
+   "date": "2026-10-08",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18941,7 +18638,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4265",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-08",
+   "date": "2026-10-09",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18962,7 +18659,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr426s",
    "name": "Goal Reflection",
-   "date": "2026-10-08",
+   "date": "2026-10-09",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18983,7 +18680,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr426w",
    "name": "Recovery + Movement",
-   "date": "2026-10-09",
+   "date": "2026-10-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19004,7 +18701,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4271",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-10",
+   "date": "2026-10-11",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19025,7 +18722,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427n",
    "name": "Recovery + Movement",
-   "date": "2026-10-11",
+   "date": "2026-10-12",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19046,7 +18743,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427t",
    "name": "Goal Setting",
-   "date": "2026-10-12",
+   "date": "2026-10-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19067,7 +18764,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427x",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-12",
+   "date": "2026-10-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19088,7 +18785,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr428h",
    "name": "Recovery + Movement",
-   "date": "2026-10-13",
+   "date": "2026-10-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19109,7 +18806,7 @@
   {
    "id": "ts_01ky7vs7r7e9183aj13zg0r6jg",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-14",
+   "date": "2026-10-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19130,7 +18827,7 @@
   {
    "id": "ts_01ky7vs7r8e98tm39gry59cjn3",
    "name": "Pulls Supplemental",
-   "date": "2026-10-14",
+   "date": "2026-10-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19151,7 +18848,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r4g",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-15",
+   "date": "2026-10-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19172,7 +18869,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r4z",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-16",
+   "date": "2026-10-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19193,7 +18890,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r5s",
    "name": "Push Supplementals",
-   "date": "2026-10-16",
+   "date": "2026-10-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19214,7 +18911,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r62",
    "name": "Recovery + Movement",
-   "date": "2026-10-17",
+   "date": "2026-10-18",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19235,7 +18932,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r67",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-18",
+   "date": "2026-10-19",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19256,7 +18953,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r6v",
    "name": "Pulls Supplemental",
-   "date": "2026-10-18",
+   "date": "2026-10-19",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19277,7 +18974,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r76",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-19",
+   "date": "2026-10-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19298,7 +18995,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7202",
    "name": "Limit Bouldering",
-   "date": "2026-10-20",
+   "date": "2026-10-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19319,7 +19016,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr720s",
    "name": "Legs/Core Supplemental",
-   "date": "2026-10-20",
+   "date": "2026-10-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19340,7 +19037,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7214",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-10-21",
+   "date": "2026-10-22",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19361,7 +19058,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr721b",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19382,7 +19079,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7223",
    "name": "Pulls Supplemental",
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19403,7 +19100,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr722e",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-23",
+   "date": "2026-10-24",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19424,7 +19121,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr722x",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-24",
+   "date": "2026-10-25",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19445,7 +19142,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f98",
    "name": "Push Supplementals",
-   "date": "2026-10-24",
+   "date": "2026-10-25",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19466,7 +19163,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f9h",
    "name": "Recovery + Movement",
-   "date": "2026-10-25",
+   "date": "2026-10-26",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19487,7 +19184,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f9p",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-26",
+   "date": "2026-10-27",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19508,7 +19205,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8faa",
    "name": "Pulls Supplemental",
-   "date": "2026-10-26",
+   "date": "2026-10-27",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19529,7 +19226,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fan",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-27",
+   "date": "2026-10-28",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19550,7 +19247,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fb4",
    "name": "Limit Bouldering",
-   "date": "2026-10-28",
+   "date": "2026-10-29",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19571,7 +19268,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fbv",
    "name": "Legs/Core Supplemental",
-   "date": "2026-10-28",
+   "date": "2026-10-29",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19592,7 +19289,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fc6",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-10-29",
+   "date": "2026-10-30",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19613,7 +19310,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fcd",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-30",
+   "date": "2026-10-31",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19634,7 +19331,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek32",
    "name": "Pulls Supplemental",
-   "date": "2026-10-30",
+   "date": "2026-10-31",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19655,7 +19352,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek3d",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-31",
+   "date": "2026-11-01",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19676,7 +19373,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek3w",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-01",
+   "date": "2026-11-02",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19697,7 +19394,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek4p",
    "name": "Push Supplementals",
-   "date": "2026-11-01",
+   "date": "2026-11-02",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19718,7 +19415,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek4z",
    "name": "Recovery + Movement",
-   "date": "2026-11-02",
+   "date": "2026-11-03",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19739,7 +19436,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek54",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-03",
+   "date": "2026-11-04",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19760,7 +19457,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek5r",
    "name": "Pulls Supplemental",
-   "date": "2026-11-03",
+   "date": "2026-11-04",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19781,7 +19478,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdqr",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-04",
+   "date": "2026-11-05",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19802,7 +19499,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdr7",
    "name": "Limit Bouldering",
-   "date": "2026-11-05",
+   "date": "2026-11-06",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19823,7 +19520,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdry",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-05",
+   "date": "2026-11-06",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19844,7 +19541,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tds9",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-06",
+   "date": "2026-11-07",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19865,7 +19562,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrs0",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-07",
+   "date": "2026-11-08",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19886,7 +19583,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrsr",
    "name": "Pulls Supplemental",
-   "date": "2026-11-07",
+   "date": "2026-11-08",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19907,7 +19604,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrt3",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-08",
+   "date": "2026-11-09",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19928,7 +19625,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrtj",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-09",
+   "date": "2026-11-10",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19949,7 +19646,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzne",
    "name": "Push Supplementals",
-   "date": "2026-11-09",
+   "date": "2026-11-10",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19970,7 +19667,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyznq",
    "name": "Recovery + Movement",
-   "date": "2026-11-10",
+   "date": "2026-11-11",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19991,7 +19688,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyznw",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-11",
+   "date": "2026-11-12",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20012,7 +19709,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzpg",
    "name": "Pulls Supplemental",
-   "date": "2026-11-11",
+   "date": "2026-11-12",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20033,7 +19730,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzpv",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-12",
+   "date": "2026-11-13",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20054,7 +19751,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6b0",
    "name": "Limit Bouldering",
-   "date": "2026-11-13",
+   "date": "2026-11-14",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20075,7 +19772,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6bq",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-13",
+   "date": "2026-11-14",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20096,7 +19793,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6c2",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-14",
+   "date": "2026-11-15",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -20117,7 +19814,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6c9",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-15",
+   "date": "2026-11-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20138,7 +19835,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6cx",
    "name": "Goal Reflection",
-   "date": "2026-11-15",
+   "date": "2026-11-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20159,7 +19856,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6d0",
    "name": "Recovery + Movement",
-   "date": "2026-11-16",
+   "date": "2026-11-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20180,7 +19877,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6d5",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-17",
+   "date": "2026-11-18",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20201,7 +19898,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rv9",
    "name": "Recovery + Movement",
-   "date": "2026-11-18",
+   "date": "2026-11-19",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20222,7 +19919,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rve",
    "name": "End of Deload Check-In",
-   "date": "2026-11-19",
+   "date": "2026-11-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20243,7 +19940,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rvh",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-19",
+   "date": "2026-11-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20264,7 +19961,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rw5",
    "name": "Recovery + Movement",
-   "date": "2026-11-20",
+   "date": "2026-11-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -20285,7 +19982,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rwa",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-21",
+   "date": "2026-11-22",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20306,7 +20003,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rx2",
    "name": "Pulls Supplemental",
-   "date": "2026-11-21",
+   "date": "2026-11-22",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20327,7 +20024,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rxd",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-22",
+   "date": "2026-11-23",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20348,7 +20045,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719qc",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-23",
+   "date": "2026-11-24",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20369,7 +20066,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719r6",
    "name": "Push Supplementals",
-   "date": "2026-11-23",
+   "date": "2026-11-24",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20390,7 +20087,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719rf",
    "name": "Recovery + Movement",
-   "date": "2026-11-24",
+   "date": "2026-11-25",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20411,7 +20108,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719rm",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-25",
+   "date": "2026-11-26",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20432,7 +20129,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719s8",
    "name": "Pulls Supplemental",
-   "date": "2026-11-25",
+   "date": "2026-11-26",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20453,7 +20150,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39ye",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-26",
+   "date": "2026-11-27",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20474,7 +20171,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39yx",
    "name": "Limit Bouldering",
-   "date": "2026-11-27",
+   "date": "2026-11-28",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20495,7 +20192,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39zm",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-27",
+   "date": "2026-11-28",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20516,7 +20213,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39zz",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-28",
+   "date": "2026-11-29",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20537,7 +20234,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd3a06",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-29",
+   "date": "2026-11-30",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20558,7 +20255,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853w4",
    "name": "Pulls Supplemental",
-   "date": "2026-11-29",
+   "date": "2026-11-30",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20579,7 +20276,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853wf",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-30",
+   "date": "2026-12-01",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20600,7 +20297,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853wy",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-01",
+   "date": "2026-12-02",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20621,7 +20318,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een742r",
    "name": "Push Supplementals",
-   "date": "2026-12-01",
+   "date": "2026-12-02",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20642,7 +20339,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7431",
    "name": "Recovery + Movement",
-   "date": "2026-12-02",
+   "date": "2026-12-03",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20663,7 +20360,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7436",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-03",
+   "date": "2026-12-04",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20684,7 +20381,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een743t",
    "name": "Pulls Supplemental",
-   "date": "2026-12-03",
+   "date": "2026-12-04",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20705,7 +20402,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7445",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-04",
+   "date": "2026-12-05",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20726,7 +20423,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np2k",
    "name": "Limit Bouldering",
-   "date": "2026-12-05",
+   "date": "2026-12-06",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20747,7 +20444,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3a",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-05",
+   "date": "2026-12-06",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20768,7 +20465,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3n",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-06",
+   "date": "2026-12-07",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20789,7 +20486,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3w",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-12-07",
+   "date": "2026-12-08",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20810,7 +20507,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np4m",
    "name": "Pulls Supplemental",
-   "date": "2026-12-07",
+   "date": "2026-12-08",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20831,7 +20528,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38vb",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-08",
+   "date": "2026-12-09",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20852,7 +20549,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38vt",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-09",
+   "date": "2026-12-10",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20873,7 +20570,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38wm",
    "name": "Push Supplementals",
-   "date": "2026-12-09",
+   "date": "2026-12-10",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20894,7 +20591,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38wx",
    "name": "Recovery + Movement",
-   "date": "2026-12-10",
+   "date": "2026-12-11",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20915,7 +20612,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38x2",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-11",
+   "date": "2026-12-12",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20936,7 +20633,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw32q",
    "name": "Pulls Supplemental",
-   "date": "2026-12-11",
+   "date": "2026-12-12",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20957,7 +20654,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw332",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-12",
+   "date": "2026-12-13",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20978,7 +20675,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw33h",
    "name": "Limit Bouldering",
-   "date": "2026-12-13",
+   "date": "2026-12-14",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20999,7 +20696,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw348",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-13",
+   "date": "2026-12-14",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -21020,7 +20717,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw34k",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-14",
+   "date": "2026-12-15",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -21041,7 +20738,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw34t",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-12-15",
+   "date": "2026-12-16",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21062,7 +20759,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq8x",
    "name": "Pulls Supplemental",
-   "date": "2026-12-15",
+   "date": "2026-12-16",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21083,7 +20780,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq98",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-16",
+   "date": "2026-12-17",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21104,7 +20801,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq9q",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-17",
+   "date": "2026-12-18",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21125,7 +20822,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqah",
    "name": "Push Supplementals",
-   "date": "2026-12-17",
+   "date": "2026-12-18",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21146,7 +20843,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqat",
    "name": "Recovery + Movement",
-   "date": "2026-12-18",
+   "date": "2026-12-19",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21167,7 +20864,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqaz",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-19",
+   "date": "2026-12-20",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21188,7 +20885,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqbk",
    "name": "Pulls Supplemental",
-   "date": "2026-12-19",
+   "date": "2026-12-20",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21209,7 +20906,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqby",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-20",
+   "date": "2026-12-21",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21230,7 +20927,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqcd",
    "name": "Limit Bouldering",
-   "date": "2026-12-21",
+   "date": "2026-12-22",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21251,7 +20948,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1my3",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-21",
+   "date": "2026-12-22",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21272,7 +20969,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mye",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-22",
+   "date": "2026-12-23",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -21293,7 +20990,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1myn",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-23",
+   "date": "2026-12-24",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21314,7 +21011,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mz9",
    "name": "Goal Reflection",
-   "date": "2026-12-23",
+   "date": "2026-12-24",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21335,7 +21032,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mzc",
    "name": "Recovery + Movement",
-   "date": "2026-12-24",
+   "date": "2026-12-25",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21356,7 +21053,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mzh",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-25",
+   "date": "2026-12-26",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21377,7 +21074,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n05",
    "name": "Recovery + Movement",
-   "date": "2026-12-26",
+   "date": "2026-12-27",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21398,7 +21095,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n0a",
    "name": "Goal Setting",
-   "date": "2026-12-27",
+   "date": "2026-12-28",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21419,7 +21116,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n0d",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-27",
+   "date": "2026-12-28",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21440,7 +21137,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n11",
    "name": "Recovery + Movement",
-   "date": "2026-12-28",
+   "date": "2026-12-29",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21461,7 +21158,7 @@
   {
    "id": "ts_01ky7vsb5aekps5q18hn24zkcy",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2026-12-29",
+   "date": "2026-12-30",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21482,7 +21179,7 @@
   {
    "id": "ts_01ky7vsb5aekps5q18hn24zkdj",
    "name": "Pull Supplemental",
-   "date": "2026-12-29",
+   "date": "2026-12-30",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21503,7 +21200,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mf9",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2026-12-30",
+   "date": "2026-12-31",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21524,7 +21221,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mfr",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2026-12-31",
+   "date": "2027-01-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21545,7 +21242,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mgg",
    "name": "Push Supplemental",
-   "date": "2026-12-31",
+   "date": "2027-01-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21566,7 +21263,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgnq",
    "name": "Recovery + Movement",
-   "date": "2027-01-01",
+   "date": "2027-01-02",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21587,7 +21284,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgnw",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-02",
+   "date": "2027-01-03",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21608,7 +21305,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgpq",
    "name": "Pull Supplemental",
-   "date": "2027-01-02",
+   "date": "2027-01-03",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21629,7 +21326,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgq8",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-03",
+   "date": "2027-01-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21650,7 +21347,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgqq",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-04",
+   "date": "2027-01-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21671,7 +21368,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgrd",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-04",
+   "date": "2027-01-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21692,7 +21389,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avwa",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-05",
+   "date": "2027-01-06",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21713,7 +21410,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avwh",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-06",
+   "date": "2027-01-07",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21734,7 +21431,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avx5",
    "name": "Pull Supplemental",
-   "date": "2027-01-06",
+   "date": "2027-01-07",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21755,7 +21452,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avxp",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-07",
+   "date": "2027-01-08",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21776,7 +21473,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avy5",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-08",
+   "date": "2027-01-09",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21797,7 +21494,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7xf",
    "name": "Push Supplemental",
-   "date": "2027-01-08",
+   "date": "2027-01-09",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21818,7 +21515,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7xw",
    "name": "Recovery + Movement",
-   "date": "2027-01-09",
+   "date": "2027-01-10",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21839,7 +21536,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7y1",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-10",
+   "date": "2027-01-11",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21860,7 +21557,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7yw",
    "name": "Pull Supplemental",
-   "date": "2027-01-10",
+   "date": "2027-01-11",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21881,7 +21578,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7zd",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-11",
+   "date": "2027-01-12",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21902,7 +21599,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqhz",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-12",
+   "date": "2027-01-13",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21923,7 +21620,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqjn",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-12",
+   "date": "2027-01-13",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21944,7 +21641,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqk0",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-13",
+   "date": "2027-01-14",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21965,7 +21662,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqk7",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-14",
+   "date": "2027-01-15",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21986,7 +21683,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqkv",
    "name": "Pull Supplemental",
-   "date": "2027-01-14",
+   "date": "2027-01-15",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22007,7 +21704,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqmc",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-15",
+   "date": "2027-01-16",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22028,7 +21725,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq42",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-16",
+   "date": "2027-01-17",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22049,7 +21746,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq4t",
    "name": "Push Supplemental",
-   "date": "2027-01-16",
+   "date": "2027-01-17",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22070,7 +21767,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq57",
    "name": "Recovery + Movement",
-   "date": "2027-01-17",
+   "date": "2027-01-18",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22091,7 +21788,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq5c",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-18",
+   "date": "2027-01-19",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22112,7 +21809,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq67",
    "name": "Pull Supplemental",
-   "date": "2027-01-18",
+   "date": "2027-01-19",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22133,7 +21830,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3m9",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-19",
+   "date": "2027-01-20",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22154,7 +21851,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3mr",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-20",
+   "date": "2027-01-21",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22175,7 +21872,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3ne",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-20",
+   "date": "2027-01-21",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22196,7 +21893,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3ns",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-21",
+   "date": "2027-01-22",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -22217,7 +21914,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3p0",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-22",
+   "date": "2027-01-23",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22238,7 +21935,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3pm",
    "name": "Pull Supplemental",
-   "date": "2027-01-22",
+   "date": "2027-01-23",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22259,7 +21956,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s75",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-23",
+   "date": "2027-01-24",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22280,7 +21977,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s7m",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-24",
+   "date": "2027-01-25",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22301,7 +21998,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8c",
    "name": "Push Supplemental",
-   "date": "2027-01-24",
+   "date": "2027-01-25",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22322,7 +22019,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8s",
    "name": "Recovery + Movement",
-   "date": "2027-01-25",
+   "date": "2027-01-26",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22343,7 +22040,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8y",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-26",
+   "date": "2027-01-27",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22364,7 +22061,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s9s",
    "name": "Pull Supplemental",
-   "date": "2027-01-26",
+   "date": "2027-01-27",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22385,7 +22082,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr6s",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-27",
+   "date": "2027-01-28",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22406,7 +22103,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr78",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-28",
+   "date": "2027-01-29",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22427,7 +22124,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr7y",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-28",
+   "date": "2027-01-29",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22448,7 +22145,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr89",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-29",
+   "date": "2027-01-30",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22469,7 +22166,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr8g",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-01-30",
+   "date": "2027-01-31",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22490,7 +22187,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr94",
    "name": "Goal Reflection",
-   "date": "2027-01-30",
+   "date": "2027-01-31",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22511,7 +22208,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr97",
    "name": "Recovery + Movement",
-   "date": "2027-01-31",
+   "date": "2027-02-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22532,7 +22229,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr9c",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-02-01",
+   "date": "2027-02-02",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22553,7 +22250,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra0",
    "name": "Recovery + Movement",
-   "date": "2027-02-02",
+   "date": "2027-02-03",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22574,7 +22271,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra5",
    "name": "End of Deload Check-In",
-   "date": "2027-02-03",
+   "date": "2027-02-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22595,7 +22292,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra8",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-02-03",
+   "date": "2027-02-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22616,7 +22313,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadraw",
    "name": "Recovery + Movement",
-   "date": "2027-02-04",
+   "date": "2027-02-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22637,7 +22334,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadrb1",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-02-05",
+   "date": "2027-02-06",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22658,7 +22355,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadrbn",
    "name": "Pull Supplemental",
-   "date": "2027-02-05",
+   "date": "2027-02-06",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22679,7 +22376,7 @@
   {
    "id": "ts_01ky7vsb5me86vf3avpqmm5y6w",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-02-06",
+   "date": "2027-02-07",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22691,48 +22388,6 @@
     "max": 55.0
    },
    "duration_label": "55m",
-   "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
-  },
-  {
-   "id": "ts_01ky7vsb5me86vf3avpqmm5y7b",
-   "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-02-07",
-   "position": 1,
-   "optional": false,
-   "cycle": 5,
-   "cycle_length": 8,
-   "note": null,
-   "description": null,
-   "duration_min": {
-    "min": 99.0,
-    "max": 203.0
-   },
-   "duration_label": "3h 23m",
-   "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
-  },
-  {
-   "id": "ts_01ky7vsb5me86vf3avpqmm5y83",
-   "name": "Push Supplemental",
-   "date": "2027-02-07",
-   "position": 1,
-   "optional": false,
-   "cycle": 5,
-   "cycle_length": 8,
-   "note": null,
-   "description": null,
-   "duration_min": {
-    "min": 75.0,
-    "max": 75.0
-   },
-   "duration_label": "1h 15m",
    "detailed": false,
    "prescribed": false,
    "section_summary": [],

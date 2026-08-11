@@ -7,6 +7,15 @@ follow lives in [DESIGN.md](DESIGN.md).
 
 ### Added
 
+- **`discord-mcp`** — one tool, `discord_dm`, so a scheduled run can message
+  the person it was written for instead of the shared home channel a cron
+  job's `--deliver discord` posts to regardless of what the skill did.
+  Bot-to-bot DMs are blocked by Discord itself (error 50007); bot-to-*user*
+  DMs are not, so this needed no more than the same bot token Gladys already
+  runs on. Recipients are a closed, named list read from `DISCORD_DM_USERS`
+  — the agent says `user="nathan"`, never a raw id, same rule this repo
+  already applies to rooms and Plex players. The `daily-brief` skill now
+  sends here instead of the home channel.
 - **`household_history`** — "who did what this week" in one call: chores
   finished, shopping bought, meals planned, tasks dropped, with a per-person
   tally. The data was always recorded and mostly unreadable: `bought_by` and

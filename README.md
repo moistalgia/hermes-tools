@@ -10,6 +10,7 @@ server here follows, and what gets built next.
 | [plex-mcp](plex-mcp/) | Plex playback — search, play, control players, recommend. |
 | [state-mcp](state-mcp/) | Shared household memory — tasks, shopping, pantry, meals, appointments, facts. No dependencies. |
 | [notify-mcp](notify-mcp/) | Push to your phone, and messages back from it. No dependencies. |
+| [discord-mcp](discord-mcp/) | DM one named person on Discord, instead of the shared home channel. No dependencies. |
 | [hass-mcp](hass-mcp/) | Home Assistant — lights, blinds, thermostats, scenes. No dependencies. |
 | [prowlarr-mcp](prowlarr-mcp/) | One search across every indexer, returning magnet links. No dependencies, and drop-in on its own. |
 | [qbt-mcp](qbt-mcp/) | Starts a download in qBittorrent and confirms it started. No dependencies. |
@@ -50,8 +51,8 @@ One clone, anywhere `hermes update` does not manage:
 git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
 ```
 
-`state-mcp`, `notify-mcp`, `hass-mcp`, and `prowlarr-mcp` have **no
-dependencies** — standard library only. No venv, no install, no packaging.
+`state-mcp`, `notify-mcp`, `discord-mcp`, `hass-mcp`, and `prowlarr-mcp` have
+**no dependencies** — standard library only. No venv, no install, no packaging.
 Hermes runs them with the interpreter it already has, straight from the
 checkout.
 
@@ -78,6 +79,12 @@ mcp_servers:
     env:
       TELEGRAM_TOKEN: "<from @BotFather>"
       TELEGRAM_CHAT_ID: "<see notify-mcp/README.md>"
+  discord:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/discord-mcp/discord_mcp_server.py", "serve"]
+    env:
+      DISCORD_BOT_TOKEN: "<same token Gladys runs on>"
+      DISCORD_DM_USERS: "nathan=<discord user id>,anna=<discord user id>"
   hass:
     command: "python"
     args: ["E:/hermes-mcp/hermes-tools/hass-mcp/hass_mcp_server.py", "serve"]

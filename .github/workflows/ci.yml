@@ -28,7 +28,7 @@ jobs:
       - name: Every file at least parses
         # Catches the class of mistake that would otherwise be found by an
         # agent at 7am, as a failed MCP handshake with no useful error.
-        run: python -m compileall -q mcpkit.py hass-mcp state-mcp notify-mcp plex-mcp prowlarr-mcp qbt-mcp scripts tests
+        run: python -m compileall -q mcpkit.py hass-mcp state-mcp notify-mcp discord-mcp plex-mcp prowlarr-mcp qbt-mcp scripts tests
 
       - name: Tests
         run: python -m unittest discover -s tests -v
@@ -39,7 +39,7 @@ jobs:
         # because it is the failure with the least readable symptom.
         shell: bash
         run: |
-          for server in state-mcp/state_mcp_server.py notify-mcp/notify_mcp_server.py hass-mcp/hass_mcp_server.py prowlarr-mcp/prowlarr_mcp_server.py qbt-mcp/qbt_mcp_server.py; do
+          for server in state-mcp/state_mcp_server.py notify-mcp/notify_mcp_server.py discord-mcp/discord_mcp_server.py hass-mcp/hass_mcp_server.py prowlarr-mcp/prowlarr_mcp_server.py qbt-mcp/qbt_mcp_server.py; do
             out=$(python "$server" 2>/dev/null)
             if [ -n "$out" ]; then
               echo "$server wrote to stdout without arguments:"; echo "$out"; exit 1
