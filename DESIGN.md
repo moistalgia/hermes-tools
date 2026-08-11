@@ -209,6 +209,7 @@ host.
 | [nightly-audit](skills/nightly-audit/) | `state`, `hass`, `notify` |
 | [email-triage](skills/email-triage/) | email, `state` |
 | [training-calendar-sync](skills/training-calendar-sync/) | `paradigm`, Google Calendar |
+| [training-data-curation](skills/training-data-curation/) | capture logs from all servers |
 
 ---
 
@@ -348,7 +349,39 @@ Steps 3 and 4 are in that order on purpose.
 
 ---
 
-## 10. Open questions
+## 11. Opt-in capture for fine-tuning data
+
+Every tool call passes through `call_tool()` in `mcpkit.py`. That is the single
+choke point — one hook there covers every server automatically, with no
+per-server code.
+
+When `HERMES_CAPTURE=1` is set for a server, `call_tool()` appends one JSON
+line per invocation to `~/.hermes/training/<server>.jsonl`. Override the base
+directory with `HERMES_CAPTURE_DIR`. The record contains `timestamp`, `server`,
+`tool`, `args`, `result`, `ok`, and optionally `reasoning` — the last only when
+the orchestrator layer called `capture_reasoning(text)` before the invocation.
+
+Why here and not in the servers: per the layering rule in §1, `mcpkit` knows
+nothing about any domain; the servers know nothing about each other; and the
+skill that describes how to use captured data knows nothing about Python. Adding
+capture in `mcpkit` respects all three boundaries — the servers get the feature
+for free, `mcpkit` does not learn what "reasoning" means, and the curation
+policy stays in prose.
+
+Write failures are logged to stderr and swallowed. A capture error must never
+affect the tool result — this is more conservative than the `ok: false` path for
+failed tools, because capture is side-channel infrastructure, not a capability.
+
+`prowlarr-mcp/mcpkit.py` is an intentionally-duplicated copy (see §2) and
+carries the identical change. The equality test in `tests/test_prowlarr.py`
+enforces this.
+
+See [skills/training-data-curation/SKILL.md](skills/training-data-curation/SKILL.md)
+for how to periodically curate captured JSONL into a fine-tuning-ready dataset.
+
+---
+
+## 12. Open questions
 
 - ~~**Is `household.db` backed up?**~~ Answered:
   [scripts/backup_state.py](scripts/backup_state.py) takes verified, rotating
