@@ -82,7 +82,16 @@ DM_USERS = _parse_users(os.environ.get("DISCORD_DM_USERS", ""))
 
 
 def http(url, payload=None, method=None):
-    headers = {"Authorization": f"Bot {BOT_TOKEN}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bot {BOT_TOKEN}",
+        "Content-Type": "application/json",
+        # Discord's edge is behind Cloudflare, which blocks the default
+        # urllib User-Agent ("Python-urllib/3.x") as a bot signature before
+        # the request ever reaches Discord - it comes back as an HTML 403
+        # with "error code: 1010", not a Discord API error at all. Discord's
+        # own docs ask for a descriptive User-Agent on API requests anyway.
+        "User-Agent": "DiscordBot (https://github.com/moistalgia/hermes-tools, 1.0)",
+    }
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
@@ -95,6 +104,14 @@ def http(url, payload=None, method=None):
             parsed = json.loads(raw)
         except ValueError:
             parsed = {}
+        if not parsed and "error code: 1010" in raw:
+            raise ToolError(
+                "Cloudflare blocked this request before it reached Discord "
+                "(error 1010) - this is not a Discord API error and no "
+                "token, id, or message change fixes it. It usually means the "
+                "request's User-Agent or IP got flagged; report this rather "
+                "than retrying with altered arguments."
+            )
         detail = parsed.get("message") or raw[:200] or exc.reason
         raise ToolError(f"Discord returned HTTP {exc.code}: {detail}. " + hint(exc.code, parsed))
     except urllib.error.URLError as exc:
