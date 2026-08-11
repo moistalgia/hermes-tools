@@ -208,6 +208,7 @@ host.
 | [daily-brief](skills/daily-brief/) | all of them |
 | [nightly-audit](skills/nightly-audit/) | `state`, `hass`, `notify` |
 | [email-triage](skills/email-triage/) | email, `state` |
+| [training-calendar-sync](skills/training-calendar-sync/) | `paradigm`, Google Calendar |
 | [training-data-curation](skills/training-data-curation/) | capture logs from all servers |
 
 ---
