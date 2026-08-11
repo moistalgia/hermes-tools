@@ -199,18 +199,35 @@ than a slowly accumulating mess.
 
 ### Keeping it fresh
 
-The plan is published progressively, so the file goes stale. Put `refresh` on a
-schedule — it syncs and rewrites the `.ics` in one step — and re-import when you
-want the calendar caught up:
+The plan is published progressively, so the cache goes stale. The primary way to
+keep the Google Calendar in sync is to ask the agent:
+
+> "I needed an extra rest day, refresh my training calendar."
+
+The agent runs `paradigm.refresh include_rest=true` (which re-pulls from
+Paradigm and writes a fresh `training.ics`), then pushes that file to Google
+Calendar via Hermes' native import tool. Google reconciles by event UID —
+existing training-day events are updated in place, new dates are created, and a
+day that shifted from training to rest gets a "Rest day" event that overwrites
+the stale block. No manual steps. See
+[skills/training-calendar-sync/SKILL.md](../skills/training-calendar-sync/SKILL.md)
+for the full flow.
+
+**Without Hermes.** If you are not running through Hermes, put `refresh` on a
+schedule and import the `.ics` file manually when you want the calendar caught
+up:
 
 ```bash
-python paradigm_mcp_server.py refresh
+python paradigm_mcp_server.py refresh include_rest=true
 ```
 
-Daily is plenty; the plan does not change hour to hour. Re-importing is the
-manual step, and it is deliberate: subscribing Google to a hosted `.ics` sounds
-better but Google refreshes subscribed calendars on its own schedule, often a
-day or more late and with no way to force it.
+Then import `training.ics` via Google Calendar → Settings → Import & export.
+Pass `include_rest=true` so a day that shifted from training to rest gets an
+explicit "Rest day" event that overwrites the stale one.
+
+Daily is plenty; the plan does not change hour to hour. Subscribing Google to a
+hosted `.ics` sounds better but Google refreshes subscribed calendars on its own
+schedule, often a day or more late and with no way to force it.
 
 ## Durations are ranges
 

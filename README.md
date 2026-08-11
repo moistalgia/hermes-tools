@@ -14,6 +14,7 @@ server here follows, and what gets built next.
 | [hass-mcp](hass-mcp/) | Home Assistant — lights, blinds, thermostats, scenes. No dependencies. |
 | [prowlarr-mcp](prowlarr-mcp/) | One search across every indexer, returning magnet links. No dependencies, and drop-in on its own. |
 | [qbt-mcp](qbt-mcp/) | Starts a download in qBittorrent and confirms it started. No dependencies. |
+| [paradigm-mcp](paradigm-mcp/) | Climbing training plan from Paradigm — calendar feed, session detail, `.ics` export. No dependencies. |
 | [mcpkit.py](mcpkit.py) | Shared protocol layer. Not a server; imported by the ones above. |
 | [scripts/](scripts/) | Host-side jobs. Backups, for now. |
 | [tests/](tests/) | `python -m unittest discover -s tests`. No dependencies. |
@@ -28,6 +29,8 @@ server here follows, and what gets built next.
 | [daily-brief](skills/daily-brief/) | everything |
 | [nightly-audit](skills/nightly-audit/) | `state`, `hass`, `notify` |
 | [email-triage](skills/email-triage/) | email, `state` |
+| [training-calendar-sync](skills/training-calendar-sync/) | `paradigm`, Google Calendar |
+| [training-data-curation](skills/training-data-curation/) | capture logs from all servers |
 
 Every server is also a CLI. Anything the agent can call, you can run from a
 shell with identical arguments through identical code — so when something
