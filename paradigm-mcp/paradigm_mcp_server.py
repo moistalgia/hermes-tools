@@ -1062,35 +1062,13 @@ def event_description(sessions):
     return "\n".join(lines).strip()
 
 
-def _event_key(date):
-    """Stable idempotency key for a calendar day event.
-
-    Matches the UID scheme used in the .ics exporter so both paths share one
-    source of truth: ``paradigm-YYYYMMDD``.
-    """
-    return "paradigm-" + date.replace("-", "")
-
-
-def _marker_line(key):
-    """Trailing description line that identifies events this system owns.
-
-    Kept on its own line so it is machine-readable without disturbing the human-
-    readable body above it.  An agent can find an existing event purely by
-    reading its description back, without needing extended-property support from
-    the calendar tool it has available.
-    """
-    return f"[hermes:paradigm:event_key={key}]"
-
-
 def day_event(plan, date, include_rest=False):
     """One all-day event for one training day, or None for a rest day."""
     payload = day_payload(plan, date, detail=True)
     sessions = payload["sessions"]
-    key = _event_key(date)
     if not sessions:
         if not include_rest:
             return None
-        description = "No training scheduled.\n" + _marker_line(key)
         return {
             "date": date,
             "title": "Rest day",
@@ -1098,8 +1076,7 @@ def day_event(plan, date, include_rest=False):
             "duration_label": None,
             "prescribed": True,
             "sessions": [],
-            "event_key": key,
-            "description": description,
+            "description": "No training scheduled.",
         }
 
     names = ", ".join(s.get("name") or "Training" for s in sessions)
@@ -1109,8 +1086,6 @@ def day_event(plan, date, include_rest=False):
     if unwritten:
         title += " (not published yet)"
 
-    base_description = event_description(sessions)
-    description = base_description + "\n" + _marker_line(key)
     return {
         "date": date,
         "title": title,
@@ -1119,8 +1094,7 @@ def day_event(plan, date, include_rest=False):
         "prescribed": not unwritten,
         "sessions": [s.get("name") for s in sessions],
         "session_ids": [s.get("id") for s in sessions],
-        "event_key": key,
-        "description": description,
+        "description": event_description(sessions),
     }
 
 

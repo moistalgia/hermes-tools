@@ -204,27 +204,26 @@ keep the Google Calendar in sync is to ask the agent:
 
 > "I needed an extra rest day, refresh my training calendar."
 
-The agent runs `refresh` (which re-pulls from Paradigm and updates the cache),
-then uses Hermes' native calendar tools to reconcile each day — updating events
-in place, creating new ones, and overwriting stale training-day events that have
-become rest days. No file, no manual import. See
+The agent runs `paradigm.refresh include_rest=true` (which re-pulls from
+Paradigm and writes a fresh `training.ics`), then pushes that file to Google
+Calendar via Hermes' native import tool. Google reconciles by event UID —
+existing training-day events are updated in place, new dates are created, and a
+day that shifted from training to rest gets a "Rest day" event that overwrites
+the stale block. No manual steps. See
 [skills/training-calendar-sync/SKILL.md](../skills/training-calendar-sync/SKILL.md)
-for the full orchestration.
+for the full flow.
 
-**Manual fallback (no Hermes).** If you are not running through Hermes, put
-`refresh` on a schedule and re-import the `.ics` file when you want the calendar
-caught up:
+**Without Hermes.** If you are not running through Hermes, put `refresh` on a
+schedule and import the `.ics` file manually when you want the calendar caught
+up:
 
 ```bash
-python paradigm_mcp_server.py refresh
-python paradigm_mcp_server.py export_ics include_rest=true
+python paradigm_mcp_server.py refresh include_rest=true
 ```
 
 Then import `training.ics` via Google Calendar → Settings → Import & export.
 Pass `include_rest=true` so a day that shifted from training to rest gets an
-explicit "Rest day" event that overwrites the stale one; without it, the old
-event stays on that date. Re-importing updates events by UID and adds new ones,
-but cannot delete, so `include_rest=true` is the fix for the stale-event case.
+explicit "Rest day" event that overwrites the stale one.
 
 Daily is plenty; the plan does not change hour to hour. Subscribing Google to a
 hosted `.ics` sounds better but Google refreshes subscribed calendars on its own
