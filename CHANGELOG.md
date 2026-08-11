@@ -51,6 +51,18 @@ follow lives in [DESIGN.md](DESIGN.md).
 
 ### Fixed
 
+- **Non-ASCII text sent through any server came out mangled** — a degree
+  sign, an em dash, an emoji, a curly quote. Windows opens a subprocess's
+  stdin pipe in the OS's ANSI codepage (`cp1252` here, confirmed) rather than
+  UTF-8, so any JSON-RPC client that does not ASCII-escape its output —
+  which is most of them; Python's own `json.dumps` is the exception, not the
+  rule — has its raw UTF-8 bytes decoded one byte at a time by the wrong
+  codec before a tool ever sees the argument. `72°F` arrived as `72Â°F`.
+  `mcpkit.serve` now forces UTF-8 on stdin (and stdout/stderr) explicitly
+  rather than relying on `PYTHONUTF8` or `PYTHONIOENCODING` being set in the
+  host's environment, because nothing in this repo's deployment sets them.
+  Every server picks this up for free; `prowlarr-mcp`'s vendored copy of
+  `mcpkit.py` was re-synced to match.
 - **A pantry row at zero counted as having some.** Anything not flagged a staple
   was treated as in stock regardless of quantity, so an ingredient someone had
   carefully recorded running out of was spared from the shopping list.

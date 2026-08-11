@@ -286,13 +286,38 @@ def emit(payload):
     _stdout.flush()
 
 
+def _force_utf8(stream, errors):
+    """Some hosts replace stdio with something that isn't a TextIOWrapper
+    (test runners, frozen builds) - an encoding mismatch there is not this
+    function's problem, so failing to reconfigure is not fatal."""
+    try:
+        stream.reconfigure(encoding="utf-8", errors=errors)
+    except (AttributeError, ValueError):
+        pass
+
+
 def serve(name, version):
+    # Windows opens a subprocess's stdio pipes in the OS's ANSI codepage
+    # (cp1252 here, verified - not UTF-8) unless told otherwise, even though
+    # every byte on the wire is UTF-8 per the JSON-RPC/MCP spec. A client
+    # that does not ASCII-escape its JSON (most non-Python ones do not) sends
+    # raw multi-byte UTF-8 for anything outside ASCII - a degree sign, an em
+    # dash, an emoji - and an unconfigured cp1252 stdin decodes each of those
+    # bytes on its own, then a later UTF-8 re-encode doubles the damage: "72
+    # \xc2\xb0F" (a correct degree sign) becomes the four characters "Â°".
+    # Forcing UTF-8 here is the fix; it must not depend on PYTHONUTF8 or
+    # PYTHONIOENCODING being set in the host's environment, because nothing
+    # in this repo's deployment sets them.
+    _force_utf8(sys.stdin, errors="strict")
+
     # stdout is the JSON-RPC transport. One stray print() anywhere - here, in a
     # dependency, in a warning - corrupts the stream and the handshake fails
     # with no useful error. Hold the real handle for emit() and point sys.stdout
     # at stderr so accidental writes are merely logged instead of fatal.
     global _stdout
     _stdout = sys.stdout
+    _force_utf8(_stdout, errors="replace")
+    _force_utf8(sys.stderr, errors="replace")
     sys.stdout = sys.stderr
 
     log(f"serving {len(TOOLS)} tools over stdio")
