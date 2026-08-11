@@ -192,6 +192,7 @@ confirms that the **setpoint** changed and explicitly not that the room is warm.
 | [notify-mcp](notify-mcp/) | Push out, messages in | ntfy / Telegram / Pushover |
 | [hass-mcp](hass-mcp/) | Lights, blinds, tilt, thermostats, scenes | Home Assistant |
 | [prowlarr-mcp](prowlarr-mcp/) | Indexer search, returning magnets | Prowlarr |
+| [qbt-mcp](qbt-mcp/) | Starting a download, and confirming it | qBittorrent |
 
 Plus [tests/](tests/) and [scripts/backup_state.py](scripts/backup_state.py),
 neither of which the agent ever touches — they are for the human running the
@@ -200,7 +201,7 @@ host.
 | Skill | Drives |
 | --- | --- |
 | [plex-media-playback](skills/plex-media-playback/) | `plex` |
-| [media-acquisition](skills/media-acquisition/) | `prowlarr` |
+| [media-acquisition](skills/media-acquisition/) | `prowlarr`, `qbt` |
 | [home-control](skills/home-control/) | `hass` |
 | [household-state](skills/household-state/) | `state` |
 | [meal-planning](skills/meal-planning/) | `state` |

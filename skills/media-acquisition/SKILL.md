@@ -1,6 +1,6 @@
 ---
 name: media-acquisition
-description: Find a film or television episode across every configured indexer and hand the magnet link off for fetching. Use whenever someone asks you to look for, find, grab, or get hold of a movie or show ("can you find the new season of X", "is there a 1080p copy of Y", "get me Z"). Everything goes through the `prowlarr` MCP server, and the handoff is a `!fetch` message on Discord.
+description: Find a film or television episode across every configured indexer and start downloading it. Use whenever someone asks you to look for, find, grab, or get hold of a movie or show ("can you find the new season of X", "is there a 1080p copy of Y", "get me Z"), and to answer "is it downloaded yet". Searching goes through the `prowlarr` MCP server; downloading goes through the `qbt` MCP server.
 tags: []
 related_skills: []
 ---
@@ -22,25 +22,33 @@ against the indexers that need one. When an indexer is failing, the answer is to
 say which one and stop. Attempting the site directly is not a fallback; it is
 the thing that already does not work.
 
-## Handoff configuration
-
-> **Fill these in before using this skill.** The `!fetch` handoff needs a real
-> Discord server, tool, and recipient, and guessing at them sends a message to
-> the wrong place.
->
-> | | |
-> | --- | --- |
-> | MCP server | `<discord server name in config.yaml>` |
-> | Tool | `<the send-message tool it exposes>` |
-> | Recipient | `<the Discord user or channel that runs the fetch bot>` |
-
 ## Tools
+
+Two servers, and the split is deliberate: `prowlarr` finds things and cannot
+download them, `qbt` downloads things and cannot search.
 
 | Need | Tool |
 | --- | --- |
-| Something is wrong | `prowlarr_status` |
+| Something is wrong with searching | `prowlarr_status` |
 | What can be searched | `list_indexers` |
 | Find something | `search` |
+| Start a download | `download` |
+| What is downloading, and how it is going | `downloads` |
+| Wrong thing, or a dead release | `download_cancel` |
+| Something is wrong with downloading | `qbt_status` |
+
+`download` works out from the release name whether something is a film or
+television, and that decides which library it lands in. **Leave `kind` alone
+almost always.** Set it only when you can see the detection is about to be
+wrong — the detector is a regex over a filename convention, so the cases to
+watch are a film with "Season" in the title, a documentary series named like a
+film, or a film whose year reads like an episode number. Never set it merely
+because you think you know better; the wrong call files a season pack into the
+film library and Plex indexes it before anyone notices.
+
+There is no Discord step and no `!fetch` message. That route was considered and
+it cannot work — **Discord does not allow a bot to DM another bot.** If a tool
+here fails, the fix is never to go looking for a messaging route.
 
 ## Searching
 
@@ -113,9 +121,9 @@ magnet.
 
 **Do not turn `resolve_magnets` off** unless someone only wants to know whether
 a thing exists. It is what makes most results usable at all, and a search with
-it off returns rows you cannot hand off.
+it off returns rows you cannot download.
 
-## Presenting and handing off
+## Presenting and downloading
 
 Unless they have said "just get it", show the top three or so and let them pick:
 
@@ -127,22 +135,41 @@ Unless they have said "just get it", show the top three or so and let them pick:
 >
 > Which one?
 
-Then, and only then, send the handoff.
+Then, and only then, start the download.
 
-**Confirm before you send.** The `fetch_command` field on each result is the
-exact line to send — `!fetch ` followed by the magnet. Send that string
-verbatim, with nothing added, to the recipient in the handoff table above. Do
-not retype it, do not truncate the magnet, and do not wrap it in a code fence or
-quotes; the bot parses the raw line.
+**Confirm before you download.** Pass the chosen result's `magnet` field to
+`download` verbatim. Do not retype it, do not truncate it, and do not edit it.
+Starting a download commits disk and bandwidth on someone's machine, so it
+needs a clear yes first — for the release, for the download, or both together.
+"Get me the 1080p one" is a yes. Silence is not, and a search result is not.
 
-Sending is a message on someone's behalf, so it needs a clear yes first — for
-the release, for the send, or both together. "Get me the 1080p one" is a yes.
-Silence is not, and a search result is not.
+**Report what you started.** Name the release and which library it went to.
+`download` reads the torrent back after adding, so trust its `confirmed` field
+rather than the fact that the call returned:
 
-**Report what you sent.** Name the release and confirm the message went. Then
-stop — this server does not know whether the download started, and you have no
-way to check it. Do not claim it is downloading, do not guess at progress, and
-do not go looking for another tool to find out.
+| `confirmed` | What to say |
+| --- | --- |
+| `true` | It is running. Quote the state and progress. |
+| `false` | It was accepted but has not appeared. Say exactly that, and check `downloads` before claiming anything else. |
+
+**A stalled release is not a slow one.** A torrent at 0% in `stalledDL` has
+found no seeders and will not finish on its own. In the first few seconds that
+is normal. If it has not moved when you look again, say so plainly, offer the
+next release down from the search, and use `download_cancel` on the dead one.
+Do not report it as "downloading" and leave someone waiting all evening for a
+file that was never coming.
+
+## When someone asks how a download is going
+
+Call `downloads`. With an infohash it reports that one torrent; without, it
+reports everything active.
+
+Answer in their terms, not the client's — "about twenty minutes left" beats a
+state name and a percentage. Mention the speed only when it is the point, which
+is usually when it is bad.
+
+Do not go looking for the file on disk, do not check Plex to infer progress,
+and do not guess from how long ago it started.
 
 ## When someone asks for something new
 
@@ -164,6 +191,6 @@ matter of trying harder.
 
 **Do not go around a null magnet.** Pick a different release.
 
-**Log what you handed off.** After a successful send, record it with the state
+**Log what you downloaded.** After a confirmed start, record it with the state
 server's `journal_record` — the title, the release you chose, and why. "What did
 we grab and which version" should be answerable next week.

@@ -12,6 +12,7 @@ server here follows, and what gets built next.
 | [notify-mcp](notify-mcp/) | Push to your phone, and messages back from it. No dependencies. |
 | [hass-mcp](hass-mcp/) | Home Assistant — lights, blinds, thermostats, scenes. No dependencies. |
 | [prowlarr-mcp](prowlarr-mcp/) | One search across every indexer, returning magnet links. No dependencies, and drop-in on its own. |
+| [qbt-mcp](qbt-mcp/) | Starts a download in qBittorrent and confirms it started. No dependencies. |
 | [mcpkit.py](mcpkit.py) | Shared protocol layer. Not a server; imported by the ones above. |
 | [scripts/](scripts/) | Host-side jobs. Backups, for now. |
 | [tests/](tests/) | `python -m unittest discover -s tests`. No dependencies. |
@@ -19,7 +20,7 @@ server here follows, and what gets built next.
 | Skill | Drives |
 | --- | --- |
 | [plex-media-playback](skills/plex-media-playback/) | `plex` |
-| [media-acquisition](skills/media-acquisition/) | `prowlarr` |
+| [media-acquisition](skills/media-acquisition/) | `prowlarr`, `qbt` |
 | [home-control](skills/home-control/) | `hass` |
 | [household-state](skills/household-state/) | `state` |
 | [meal-planning](skills/meal-planning/) | `state` |
@@ -91,6 +92,15 @@ mcp_servers:
     env:
       PROWLARR_URL: "http://127.0.0.1:9696"
       PROWLARR_API_KEY: "<Settings → General → API Key>"
+  qbt:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/qbt-mcp/qbt_mcp_server.py", "serve"]
+    env:
+      QBT_URL: "http://127.0.0.1:8080"
+      QBT_USER: "admin"
+      QBT_PASS: "<Web UI password>"
+      QBT_MOVIES_PATH: "P:/Movies"
+      QBT_SHOWS_PATH: "P:/Shows"
 ```
 
 Every credential above is a **literal value**. None of these servers reads a
