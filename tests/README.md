@@ -13,11 +13,12 @@ Or one file:
 python -m unittest discover -s tests -p test_hass.py
 ```
 
-`plex-mcp` is not covered here. It is the one server with a dependency and its
-own copy of the protocol layer, and the things worth testing about it — whether
-a particular Fire TV accepts a command — are facts about hardware rather than
-about code. [diagnose_players.py](../plex-mcp/diagnose_players.py) is the tool
-for those.
+`plex-mcp` is covered in part. Its playback half still is not: whether a
+particular Fire TV accepts a command is a fact about hardware, and
+[diagnose_players.py](../plex-mcp/diagnose_players.py) is the tool for those.
+Its library half is ordinary logic and is tested here — plexapi is imported
+lazily inside the connection helper, so the module loads with nothing
+installed, same as every other server in the suite.
 
 ## What is here
 
@@ -30,6 +31,7 @@ for those.
 | [test_discord.py](test_discord.py) | The closed recipient list, and that a DM never posts before the channel it's posting to exists. |
 | [test_prowlarr.py](test_prowlarr.py) | Title parsing, magnet reconstruction, and the four different reasons a search returns nothing. |
 | [test_qbt.py](test_qbt.py) | Which library a release lands in, read-back after adding, and the stall that reads as progress. |
+| [test_plex.py](test_plex.py) | Title matching across the spellings a person and a library disagree on, episode-gap arithmetic, and how much of an item each `detail` level prints. |
 | [test_serve.py](test_serve.py) | The stdio handshake, run as a real subprocess. |
 | [support.py](support.py) | Loading a server under a chosen environment, and `FakeHass`. |
 

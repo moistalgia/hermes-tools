@@ -7,6 +7,60 @@ follow lives in [DESIGN.md](DESIGN.md).
 
 ### Added
 
+- **`plex-mcp` can read the whole library.** Every listing tool used to cap at
+  25 rows, so "what am I missing" became hundreds of sliced `discover` calls
+  and an agent that ran out of budget before it ran out of library. The cap was
+  ours — python-plexapi already walks `X-Plex-Container-Start`/`Size`
+  internally, and one unbounded search returns all 501 movies in about a
+  second. `library_export` now returns the entire library in one call, with a
+  `detail` knob because the real budget is tokens rather than requests:
+  `minimal` is ~8.5k tokens for 501 movies, `compact` ~24k with full genres,
+  and `full` refuses to run over a whole library instead of returning something
+  unreadable. `discover` lost its cap, gained `offset`, `resolution`, `studio`,
+  `country` and `content_rating`, and reports `next_offset` when a page fills.
+- **`check_titles`** — the other half of gap analysis. The agent supplies what
+  *should* be there; this answers for forty titles in one call instead of forty
+  searches. Matching folds away articles, accents, punctuation, a trailing
+  `(1994)` and roman numerals, and near misses land in `uncertain` rather than
+  `present` — calling a fuzzy match a hit is how an agent tells someone they
+  own a film they do not. A differing trailing number disqualifies a match
+  outright, because `Rocky II` and `Rocky IV` differ by one character and score
+  above any cutoff worth using.
+- **`find_gaps`** — holes that need no outside knowledge: TV seasons with
+  episodes missing (arithmetic over the 1850 episodes one request returns),
+  movies still at 720p or below, and items Plex failed to match. Only interior
+  holes count; a season that stops at episode 8 has aired 8 episodes as far as
+  this can tell, and assuming otherwise reports every airing show as broken.
+- **`library_stats`** — counts by decade, genre, resolution, content rating and
+  watched state, plus year span and disk usage. A thin decade bucket is the
+  clearest gap signal there is, and it costs no titles to look.
+- **`refresh_library`** and **`refresh_item`** — scan for newly added files and
+  report scan status, or re-pull metadata for one item. Nothing else makes new
+  files appear; until a scan runs, every other tool correctly calls them
+  missing. The whole-library metadata refresh is gated behind its own flag
+  because it can run for hours.
+- **`set_streams`**, relative `seek`, `mark_watched`, `watch_history`,
+  `create_playlist`, and `control` actions for stepping, shuffle and repeat.
+  "Turn on subtitles" and "skip ahead two minutes" are the two most common
+  things anyone says to a TV and neither had a tool.
+- **[test_plex.py](tests/test_plex.py)** — 46 tests over the parts of plex-mcp
+  that are logic rather than hardware. plexapi is imported lazily inside the
+  connection helper, so they run with nothing installed like the rest of the
+  suite.
+
+### Fixed
+
+- **`discover decade=` rejected the values `library_overview` advertised.** The
+  overview reports `"1990s"` because that is how Plex labels the filter choice;
+  the filter itself only accepts the bare integer, so passing back the
+  documented value was a hard error every time.
+- **String arguments arriving as integers crashed on `.strip()`.**
+  `resolution=1080` and `decade=1990` come through as ints both from the CLI's
+  numeric coercion and from models that see a number and send one.
+- **`similar_to` reloaded every candidate individually** — up to 160 HTTP
+  requests to score one recommendation. It now uses the same batched metadata
+  fetch as the bulk tools: two or three requests instead.
+
 - **`discord-mcp`** — one tool, `discord_dm`, so a scheduled run can message
   the person it was written for instead of the shared home channel a cron
   job's `--deliver discord` posts to regardless of what the skill did.

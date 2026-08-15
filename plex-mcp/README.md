@@ -79,25 +79,100 @@ success, 1 on failure, and the JSON body always carries the real error text.
 
 ## Tools
 
+**Knowing the library**
+
 | Tool | Purpose |
 | --- | --- |
-| `plex_status` | Connection check, libraries, players, session count. Call first when debugging. |
-| `list_players` | Every known player and whether it can be driven right now. Does not require playback. |
+| `library_export` | **The whole library in one call** — every title, not a page of them. The tool for whole-library questions. |
+| `library_stats` | Counts by decade, genre, resolution, rating, watched state; year span and disk usage. Where the collection is thin, without listing a title. |
+| `check_titles` | Check a list of titles against the server at once → present / missing / uncertain. The gap-analysis workhorse. |
+| `find_gaps` | Missing TV episodes and seasons, low-resolution files, broken metadata. |
+| `library_overview` | Section sizes plus the exact genre/decade/resolution vocabulary. Call before `discover`. |
 | `list_libraries` | Library sections. |
-| `library_overview` | Section sizes plus the exact genre/decade/rating vocabulary. Call before `discover`. |
-| `discover` | Filtered browse — genre, decade, rating, unwatched, actor, director. The recommendation workhorse. |
+
+**Finding something to watch**
+
+| Tool | Purpose |
+| --- | --- |
+| `discover` | Filtered browse — genre, decade, rating, unwatched, actor, director, resolution, studio, country. Paged, uncapped. |
 | `similar_to` | "Something like X", ranked by shared genres. |
 | `search` | Fuzzy title search, returns `rating_key`s. |
+| `on_deck` | Continue-watching list. |
+| `recently_added` | Newest items. |
+| `watch_history` | What was actually watched, newest first. |
+
+**Playback**
+
+| Tool | Purpose |
+| --- | --- |
 | `play` | Search and play the best match. The main one. |
 | `play_rating_key` | Play an exact item after a disambiguating search. |
 | `play_next_episode` | Next unwatched episode of a show. |
-| `control` | play / pause / stop / next / previous. `stop` works on any streaming device, including ones that refuse all other commands. |
-| `seek` | Jump to a position. |
+| `control` | play / pause / stop / next / previous / step / shuffle / repeat. `stop` works on any streaming device, including ones that refuse all other commands. |
+| `seek` | Absolute position, or relative with `delta_seconds` ("skip ahead 2 minutes"). |
+| `set_streams` | Subtitles on/off/by language, and audio track selection. |
 | `set_volume` | 0–100, client permitting. |
 | `now_playing` | Active sessions, player, state, position. |
-| `on_deck` | Continue-watching list. |
-| `recently_added` | Newest items. |
-| `list_playlists` / `play_playlist` | Playlists, optionally shuffled. |
+| `list_players` | Every known player and whether it can be driven right now. Does not require playback. |
+| `list_playlists` / `play_playlist` / `create_playlist` | Playlists, optionally shuffled. |
+
+**Maintenance**
+
+| Tool | Purpose |
+| --- | --- |
+| `plex_status` | Connection check, libraries, players, session count. Call first when debugging. |
+| `refresh_library` | Scan for new files; optionally re-pull metadata. Reports scan status. |
+| `refresh_item` | Re-download metadata for one item — the wrong-poster fix. |
+| `mark_watched` | Repair watch state. |
+
+## Reading the whole library
+
+The server used to cap every listing at a couple of dozen rows, so any
+whole-library question turned into hundreds of sliced calls and the agent ran
+out of budget before it ran out of library. That cap was ours, not Plex's —
+python-plexapi already walks `X-Plex-Container-Start`/`Size` internally, and one
+unbounded search returns every row in about a second.
+
+Two measurements against a 501-movie library shaped what replaced it:
+
+- **Listing rows truncate tag lists to two entries.** Genres read off a listing
+  are simply wrong. Re-fetching `/library/metadata/<k1,…,k100>` restores full
+  tags at 100 items per request — six parallel requests and ~4s for 501 movies,
+  against the ~500 requests a per-item `reload()` would have cost. That batched
+  enrichment is what `enrich_items` does, and `similar_to` was rewritten onto it.
+- **The real budget is tokens, not requests.** So `detail` decides how much of
+  each item gets printed:
+
+| `detail` | 501 movies | Carries |
+| --- | --- | --- |
+| `minimal` | ~8.5k tokens, 0.7s | title, year, `rating_key` |
+| `compact` | ~24k tokens, 1.8s | + genres, rating, watched, runtime, resolution |
+| `full` | capped at 50 items | + cast, summary, studio, file size |
+
+`full` refuses to run over a whole library rather than returning something that
+cannot be read, and says so in `limit_capped`.
+
+## Finding gaps
+
+`library_export` and `library_stats` show what *is* there; the agent supplies
+what *should* be. `check_titles` closes the loop — hand it forty candidate
+titles in one call and it answers for all of them at once.
+
+Matching folds away the differences that would otherwise read as "missing":
+articles, accents, punctuation, a trailing `(1994)`, and roman numerals. Near
+misses land in `uncertain` rather than `present`, because calling a fuzzy match
+a hit is how an agent ends up telling someone they own a film they do not. One
+guard is specific to franchises: a differing trailing number disqualifies a
+match outright, since `Rocky II` and `Rocky IV` differ by one character and
+score above any fuzzy cutoff worth using.
+
+`find_gaps` needs no outside knowledge at all — missing episodes are arithmetic
+over the episode numbers present (one request returns all 1850 episodes in a
+TV library). Only interior holes count: a season that stops at episode 8 is a
+season that has aired 8 episodes as far as this can tell, and assuming
+otherwise would report every currently-airing show as broken. Shows that number
+episodes absolutely rather than per-season can still read as a gap, so the
+finding carries `highest_present` and the response says so.
 
 ## Design notes
 

@@ -26,14 +26,20 @@ Environment:
                 on unless a device is only reachable directly.
 """
 
+import datetime
+import difflib
 import inspect
 import json
 import os
+import random
+import re
 import sys
 import time
 import traceback
+import unicodedata
 import urllib.error
 import urllib.request
+from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 # PLEX_BASEURL is accepted because that is what plexapi calls it and what most
@@ -67,7 +73,7 @@ ROKU_PLEX_CHANNEL_ID = os.environ.get("ROKU_PLEX_CHANNEL_ID", "13535")
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "plex"
-SERVER_VERSION = "1.0.0"
+SERVER_VERSION = "1.2.0"
 
 
 def log(msg):
@@ -153,6 +159,18 @@ def b(desc, default=False):
 # ---------------------------------------------------------------------------
 
 
+def text(value, default=""):
+    """Coerce an argument that is meant to be a string.
+
+    Arguments like resolution="1080" and decade="1990" arrive as integers both
+    from the CLI's numeric coercion and from models that see a number and send
+    one. Every one of those used to be an AttributeError on .strip().
+    """
+    if value is None:
+        return default
+    return str(value)
+
+
 def ms_to_clock(ms):
     if not ms:
         return "0:00"
@@ -197,11 +215,14 @@ def describe_item(item, detailed=False):
     if detailed:
         # Plex truncates tag lists on listing endpoints - a search result shows
         # only the first two genres. Anything reporting genres has to reload or
-        # it will state confidently that a Fantasy film is not Fantasy.
-        try:
-            item.reload()
-        except Exception:
-            pass
+        # it will state confidently that a Fantasy film is not Fantasy. Callers
+        # working in bulk should pre-enrich with enrich_items() instead; this
+        # reload is one HTTP request per item.
+        if not getattr(item, "_hermes_enriched", False):
+            try:
+                item.reload()
+            except Exception:
+                pass
         out["genres"] = [g.tag for g in (getattr(item, "genres", None) or [])]
         out["directors"] = [d.tag for d in (getattr(item, "directors", None) or [])][:3]
         out["rating"] = getattr(item, "rating", None)
@@ -211,6 +232,319 @@ def describe_item(item, detailed=False):
         if summary:
             out["summary"] = summary[:400]
     return out
+
+
+# ---------------------------------------------------------------------------
+# Bulk library access
+#
+# The thing that used to make whole-library questions impossible: every listing
+# tool capped out at a couple of dozen rows, so "what am I missing" turned into
+# hundreds of sliced calls and the agent ran out of budget before it ran out of
+# library.
+#
+# Two facts make the whole library cheap, and both were measured against a real
+# 501-movie / 1850-episode server rather than assumed:
+#
+#   1. plexapi already walks X-Plex-Container-Start/Size internally. One
+#      section.search(maxresults=None) returns every row in ~1s. There was never
+#      a 25-item limit in Plex - that was ours.
+#   2. Listing rows truncate tag lists to two entries, so genres off a listing
+#      are wrong. Re-fetching /library/metadata/<k1,k2,...,k100> restores full
+#      tags at 100 items per request: six parallel requests for 501 movies,
+#      ~4s, versus the ~500 requests a per-item reload() would cost.
+#
+# So the expensive part is not talking to Plex, it is the tokens spent printing
+# what comes back. That is what `detail` is for - see project_item.
+# ---------------------------------------------------------------------------
+
+LIBRARY_CACHE_TTL = 120
+METADATA_BATCH = 100
+METADATA_WORKERS = 4
+
+_library_cache = {}
+
+
+def invalidate_library_cache():
+    _library_cache.clear()
+
+
+def enrich_items(items):
+    """Restore untruncated tag metadata on a list of items, in batches.
+
+    Order is preserved. A batch that fails degrades to its truncated listing
+    rows rather than failing the call - a partial genre list is worth more than
+    an error, and the caller is told it happened.
+    """
+    p = plex()
+    keys = []
+    for item in items:
+        try:
+            keys.append(int(item.ratingKey))
+        except (TypeError, ValueError):
+            pass
+    if not keys:
+        return items, 0
+
+    chunks = [keys[n:n + METADATA_BATCH] for n in range(0, len(keys), METADATA_BATCH)]
+    failed = 0
+
+    def fetch(chunk):
+        try:
+            return p.fetchItems(chunk)
+        except Exception as exc:
+            log(f"metadata batch of {len(chunk)} failed ({type(exc).__name__}: {exc})")
+            return None
+
+    by_key = {}
+    with ThreadPoolExecutor(max_workers=METADATA_WORKERS) as pool:
+        for got in pool.map(fetch, chunks):
+            if got is None:
+                failed += 1
+                continue
+            for item in got:
+                item._hermes_enriched = True
+                by_key[str(item.ratingKey)] = item
+
+    return [by_key.get(str(x.ratingKey), x) for x in items], failed * METADATA_BATCH
+
+
+def resolve_sections(library=None, media_type=None):
+    """Sections matching a name and/or a media type, or every section."""
+    p = plex()
+    sections = list(p.library.sections())
+    if library:
+        want = text(library).strip().lower()
+        matched = [x for x in sections if want in x.title.lower()]
+        if not matched:
+            raise ToolError(
+                f"No library matches {library!r}.",
+                available=[x.title for x in sections],
+            )
+        sections = matched
+    if media_type:
+        want = {"movie": "movie", "show": "show", "episode": "show",
+                "season": "show", "artist": "artist", "album": "artist",
+                "track": "artist"}.get(text(media_type).strip().lower())
+        if want:
+            sections = [x for x in sections if x.type == want]
+    return sections
+
+
+def section_items(section, libtype=None, enriched=True):
+    """Every item in a section. Cached briefly - several tools want this list
+    and pulling it three times in one turn is pure latency."""
+    cache_key = (section.key, libtype, enriched)
+    hit = _library_cache.get(cache_key)
+    now = time.time()
+    if hit and now - hit["at"] < LIBRARY_CACHE_TTL:
+        return hit["items"], hit["degraded"]
+
+    items = section.search(libtype=libtype, maxresults=None)
+    degraded = 0
+    if enriched and items:
+        items, degraded = enrich_items(items)
+    _library_cache[cache_key] = {"at": now, "items": items, "degraded": degraded}
+    return items, degraded
+
+
+# How much of each item to print. The whole library at "full" is a six-figure
+# token bill and blows the context that was supposed to receive the answer;
+# at "minimal" a 500-title inventory is a few thousand tokens. Whole-library
+# reasoning wants minimal or compact, and the agent can then pull "full" for
+# the handful of items it actually cares about.
+DETAIL_LEVELS = ("minimal", "compact", "full")
+
+
+def project_item(item, detail="compact"):
+    """A token-budgeted view of one item. Null fields are dropped."""
+    kind = getattr(item, "type", None)
+    out = {
+        "rating_key": str(getattr(item, "ratingKey", "")),
+        "title": getattr(item, "title", None),
+        "year": getattr(item, "year", None),
+    }
+    if kind == "episode":
+        out["show"] = getattr(item, "grandparentTitle", None)
+        out["season"] = getattr(item, "parentIndex", None)
+        out["episode"] = getattr(item, "index", None)
+    elif kind not in ("movie", None):
+        out["type"] = kind
+
+    if detail == "minimal":
+        return {k: v for k, v in out.items() if v not in (None, "", [])}
+
+    out["genres"] = [g.tag for g in (getattr(item, "genres", None) or [])]
+    out["rating"] = getattr(item, "rating", None)
+    out["watched"] = bool(getattr(item, "viewCount", 0) or 0)
+    duration = getattr(item, "duration", None)
+    if duration:
+        out["minutes"] = int(duration // 60000)
+    media = getattr(item, "media", None) or []
+    if media:
+        out["resolution"] = getattr(media[0], "videoResolution", None)
+    if kind == "show":
+        out["episodes"] = getattr(item, "leafCount", None)
+        out["episodes_watched"] = getattr(item, "viewedLeafCount", None)
+        out["seasons"] = getattr(item, "childCount", None)
+
+    if detail == "full":
+        out["content_rating"] = getattr(item, "contentRating", None)
+        out["audience_rating"] = getattr(item, "audienceRating", None)
+        out["studio"] = getattr(item, "studio", None)
+        out["directors"] = [d.tag for d in (getattr(item, "directors", None) or [])][:3]
+        out["cast"] = [r.tag for r in (getattr(item, "roles", None) or [])][:6]
+        out["library"] = getattr(item, "librarySectionTitle", None)
+        added = getattr(item, "addedAt", None)
+        if added:
+            out["added"] = str(added)[:10]
+        summary = getattr(item, "summary", None)
+        if summary:
+            out["summary"] = summary[:300]
+        if media and getattr(media[0], "parts", None):
+            size = getattr(media[0].parts[0], "size", None)
+            if size:
+                out["gb"] = round(size / 1e9, 2)
+
+    return {k: v for k, v in out.items() if v not in (None, "", [])}
+
+
+def clean_detail(detail):
+    key = text(detail, "compact").strip().lower()
+    if key not in DETAIL_LEVELS:
+        raise ToolError(f"Unknown detail {detail!r}.", valid_detail=list(DETAIL_LEVELS))
+    return key
+
+
+# ---------------------------------------------------------------------------
+# Title matching - for answering "do I have this?" about a list of titles
+# without one search per title.
+# ---------------------------------------------------------------------------
+
+_ROMAN = {
+    " i": " 1", " ii": " 2", " iii": " 3", " iv": " 4", " v": " 5",
+    " vi": " 6", " vii": " 7", " viii": " 8", " ix": " 9", " x": " 10",
+}
+
+
+def normalize_title(title):
+    """Fold a title down to something two spellings of it can agree on.
+
+    Accents, articles, punctuation, a trailing "(1994)" and roman numerals all
+    differ between how a person names a film and how the library stores it, and
+    every one of those differences would otherwise read as "you don't have it".
+    """
+    text = unicodedata.normalize("NFKD", str(title or ""))
+    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
+    text = re.sub(r"\(\s*\d{4}\s*\)", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text).strip()
+    text = re.sub(r"^(the|a|an)\s+", "", text)
+    for roman, digit in _ROMAN.items():
+        if text.endswith(roman):
+            text = text[: -len(roman)] + digit
+            break
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def parse_title_list(titles):
+    """Accept a JSON array, newline-separated text, or a comma-separated line.
+
+    Newlines win over commas when both are present, because a title can contain
+    a comma and a list one-per-line is what an agent naturally produces.
+    """
+    if isinstance(titles, (list, tuple)):
+        raw = list(titles)
+    else:
+        text = str(titles or "").strip()
+        if not text:
+            raw = []
+        elif text.startswith("["):
+            try:
+                raw = json.loads(text)
+            except ValueError:
+                raise ToolError(
+                    "titles looked like a JSON array but did not parse. Pass "
+                    "one title per line instead."
+                )
+        elif "\n" in text:
+            raw = text.split("\n")
+        else:
+            raw = text.split(",")
+    out = []
+    for entry in raw:
+        entry = str(entry).strip().strip("-*• ").strip()
+        if entry:
+            out.append(entry)
+    return out
+
+
+def _trailing_number(norm):
+    match = re.search(r"(\d+)$", norm)
+    return match.group(1) if match else None
+
+
+def same_entry(a, b):
+    """Could these two normalized titles be the same work?
+
+    Fuzzy matching is at its worst exactly where franchise gap analysis lives:
+    'rocky 2' and 'rocky 4' differ by one character and score above any useful
+    cutoff, but they are different films and calling one the other defeats the
+    point of asking. A differing trailing number is disqualifying.
+    """
+    na, nb = _trailing_number(a), _trailing_number(b)
+    return na == nb
+
+
+def split_title_year(title):
+    """'Alien (1979)' -> ('Alien', 1979)."""
+    match = re.search(r"\(\s*(1[89]\d{2}|20\d{2})\s*\)\s*$", title.strip())
+    if match:
+        return title[: match.start()].strip(), int(match.group(1))
+    return title.strip(), None
+
+
+def episode_gaps(episodes):
+    """Missing episode and season numbers, from the episodes that are present.
+
+    Pure arithmetic over (show, season, episode) triples so it can be tested
+    without a server. Only interior holes count: a season that stops at episode
+    8 is a season that has aired 8 episodes as far as this can tell, and
+    guessing otherwise would report every currently-airing show as broken.
+    Season 0 is skipped because specials are numbered arbitrarily.
+    """
+    by_show = defaultdict(lambda: defaultdict(set))
+    for ep in episodes:
+        show = getattr(ep, "grandparentTitle", None)
+        season = getattr(ep, "parentIndex", None)
+        number = getattr(ep, "index", None)
+        if show and season is not None and number is not None:
+            by_show[show][season].add(number)
+
+    findings = []
+    for show, seasons in sorted(by_show.items()):
+        for season in sorted(seasons):
+            if season == 0:
+                continue
+            have = seasons[season]
+            holes = sorted(set(range(1, max(have) + 1)) - have)
+            if holes:
+                findings.append({
+                    "show": show,
+                    "season": season,
+                    "missing_episodes": holes[:20],
+                    "missing_count": len(holes),
+                    "have": len(have),
+                    "highest_present": max(have),
+                })
+        numbered = sorted(x for x in seasons if x > 0)
+        if numbered:
+            absent = sorted(set(range(1, max(numbered) + 1)) - set(numbered))
+            if absent:
+                findings.append({
+                    "show": show,
+                    "missing_seasons": absent,
+                    "seasons_present": numbered,
+                })
+    return findings
 
 
 # ---------------------------------------------------------------------------
@@ -769,13 +1103,22 @@ def library_overview(library=None):
             "type": section.type,
             "total_items": section.totalSize,
         }
-        for field in ("genre", "decade", "contentRating"):
+        names = {
+            "genre": "genres", "decade": "decades", "contentRating":
+            "content_ratings", "resolution": "resolutions",
+            "country": "countries",
+        }
+        for field, label in names.items():
             try:
-                entry[f"{field}s" if field != "contentRating" else "content_ratings"] = [
-                    c.title for c in section.listFilterChoices(field)
-                ]
+                entry[label] = [c.title for c in section.listFilterChoices(field)]
             except Exception:
                 pass
+        # 257 studios is a wall of text nobody reads; the count is the useful
+        # part and 'discover' takes a studio name whether or not it is listed.
+        try:
+            entry["studio_count"] = len(section.listFilterChoices("studio"))
+        except Exception:
+            pass
         out.append(entry)
     if not out:
         raise ToolError(
@@ -809,13 +1152,26 @@ def library_overview(library=None):
         "match_all": b(
             "With several genres, require all of them (a fantasy epic is both "
             "Fantasy and Adventure). Set false to match any.", True),
-        "limit": i("How many to return. Default 8.", 8),
+        "resolution": s("Filter by resolution: 4k, 1080, 720, sd."),
+        "studio": s("Filter by studio name."),
+        "country": s("Filter by country."),
+        "content_rating": s("Filter by content rating, e.g. 'R' or 'PG-13'."),
+        "detail": s(
+            "minimal (title/year), compact (adds genres, rating, watched, "
+            "resolution), or full (adds cast, summary, studio, file size). "
+            "Default compact.", "compact"),
+        "limit": i("How many to return. Default 8. There is no small cap - ask "
+                   "for 500 if you want 500.", 8),
+        "offset": i("Skip this many results, for paging through a big set.", 0),
     },
 )
 def discover(genre=None, library=None, decade=None, min_rating=None,
              unwatched_only=False, actor=None, director=None,
-             sort="rating", match_all=True, limit=8):
+             sort="rating", match_all=True, resolution=None, studio=None,
+             country=None, content_rating=None, detail="compact",
+             limit=8, offset=0):
     p = plex()
+    detail = clean_detail(detail)
     sections = p.library.sections()
     if library:
         want = library.strip().lower()
@@ -838,20 +1194,26 @@ def discover(genre=None, library=None, decade=None, min_rating=None,
         "title": "titleSort:asc",
         "year": "year:desc",
     }
-    sort_key = sorts.get((sort or "rating").strip().lower())
+    sort_key = sorts.get(text(sort, "rating").strip().lower())
     if sort_key is None:
         raise ToolError(f"Unknown sort {sort!r}.", valid_sorts=sorted(sorts))
 
     filters = {}
-    genres = [g.strip() for g in (genre or "").split(",") if g.strip()]
+    genres = [g.strip() for g in text(genre).split(",") if g.strip()]
     if genres:
         # Plex joins a list with "," as OR (genre=6,5). Appending "&" to the
         # field emits repeated params (genre=6&genre=5), which is AND. "A
         # fantasy epic" means both tags, so AND is the useful default.
         filters["genre&" if (match_all and len(genres) > 1) else "genre"] = genres
     if decade:
-        d = decade.strip()
-        filters["decade" if d.endswith("s") else "year"] = d
+        d = text(decade).strip()
+        # library_overview reports decades as "1990s" because that is how Plex
+        # labels the filter choice, but the filter itself only accepts the bare
+        # integer - passing back the value we advertised was a hard error.
+        if d.lower().endswith("s"):
+            filters["decade"] = d[:-1]
+        else:
+            filters["year"] = d
     if min_rating is not None:
         filters["rating>>"] = float(min_rating)
     if unwatched_only:
@@ -860,11 +1222,27 @@ def discover(genre=None, library=None, decade=None, min_rating=None,
         filters["actor"] = actor
     if director:
         filters["director"] = director
+    if resolution:
+        filters["resolution"] = text(resolution).strip().lower().rstrip("p")
+    if studio:
+        filters["studio"] = studio
+    if country:
+        filters["country"] = country
+    if content_rating:
+        filters["contentRating"] = content_rating
 
-    limit = max(1, min(int(limit or 8), 25))
+    limit = max(1, int(limit or 8))
+    offset = max(0, int(offset or 0))
+    # "full" prints cast, summary and file size per row; a few hundred of those
+    # is a context window, not an answer. Cap it and say so rather than
+    # silently returning something that cannot be read.
+    capped = None
+    if detail == "full" and limit > 50:
+        capped, limit = limit, 50
     try:
         results = section.search(
-            filters=filters or None, sort=sort_key, maxresults=limit
+            filters=filters or None, sort=sort_key,
+            container_start=offset, maxresults=limit,
         )
     except Exception as exc:
         raise ToolError(
@@ -875,21 +1253,452 @@ def discover(genre=None, library=None, decade=None, min_rating=None,
 
     if not results:
         raise ToolError(
-            "Nothing in the library matches those filters.",
+            "Nothing in the library matches those filters."
+            + (f" (offset {offset} may be past the end)" if offset else ""),
             filters_used=filters,
             library=section.title,
             hint="Drop the most specific filter and try again, or report that "
                  "the library has nothing matching rather than inventing titles.",
         )
 
-    return {
+    degraded = 0
+    if detail != "minimal":
+        results, degraded = enrich_items(results)
+
+    out = {
         "ok": True,
         "library": section.title,
         "filters_used": filters,
         "sort": sort_key,
+        "detail": detail,
+        "offset": offset,
         "count": len(results),
-        "results": [describe_item(x, detailed=True) for x in results],
+        "results": [project_item(x, detail) for x in results],
     }
+    if len(results) == limit:
+        out["next_offset"] = offset + limit
+        out["note"] = (
+            f"Returned a full page of {limit}. There may be more - call again "
+            f"with offset={offset + limit}, or raise limit."
+        )
+    if capped:
+        out["limit_capped"] = (
+            f"Asked for {capped} at detail=full; returned 50. Use "
+            "detail=compact or detail=minimal for larger sets."
+        )
+    if degraded:
+        out["metadata_incomplete"] = (
+            f"Up to {degraded} items fell back to truncated listing metadata; "
+            "their genre lists may be short."
+        )
+    return out
+
+
+@tool(
+    "The complete contents of a library in one call - every title, not a page "
+    "of them. This is the tool for whole-library questions: what am I missing, "
+    "what is the shape of my collection, do I have enough of X. Use "
+    "detail=minimal for a 500-title inventory at a few thousand tokens; only "
+    "raise detail on a narrowed set. Do NOT loop 'discover' to enumerate a "
+    "library - that is what this replaces.",
+    {
+        "library": s("Library name. Defaults to Movies if present."),
+        "media_type": s(
+            "For TV libraries: 'show' for series (default), 'episode' for every "
+            "episode individually, 'season' for seasons."),
+        "detail": s(
+            "minimal (title/year - use this for whole libraries), compact "
+            "(adds genres, rating, watched, resolution), full (adds cast, "
+            "summary, file size - only for small sets). Default minimal.",
+            "minimal"),
+        "unwatched_only": b("Only items not yet watched."),
+        "sort": s("title, year, rating, recent, or random. Default title.", "title"),
+        "limit": i("Cap the number returned. Default: everything."),
+        "offset": i("Skip this many, for chunking a very large library.", 0),
+    },
+)
+def library_export(library=None, media_type=None, detail="minimal",
+                   unwatched_only=False, sort="title", limit=None, offset=0):
+    detail = clean_detail(detail)
+    sections = resolve_sections(library)
+    if not library:
+        movies = [x for x in sections if x.type == "movie"]
+        sections = movies or sections[:1]
+    section = sections[0]
+
+    libtype = text(media_type).strip().lower() or None
+    if libtype and section.type == "movie" and libtype != "movie":
+        raise ToolError(
+            f"{section.title!r} is a movie library; media_type={media_type!r} "
+            "does not apply there.",
+            hint="Drop media_type, or name a TV library.",
+        )
+
+    items, degraded = section_items(
+        section, libtype=libtype, enriched=(detail != "minimal")
+    )
+
+    if unwatched_only:
+        if libtype == "show" or (section.type == "show" and not libtype):
+            items = [x for x in items
+                     if (getattr(x, "viewedLeafCount", 0) or 0) == 0]
+        else:
+            items = [x for x in items if not (getattr(x, "viewCount", 0) or 0)]
+
+    sorters = {
+        "title": lambda x: (getattr(x, "titleSort", None)
+                            or getattr(x, "title", "") or "").lower(),
+        "year": lambda x: -(getattr(x, "year", 0) or 0),
+        "rating": lambda x: -(getattr(x, "rating", 0) or 0),
+        "recent": lambda x: -(getattr(x, "addedAt", None).timestamp()
+                              if getattr(x, "addedAt", None) else 0),
+    }
+    key = text(sort, "title").strip().lower()
+    if key == "random":
+        items = list(items)
+        random.shuffle(items)
+    elif key in sorters:
+        items = sorted(items, key=sorters[key])
+    else:
+        raise ToolError(f"Unknown sort {sort!r}.",
+                        valid_sorts=sorted(list(sorters) + ["random"]))
+
+    total = len(items)
+    offset = max(0, int(offset or 0))
+    window = items[offset:]
+    capped = None
+    if detail == "full" and (limit is None or int(limit) > 50):
+        capped, limit = limit or total, 50
+    if limit is not None:
+        window = window[: max(1, int(limit))]
+
+    out = {
+        "ok": True,
+        "library": section.title,
+        "media_type": libtype or section.type,
+        "detail": detail,
+        "total_matching": total,
+        "returned": len(window),
+        "offset": offset,
+        "items": [project_item(x, detail) for x in window],
+    }
+    if offset + len(window) < total:
+        out["next_offset"] = offset + len(window)
+        out["note"] = (
+            f"{total - offset - len(window)} more items. Call again with "
+            f"offset={offset + len(window)}."
+        )
+    else:
+        out["complete"] = True
+        out["note"] = (
+            "This is the entire matching set. Every title in this library is "
+            "listed above - anything not here is not on the server."
+        )
+    if capped:
+        out["limit_capped"] = (
+            f"detail=full is capped at 50 items (asked for {capped}). Use "
+            "detail=minimal or compact to list the whole library."
+        )
+    if degraded:
+        out["metadata_incomplete"] = (
+            f"Up to {degraded} items fell back to truncated listing metadata."
+        )
+    return out
+
+
+@tool(
+    "The shape of a library in numbers: counts by decade, genre, resolution, "
+    "content rating and watched state, plus year span and disk usage. Call "
+    "this before hunting for gaps - it shows where the collection is thin "
+    "without listing a single title.",
+    {"library": s("Library name. Default: every library.")},
+)
+def library_stats(library=None):
+    sections = resolve_sections(library)
+    report = []
+    for section in sections:
+        items, _ = section_items(section, enriched=True)
+        if not items:
+            report.append({"library": section.title, "total": 0})
+            continue
+
+        years = [x.year for x in items if getattr(x, "year", None)]
+        genres = Counter(
+            g.tag for x in items for g in (getattr(x, "genres", None) or [])
+        )
+        decades = Counter(
+            f"{(y // 10) * 10}s" for y in years
+        )
+        resolutions = Counter(
+            (x.media[0].videoResolution or "unknown")
+            for x in items if getattr(x, "media", None)
+        )
+        ratings = Counter(
+            getattr(x, "contentRating", None) or "unrated" for x in items
+        )
+        size = sum(
+            (part.size or 0)
+            for x in items for m in (getattr(x, "media", None) or [])
+            for part in (getattr(m, "parts", None) or [])
+        )
+
+        entry = {
+            "library": section.title,
+            "type": section.type,
+            "total": len(items),
+            "year_span": (
+                {"oldest": min(years), "newest": max(years)} if years else None
+            ),
+            "by_decade": dict(sorted(decades.items())),
+            "by_genre": dict(genres.most_common(30)),
+            "by_resolution": dict(resolutions.most_common()),
+            "by_content_rating": dict(ratings.most_common()),
+            "missing_year": sum(1 for x in items if not getattr(x, "year", None)),
+            "missing_genres": sum(
+                1 for x in items if not (getattr(x, "genres", None) or [])
+            ),
+        }
+        if size:
+            entry["disk_gb"] = round(size / 1e9, 1)
+
+        if section.type == "show":
+            entry["episodes"] = sum(
+                (getattr(x, "leafCount", 0) or 0) for x in items
+            )
+            entry["episodes_watched"] = sum(
+                (getattr(x, "viewedLeafCount", 0) or 0) for x in items
+            )
+            entry["shows_untouched"] = sum(
+                1 for x in items if not (getattr(x, "viewedLeafCount", 0) or 0)
+            )
+        else:
+            watched = sum(1 for x in items if getattr(x, "viewCount", 0) or 0)
+            entry["watched"] = watched
+            entry["unwatched"] = len(items) - watched
+        report.append(entry)
+
+    return {
+        "ok": True,
+        "libraries": report,
+        "note": (
+            "An empty or thin decade bucket is the clearest gap signal here - "
+            "compare by_decade against what a collection of this size would "
+            "normally cover."
+        ),
+    }
+
+
+@tool(
+    "Check a whole list of titles against the library at once and report which "
+    "are present, which are missing, and which are too close to call. This is "
+    "the tool for gap analysis: propose the classics or the franchise entries "
+    "you think should be there, pass them all in one call, and get back "
+    "exactly what is absent. Never guess whether the server has something - "
+    "ask here.",
+    {
+        "titles": s(
+            "The titles to check - one per line, or a JSON array. A year in "
+            "parentheses ('Alien (1979)') is used to disambiguate remakes."),
+        "library": s("Library to check against. Default: every library."),
+        "media_type": s("Restrict to 'movie' or 'show'."),
+    },
+    ["titles"],
+)
+def check_titles(titles, library=None, media_type=None):
+    wanted = parse_title_list(titles)
+    if not wanted:
+        raise ToolError("No titles given. Pass one title per line.")
+
+    sections = resolve_sections(library, media_type)
+    if not sections:
+        raise ToolError(
+            f"No library matches media_type={media_type!r}.",
+            available=[x.title for x in plex().library.sections()],
+        )
+
+    index = defaultdict(list)
+    for section in sections:
+        items, _ = section_items(section, enriched=False)
+        for item in items:
+            index[normalize_title(getattr(item, "title", ""))].append(item)
+            # Plex stores the localized title as `title` and often keeps the
+            # original under originalTitle. A person asking for "Spirited Away"
+            # and a library holding "Sen to Chihiro" are the same film.
+            original = getattr(item, "originalTitle", None)
+            if original:
+                index[normalize_title(original)].append(item)
+
+    keys = list(index)
+    present, missing, uncertain = [], [], []
+
+    for raw in wanted:
+        bare, year = split_title_year(raw)
+        norm = normalize_title(bare)
+        hits = index.get(norm) or []
+
+        if hits:
+            if year:
+                exact = [x for x in hits
+                         if getattr(x, "year", None)
+                         and abs(x.year - year) <= 1]
+                if not exact:
+                    uncertain.append({
+                        "asked": raw,
+                        "found": f"{hits[0].title} ({getattr(hits[0], 'year', '?')})",
+                        "why": "title matches but the year does not - likely a "
+                               "different cut or a remake",
+                        "rating_key": str(hits[0].ratingKey),
+                    })
+                    continue
+                hits = exact
+            present.append({
+                "asked": raw,
+                "title": hits[0].title,
+                "year": getattr(hits[0], "year", None),
+                "rating_key": str(hits[0].ratingKey),
+                "watched": bool(getattr(hits[0], "viewCount", 0) or 0),
+            })
+            continue
+
+        # A near miss is reported as its own outcome, never folded into
+        # "present". Calling a fuzzy match a hit is how an agent ends up
+        # telling someone they own a film they do not.
+        close = [x for x in difflib.get_close_matches(norm, keys, n=4, cutoff=0.85)
+                 if same_entry(norm, x)]
+        if close:
+            candidate = index[close[0]][0]
+            uncertain.append({
+                "asked": raw,
+                "found": f"{candidate.title} ({getattr(candidate, 'year', '?')})",
+                "why": "close but not an exact title match - confirm before "
+                       "treating it as present",
+                "rating_key": str(candidate.ratingKey),
+            })
+        else:
+            missing.append(raw)
+
+    return {
+        "ok": True,
+        "checked": len(wanted),
+        "libraries_searched": [x.title for x in sections],
+        "present_count": len(present),
+        "missing_count": len(missing),
+        "missing": missing,
+        "present": present,
+        "uncertain": uncertain,
+        "note": (
+            "'missing' is authoritative - those titles are not on the server. "
+            "'uncertain' needs a human or a follow-up search before you call it "
+            "either way."
+        ),
+    }
+
+
+@tool(
+    "Find holes in the collection: TV seasons with episodes missing, movies "
+    "still stuck at low resolution, and items with broken or absent metadata. "
+    "All computed from what is on the server, so it is exact - no guessing "
+    "about what 'should' be there.",
+    {
+        "kind": s(
+            "episodes (missing TV episodes and seasons), quality (low-res "
+            "files), metadata (items Plex could not match properly), or all. "
+            "Default all.", "all"),
+        "library": s("Restrict to one library."),
+        "min_resolution": s(
+            "For kind=quality: flag anything below this. 1080 or 720. "
+            "Default 1080.", "1080"),
+        "limit": i("Maximum findings per category. Default 40.", 40),
+    },
+)
+def find_gaps(kind="all", library=None, min_resolution="1080", limit=40):
+    kind = text(kind, "all").strip().lower()
+    valid = ("all", "episodes", "quality", "metadata")
+    if kind not in valid:
+        raise ToolError(f"Unknown kind {kind!r}.", valid_kinds=list(valid))
+    limit = max(1, int(limit or 40))
+    sections = resolve_sections(library)
+    out = {"ok": True, "kind": kind}
+
+    if kind in ("all", "episodes"):
+        findings = []
+        for section in (x for x in sections if x.type == "show"):
+            # One request returns every episode in the library with its show,
+            # season and episode number. Gaps are then pure arithmetic - no
+            # per-show walk, no external episode list needed.
+            episodes, _ = section_items(section, libtype="episode", enriched=False)
+            findings.extend(episode_gaps(episodes))
+        out["episode_gaps"] = findings[:limit]
+        out["episode_gap_count"] = len(findings)
+        out["episode_gap_caveat"] = (
+            "Gaps are inferred from the episode numbers present, so a show "
+            "that numbers episodes absolutely rather than per-season can read "
+            "as a gap. Check 'highest_present' against the real season length "
+            "before acting."
+        )
+
+    if kind in ("all", "quality"):
+        want = text(min_resolution, "1080").strip().lower().rstrip("p")
+        ranking = {"sd": 0, "480": 0, "576": 1, "720": 2, "1080": 3, "4k": 4}
+        floor = ranking.get(want)
+        if floor is None:
+            raise ToolError(
+                f"Unknown min_resolution {min_resolution!r}.",
+                valid=["720", "1080", "4k"],
+            )
+        low = []
+        for section in (x for x in sections if x.type == "movie"):
+            items, _ = section_items(section, enriched=False)
+            for item in items:
+                media = getattr(item, "media", None) or []
+                if not media:
+                    continue
+                res = (media[0].videoResolution or "").lower()
+                if ranking.get(res, 99) < floor:
+                    low.append({
+                        "title": item.title,
+                        "year": getattr(item, "year", None),
+                        "resolution": res or "unknown",
+                        "rating_key": str(item.ratingKey),
+                    })
+        low.sort(key=lambda d: (d["resolution"], d["title"]))
+        out["below_" + want] = low[:limit]
+        out["below_" + want + "_count"] = len(low)
+
+    if kind in ("all", "metadata"):
+        broken = []
+        for section in sections:
+            items, _ = section_items(section, enriched=True)
+            for item in items:
+                reasons = []
+                if not getattr(item, "year", None):
+                    reasons.append("no year")
+                if not (getattr(item, "genres", None) or []):
+                    reasons.append("no genres")
+                if not getattr(item, "summary", None):
+                    reasons.append("no summary")
+                # An unmatched file keeps its filename as the title, and
+                # filenames carry the release-group debris real titles never do.
+                title = getattr(item, "title", "") or ""
+                if re.search(r"\b(1080p|720p|x264|x265|bluray|webrip|hdtv)\b",
+                             title, re.I):
+                    reasons.append("title looks like a filename - unmatched")
+                if reasons:
+                    broken.append({
+                        "title": title,
+                        "library": section.title,
+                        "year": getattr(item, "year", None),
+                        "problems": reasons,
+                        "rating_key": str(item.ratingKey),
+                    })
+        out["metadata_problems"] = broken[:limit]
+        out["metadata_problem_count"] = len(broken)
+        out["metadata_hint"] = (
+            "refresh_item fixes most of these; ones that stay broken need "
+            "matching by hand in Plex."
+        )
+
+    return out
 
 
 @tool(
@@ -934,12 +1743,13 @@ def similar_to(title, unwatched_only=True, limit=6):
                 seen.add(key)
                 pool.append(item)
 
+    # The candidate pool runs to a couple of hundred items and every one of them
+    # needs its untruncated genre list to be scored. Batched, that is two or
+    # three requests; the per-item reload this replaced was one request each.
+    pool, _ = enrich_items(pool)
+
     scored = []
     for item in pool:
-        try:
-            item.reload()
-        except Exception:
-            continue
         overlap = seed_genres & {g.tag for g in (getattr(item, "genres", None) or [])}
         if overlap:
             scored.append((len(overlap), getattr(item, "rating", 0) or 0, item, overlap))
@@ -1080,13 +1890,16 @@ def play_next_episode(show, player=None):
 @tool(
     "Control playback on a player that is already playing something.",
     {
-        "action": s("One of: play, pause, stop, next, previous."),
+        "action": s(
+            "One of: play, pause, stop, next, previous, step_forward, "
+            "step_back, shuffle_on, shuffle_off, repeat_all, repeat_one, "
+            "repeat_off. For a specific jump use 'seek' instead."),
         "player": s("Player name from list_players."),
     },
     ["action"],
 )
 def control(action, player=None):
-    key = action.strip().lower()
+    key = text(action).strip().lower()
 
     # Stopping is special: /status/sessions/terminate is a SERVER operation and
     # never touches Companion, so it works on clients that refuse every other
@@ -1106,6 +1919,13 @@ def control(action, player=None):
         "skip": client.skipNext,
         "previous": client.skipPrevious,
         "back": client.skipPrevious,
+        "step_forward": client.stepForward,
+        "step_back": client.stepBack,
+        "shuffle_on": lambda **kw: client.setShuffle(1, **kw),
+        "shuffle_off": lambda **kw: client.setShuffle(0, **kw),
+        "repeat_off": lambda **kw: client.setRepeat(0, **kw),
+        "repeat_all": lambda **kw: client.setRepeat(1, **kw),
+        "repeat_one": lambda **kw: client.setRepeat(2, **kw),
     }
     if key not in actions:
         raise ToolError(
@@ -1115,21 +1935,179 @@ def control(action, player=None):
     return {"ok": True, "action": key, "player": client.title}
 
 
+def current_session(machine_identifier):
+    """The session on a given player right now, or None."""
+    for session in plex().sessions():
+        for pl in getattr(session, "players", []) or []:
+            if getattr(pl, "machineIdentifier", None) == machine_identifier:
+                return session
+    return None
+
+
 @tool(
-    "Jump to a position in whatever is currently playing.",
+    "Jump to a position in whatever is currently playing. Give 'seconds' for "
+    "an absolute position, or 'delta_seconds' to move relative to where it is "
+    "now - negative to go back. 'skip ahead two minutes' is delta_seconds=120.",
     {
         "seconds": i("Absolute position in seconds from the start."),
+        "delta_seconds": i(
+            "Move this many seconds from the current position. Negative "
+            "rewinds."),
         "player": s("Player name from list_players."),
     },
-    ["seconds"],
 )
-def seek(seconds, player=None):
+def seek(seconds=None, delta_seconds=None, player=None):
+    if (seconds is None) == (delta_seconds is None):
+        raise ToolError(
+            "Give exactly one of seconds (absolute) or delta_seconds "
+            "(relative)."
+        )
     client = resolve_player(player)
-    client.seekTo(int(seconds) * 1000, mtype="video")
+
+    if delta_seconds is not None:
+        session = current_session(client.machineIdentifier)
+        if session is None:
+            raise ToolError(
+                f"{client.title!r} is not playing anything, so there is no "
+                "current position to move from. Use seconds= for an absolute "
+                "position, or start playback first.",
+                player=client.title,
+            )
+        now_ms = int(getattr(session, "viewOffset", 0) or 0)
+        target_ms = max(0, now_ms + int(delta_seconds) * 1000)
+        duration = int(getattr(session, "duration", 0) or 0)
+        if duration:
+            target_ms = min(target_ms, duration - 1000)
+        client.seekTo(target_ms, mtype="video")
+        return {
+            "ok": True,
+            "player": client.title,
+            "moved": f"{int(delta_seconds):+d}s",
+            "from": ms_to_clock(now_ms),
+            "position": ms_to_clock(target_ms),
+        }
+
+    target_ms = max(0, int(seconds) * 1000)
+    client.seekTo(target_ms, mtype="video")
     return {
         "ok": True,
         "player": client.title,
-        "position": ms_to_clock(int(seconds) * 1000),
+        "position": ms_to_clock(target_ms),
+    }
+
+
+@tool(
+    "Turn subtitles on or off, or switch the audio track, on whatever is "
+    "playing. Something has to be playing - stream ids come from the active "
+    "session.",
+    {
+        "player": s("Player name from list_players."),
+        "subtitles": s(
+            "'off' to disable, 'on' for the first available track, or a "
+            "language name or code like 'English' / 'eng' / 'Spanish'."),
+        "audio": s("Language name or code for the audio track, e.g. 'English'."),
+    },
+)
+def set_streams(player=None, subtitles=None, audio=None):
+    if not subtitles and not audio:
+        raise ToolError("Nothing to change. Pass subtitles and/or audio.")
+
+    client = resolve_player(player)
+    session = current_session(client.machineIdentifier)
+    if session is None:
+        raise ToolError(
+            f"{client.title!r} is not playing anything. Subtitle and audio "
+            "tracks belong to a playing item, so start playback first.",
+            player=client.title,
+        )
+
+    parts = [
+        part
+        for media in (getattr(session, "media", None) or [])
+        for part in (getattr(media, "parts", None) or [])
+    ]
+    if not parts:
+        raise ToolError(
+            "The current session reports no media parts, so its tracks cannot "
+            "be listed."
+        )
+    part = parts[0]
+
+    def pick(streams, want):
+        want = want.strip().lower()
+        for attr in ("languageTag", "language", "languageCode", "title",
+                     "displayTitle"):
+            for stream in streams:
+                value = (getattr(stream, attr, None) or "").lower()
+                if value and (value == want or value.startswith(want)
+                              or want in value):
+                    return stream
+        return None
+
+    changed, available = {}, {}
+    sub_streams = part.subtitleStreams()
+    audio_streams = part.audioStreams()
+
+    if subtitles is not None:
+        want = subtitles.strip().lower()
+        available["subtitles"] = [
+            {"id": x.id, "language": getattr(x, "language", None),
+             "codec": getattr(x, "codec", None),
+             "forced": bool(getattr(x, "forced", False))}
+            for x in sub_streams
+        ]
+        if want in ("off", "none", "disable", "disabled", "no"):
+            client.setSubtitleStream(0, mtype="video")
+            changed["subtitles"] = "off"
+        elif not sub_streams:
+            raise ToolError(
+                f"{getattr(session, 'title', 'this item')} has no subtitle "
+                "tracks at all, so subtitles cannot be turned on.",
+                item=getattr(session, "title", None),
+            )
+        else:
+            stream = (sub_streams[0] if want in ("on", "yes", "enable")
+                      else pick(sub_streams, want))
+            if stream is None:
+                raise ToolError(
+                    f"No subtitle track matches {subtitles!r}.",
+                    available=available["subtitles"],
+                )
+            client.setSubtitleStream(stream.id, mtype="video")
+            changed["subtitles"] = (
+                getattr(stream, "language", None)
+                or getattr(stream, "displayTitle", None)
+                or f"stream {stream.id}"
+            )
+
+    if audio is not None:
+        available["audio"] = [
+            {"id": x.id, "language": getattr(x, "language", None),
+             "codec": getattr(x, "codec", None),
+             "channels": getattr(x, "channels", None)}
+            for x in audio_streams
+        ]
+        stream = pick(audio_streams, audio)
+        if stream is None:
+            raise ToolError(
+                f"No audio track matches {audio!r}.",
+                available=available["audio"],
+            )
+        client.setAudioStream(stream.id, mtype="video")
+        changed["audio"] = (
+            getattr(stream, "language", None) or f"stream {stream.id}"
+        )
+
+    return {
+        "ok": True,
+        "player": client.title,
+        "playing": getattr(session, "title", None),
+        "changed": changed,
+        "available": available,
+        "note": (
+            "Not every client honours a stream switch mid-playback; if nothing "
+            "changes on screen, the client ignored it."
+        ),
     }
 
 
@@ -1187,6 +2165,219 @@ def recently_added(limit=10, library=None):
     return {"ok": True, "count": len(items), "items": [describe_item(x) for x in items]}
 
 
+@tool(
+    "Scan a library for new files and report scan status. Run this after "
+    "adding media - until it runs, new files are not in Plex and every other "
+    "tool here will correctly say they are missing.",
+    {
+        "library": s("Library to scan. Default: every library."),
+        "refresh_metadata": b(
+            "Also re-download metadata for everything in the library. This is "
+            "heavy - it re-queries the agent for every item and can run for "
+            "hours on a large library. Leave off unless artwork or metadata is "
+            "broken across the board; for one bad item use refresh_item."),
+        "wait_seconds": i(
+            "Poll for up to this long and report whether the scan finished. "
+            "Default 0 - return immediately and let it run.", 0),
+    },
+)
+def refresh_library(library=None, refresh_metadata=False, wait_seconds=0):
+    sections = resolve_sections(library)
+    started = []
+    for section in sections:
+        try:
+            section.update()  # scan for new files
+            if refresh_metadata:
+                section.refresh()
+            started.append(section.title)
+        except Exception as exc:
+            raise ToolError(
+                f"Plex refused the scan on {section.title!r}: "
+                f"{type(exc).__name__}: {exc}",
+                hint="A server-only token can read but not trigger scans.",
+            )
+
+    # Anything cached is about to be wrong.
+    invalidate_library_cache()
+
+    result = {
+        "ok": True,
+        "scanned": started,
+        "metadata_refresh": bool(refresh_metadata),
+    }
+
+    wait_seconds = max(0, int(wait_seconds or 0))
+    if wait_seconds:
+        deadline = time.time() + wait_seconds
+        while time.time() < deadline:
+            time.sleep(2)
+            if not any(_is_refreshing(x) for x in sections):
+                result["finished"] = True
+                break
+        else:
+            result["finished"] = False
+    result["status"] = [
+        {
+            "library": x.title,
+            "scanning": _is_refreshing(x),
+            "items": x.totalSize,
+            "last_updated": str(getattr(x, "updatedAt", None)),
+        }
+        for x in resolve_sections(library)
+    ]
+    if not result.get("finished", True):
+        result["note"] = (
+            "Still scanning. Item counts above are mid-scan and will grow. "
+            "Call again to check."
+        )
+    else:
+        result["note"] = (
+            "A scan only picks up files that are already in the library "
+            "folders. If something is still missing afterwards, the file is "
+            "not where Plex is looking."
+        )
+    return result
+
+
+def _is_refreshing(section):
+    try:
+        section.reload()
+        return bool(getattr(section, "refreshing", False))
+    except Exception:
+        return False
+
+
+@tool(
+    "Re-download metadata for one item - the fix for a wrong poster, a missing "
+    "summary, or an episode Plex matched to the wrong show.",
+    {
+        "rating_key": s("rating_key of the item, from any search result."),
+        "query": s("Title, if you do not have a rating_key."),
+    },
+)
+def refresh_item(rating_key=None, query=None):
+    if rating_key:
+        item = get_by_rating_key(rating_key)
+    elif query:
+        matches = find_media(query, None, 5)
+        if not matches:
+            raise ToolError(f"Nothing matches {query!r}.")
+        if len(matches) > 1 and (
+            matches[0].title or ""
+        ).lower() != query.strip().lower():
+            raise ToolError(
+                f"{query!r} matches several items; pass a rating_key so the "
+                "right one gets refreshed.",
+                candidates=[describe_item(x) for x in matches[:5]],
+            )
+        item = matches[0]
+    else:
+        raise ToolError("Pass rating_key or query.")
+
+    item.refresh()
+    invalidate_library_cache()
+    return {
+        "ok": True,
+        "refreshed": describe_item(item),
+        "note": (
+            "Plex re-queries its metadata agent in the background; the new "
+            "data lands within a few seconds. If the item stays wrong, it is "
+            "matched to the wrong entry and needs fixing by hand in Plex."
+        ),
+    }
+
+
+@tool(
+    "Mark something watched or unwatched. Use for repairing watch state - a "
+    "film someone watched elsewhere, or an episode Plex marked played by "
+    "accident.",
+    {
+        "rating_key": s("rating_key of the item. Safest way to name it."),
+        "query": s("Title, if you do not have a rating_key. Must match exactly "
+                   "one item or the call is refused."),
+        "watched": b("True to mark played, false to mark unplayed.", True),
+    },
+)
+def mark_watched(rating_key=None, query=None, watched=True):
+    if rating_key:
+        item = get_by_rating_key(rating_key)
+    elif query:
+        matches = find_media(query, None, 5)
+        if not matches:
+            raise ToolError(f"Nothing matches {query!r}.")
+        exact = [x for x in matches
+                 if (x.title or "").strip().lower() == query.strip().lower()]
+        if len(exact) == 1:
+            item = exact[0]
+        elif len(matches) == 1:
+            item = matches[0]
+        else:
+            # Marking the wrong thing watched quietly corrupts On Deck and the
+            # next-episode logic, so ambiguity is refused rather than guessed.
+            raise ToolError(
+                f"{query!r} matches several items. Pass a rating_key.",
+                candidates=[describe_item(x) for x in matches[:5]],
+            )
+    else:
+        raise ToolError("Pass rating_key or query.")
+
+    if watched:
+        item.markPlayed()
+    else:
+        item.markUnplayed()
+    invalidate_library_cache()
+    return {
+        "ok": True,
+        "action": "marked watched" if watched else "marked unwatched",
+        "item": describe_item(item),
+    }
+
+
+@tool(
+    "What has actually been watched recently, newest first. Use this to ground "
+    "recommendations in real viewing rather than in the library's watched flag.",
+    {
+        "limit": i("Maximum entries. Default 25.", 25),
+        "days": i("Only look back this many days."),
+        "library": s("Restrict to one library."),
+    },
+)
+def watch_history(limit=25, days=None, library=None):
+    p = plex()
+    limit = max(1, int(limit or 25))
+    kwargs = {"maxresults": limit}
+    if days:
+        kwargs["mindate"] = datetime.datetime.now() - datetime.timedelta(
+            days=int(days)
+        )
+    if library:
+        kwargs["librarySectionID"] = resolve_sections(library)[0].key
+
+    entries = []
+    for row in p.history(**kwargs):
+        entry = {
+            "title": getattr(row, "title", None),
+            "type": getattr(row, "type", None),
+            "watched_at": str(getattr(row, "viewedAt", None)),
+        }
+        show = getattr(row, "grandparentTitle", None)
+        if show:
+            entry["show"] = show
+            entry["season"] = getattr(row, "parentIndex", None)
+            entry["episode"] = getattr(row, "index", None)
+        entries.append(entry)
+
+    return {
+        "ok": True,
+        "count": len(entries),
+        "history": entries,
+        "note": (
+            "History is per Plex account and only covers playback this server "
+            "saw. An empty result does not mean nothing was watched."
+        ),
+    }
+
+
 @tool("List playlists on the server.")
 def list_playlists():
     return {
@@ -1219,6 +2410,66 @@ def play_playlist(name, player=None, shuffle=False):
     client = resolve_player(player)
     client.playMedia(playlists[0], shuffle=1 if shuffle else 0)
     return {"ok": True, "action": "playing", "player": client.title, "playlist": playlists[0].title}
+
+
+@tool(
+    "Build a playlist from specific items - a movie night line-up, a run of "
+    "episodes, a themed set assembled from several searches.",
+    {
+        "title": s("Name for the playlist."),
+        "rating_keys": s(
+            "The items to put in it: rating_key values from search, discover "
+            "or library_export, comma-separated and in the order you want "
+            "them played."),
+        "replace_existing": b(
+            "If a playlist with this name already exists, delete it first. "
+            "Otherwise an existing name is an error."),
+    },
+    ["title", "rating_keys"],
+)
+def create_playlist(title, rating_keys, replace_existing=False):
+    p = plex()
+    keys = [k.strip() for k in str(rating_keys).replace("\n", ",").split(",")
+            if k.strip()]
+    if not keys:
+        raise ToolError("No rating_keys given.")
+
+    items, bad = [], []
+    for key in keys:
+        try:
+            items.append(get_by_rating_key(key))
+        except Exception:
+            bad.append(key)
+    if not items:
+        raise ToolError(
+            "None of those rating_keys resolved to an item.",
+            unresolved=bad,
+            hint="rating_key values come from search, discover or "
+                 "library_export - they are not titles.",
+        )
+
+    existing = [x for x in p.playlists()
+                if x.title.strip().lower() == title.strip().lower()]
+    if existing:
+        if not replace_existing:
+            raise ToolError(
+                f"A playlist named {title!r} already exists with "
+                f"{len(existing[0].items())} items.",
+                hint="Pass replace_existing=true to overwrite it, or pick "
+                     "another name.",
+            )
+        for old in existing:
+            old.delete()
+
+    playlist = p.createPlaylist(title, items=items)
+    return {
+        "ok": True,
+        "playlist": playlist.title,
+        "items": len(items),
+        "unresolved": bad,
+        "contents": [describe_item(x) for x in items[:20]],
+        "note": "Play it with play_playlist.",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 ---
 name: plex-media-playback
-description: Play movies and TV on the house Plex players, control playback, and recommend things to watch from the library. Use whenever someone wants something put on a TV, wants to know what is playing, wants it stopped or paused, or asks for something to watch ("a fantasy epic", "something like Inception", "what's new"). Everything goes through the `plex` MCP server.
+description: Play movies and TV on the house Plex players, control playback, recommend things to watch, and answer questions about the library as a whole. Use whenever someone wants something put on a TV, wants to know what is playing, wants it stopped or paused, asks for something to watch ("a fantasy epic", "something like Inception", "what's new"), or asks what the collection is missing ("do we have any Kubrick", "what classics am I missing", "which shows have gaps"). Everything goes through the `plex` MCP server.
 tags: []
 related_skills: []
 ---
@@ -31,8 +31,9 @@ indirection on top. Never reach for it here.
 | Play a specific title | `play` |
 | Play an exact item after disambiguating | `play_rating_key` |
 | Next episode of a show | `play_next_episode` |
-| Pause / resume / stop / skip | `control` |
-| Jump to a position | `seek` |
+| Pause / resume / stop / skip / shuffle | `control` |
+| Jump to a position, or skip ahead/back | `seek` |
+| Subtitles on/off, audio track | `set_streams` |
 | Change volume | `set_volume` |
 | What's on right now | `now_playing` |
 | Find a title | `search` |
@@ -41,8 +42,16 @@ indirection on top. Never reach for it here.
 | "Something like X" | `similar_to` |
 | Continue watching | `on_deck` |
 | Recently added | `recently_added` |
+| What have I been watching | `watch_history` |
 | What libraries exist | `list_libraries` |
-| Playlists | `list_playlists`, `play_playlist` |
+| Playlists | `list_playlists`, `play_playlist`, `create_playlist` |
+| **Everything in the library** | `library_export` |
+| **Shape of the collection** | `library_stats` |
+| **Do we have these titles?** | `check_titles` |
+| **Missing episodes, low-res files, bad metadata** | `find_gaps` |
+| Scan for newly added files | `refresh_library` |
+| Fix one item's metadata | `refresh_item` |
+| Repair watch state | `mark_watched` |
 
 ## Playing something
 
@@ -76,11 +85,57 @@ For open requests like "I want a fantasy epic":
 4. For "something like X", use `similar_to` — it ranks by shared genres.
 
 Recommend from what `discover` returned. **Never suggest a title you have not
-seen in a tool result** — the library has 491 movies and 48 shows, and a
-plausible-sounding film that is not on the server wastes the user's time.
+seen in a tool result** — a plausible-sounding film that is not on the server
+wastes the user's time. `discover` is paged: if `next_offset` comes back, there
+are more results than you asked for.
 
 If nothing matches, say the library has nothing matching and offer to widen the
 filters. Do not invent titles to fill the gap.
+
+## Whole-library questions
+
+"What am I missing", "do we have much sci-fi", "what should I upgrade" are
+questions about the collection, not about one title. They have their own tools
+and the wrong approach is expensive:
+
+**Never enumerate a library by calling `discover` over and over.** Slicing it
+by year or genre to walk the whole collection burns the entire budget and still
+misses things. `library_export` returns *every* title in one call — the whole
+movie library is a few thousand tokens at `detail=minimal`.
+
+The order that works:
+
+1. `library_stats` first. It gives counts by decade, genre, resolution and
+   watched state without listing a single title, and thin buckets are the
+   clearest gap signal there is.
+2. `library_export detail=minimal` when you need the actual titles. Its
+   response says `complete: true` when you have all of them — at that point
+   **anything not in the list is not on the server**, and you can say so
+   flatly.
+3. `check_titles` to test a hypothesis. Propose the classics, the franchise
+   entries, the director's filmography — pass them all in **one** call, one per
+   line. Do not run a `search` per title.
+4. `find_gaps` for holes that need no outside knowledge: TV seasons with
+   episodes missing, movies still at 720p or below, items Plex failed to match.
+
+Reading `check_titles`: `missing` is authoritative — say those are absent.
+`uncertain` is not a hit; it means the closest thing on the server has a
+different year or a slightly different title, so name what was found and ask,
+rather than reporting either "you have it" or "you don't".
+
+`find_gaps` infers missing episodes from the numbers present, so a show that
+numbers episodes absolutely rather than per-season can look broken. Check
+`highest_present` against the real season length before telling someone to go
+download something.
+
+## Keeping the library current
+
+If someone says they just added files and Plex does not show them, run
+`refresh_library`. Nothing else will make new files appear, and until it runs
+every tool here will correctly report them as missing.
+
+`refresh_metadata=true` re-pulls metadata for the entire library and can run
+for hours. Do not set it to fix one bad poster — that is `refresh_item`.
 
 ## Stopping and controlling
 
@@ -92,6 +147,15 @@ capabilities first.
 
 Pause, seek and volume need the device to support remote control. When they
 fail, the error says so specifically.
+
+"Skip ahead a bit" is `seek delta_seconds=...`, not `seek seconds=...` — the
+latter jumps to an absolute position from the start, which is almost never what
+was meant. Negative values rewind.
+
+"Turn on subtitles" is `set_streams`. It needs something playing, because
+subtitle and audio track ids belong to the item in the current session. If the
+item has no subtitle tracks at all, the error says that — report it rather than
+retrying.
 
 ## Device status — read it before acting
 
