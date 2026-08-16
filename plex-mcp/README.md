@@ -46,7 +46,7 @@ standard library only and run straight from the checkout — see the
 | `PLEX_TOKEN` | *(required)* | Never read from disk. |
 | `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Leave it on unless a device is only reachable directly. |
 | `PLEX_TIMEOUT` | `15` | Seconds. |
-| `PLEX_ALIASES` | `{}` | JSON map of spoken names to Plex player names, e.g. `{"theater":"Streaming Stick 4K","office":"unknown"}`. Rooms outlive hardware; Plex names like `unknown` are unsayable. |
+| `PLEX_ALIASES` | `{}` | JSON map of rooms to devices — see [The room map](#the-room-map). Rooms outlive hardware; Plex names like `unknown` are unsayable. |
 | `ROKU_PLEX_CHANNEL_ID` | `13535` | Roku channel ID for Plex, used to wake the app. |
 
 ## Manual test sequence
@@ -215,6 +215,57 @@ appear. Each entry carries a `route`:
 Browser tabs and controller-only apps (Home Assistant, the Plex web UI) are
 filtered out unless they are streaming; pass `include_all=true` to see them.
 
+**`plex.tv/devices.xml` is per account, not per household.** A device signed in
+as a different Plex user streams from your server without ever appearing on
+your token's device list or in `/clients` — it exists only in
+`/status/sessions`. Those players are listed too, as `controllable: false`,
+because the alternative is `now_playing` and `list_players` appearing to
+contradict each other. They can be named and reported on; they cannot be
+driven, and no token you hold changes that.
+
+## The room map
+
+The only thing that matters is landing on the TV someone meant. `PLEX_ALIASES`
+is where a spoken room name meets a device, and nothing outside this map knows
+what a machine identifier is.
+
+```json
+{
+  "bedroom":       ["95c030af1faf5801835d4601a8b37004", "master bedroom"],
+  "living room":   ["a710a60ff65de04711dd2c4f217fada3", "lounge", "front room"],
+  "theater":       ["d2b46d2ad54416315e5e36862d2644a1", "theatre", "movie room"],
+  "nicks office":  ["gd91wa2zwieprb2mbmd1r0u3"],
+  "gym":           ["andie's TV"]
+}
+```
+
+The first element is the target; every element after it is another way that
+room gets said. The old single-string form (`"theater": "Streaming Stick 4K"`)
+still works.
+
+Rules worth following:
+
+- **Target the `machine_identifier`, not the display name.** Names are
+  user-settable and already inconsistent — `Sleepy`, `unknown`, `Andies Tv For
+  Ants` — and a Roku reports the retail box name, which cannot be changed from
+  this server or from plex.tv. The identifier is the only key a device cannot
+  change out from under you. Read them off `list_players`.
+- **Put every spelling you use in the list.** A room the agent rejects because
+  you said the other name is a bug in this file. Articles, possessives, case
+  and punctuation are folded automatically, so `the lounge`, `Lounge` and
+  `andie's office` need no separate entries — different *words* do.
+- **A mapped device is reported by its room.** `list_players` carries `room`
+  per device, every tool echoes the room back as `player`, and anything without
+  one shows up under `unmapped` so the gap is visible rather than silent.
+
+Matching runs identifier → room → exact name → prefix → substring → a haystack
+of name, product and platform. `now_playing` carries `machine_identifier` so
+its output joins against `list_players` on the stable key.
+
+A mapped room does not make a device controllable. Aliasing the Fire TV to
+`nicks office` means the refusal names the room instead of `unknown` — which is
+the point — but see the next section for why it stays a refusal.
+
 ## Known limitation: some clients can never be controlled
 
 A device whose plex.tv `provides` field omits `player` cannot be a playback
@@ -253,7 +304,7 @@ mcp_servers:
     env:
       PLEX_URL: "http://127.0.0.1:32400"
       PLEX_TOKEN: "***"
-      PLEX_ALIASES: '{"theater":"Streaming Stick 4K","office":"unknown"}'
+      PLEX_ALIASES: '{"theater":["d2b46d2ad54416315e5e36862d2644a1","theatre","movie room"],"living room":["a710a60ff65de04711dd2c4f217fada3","lounge"]}'
     timeout: 60
     connect_timeout: 30
     tools:

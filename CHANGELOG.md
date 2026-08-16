@@ -43,13 +43,38 @@ follow lives in [DESIGN.md](DESIGN.md).
   `create_playlist`, and `control` actions for stepping, shuffle and repeat.
   "Turn on subtitles" and "skip ahead two minutes" are the two most common
   things anyone says to a TV and neither had a tool.
-- **[test_plex.py](tests/test_plex.py)** — 46 tests over the parts of plex-mcp
+- **[test_plex.py](tests/test_plex.py)** — 80 tests over the parts of plex-mcp
   that are logic rather than hardware. plexapi is imported lazily inside the
   connection helper, so they run with nothing installed like the rest of the
-  suite.
+  suite. The room-map half uses the real devices and identifiers from the house
+  this server runs in, because every bug there is about which key a lookup
+  joins on and generic fixtures hide exactly that.
+
+- **`PLEX_ALIASES` takes a list of spellings per room, and a machine
+  identifier as the target.** One room gets said more than one way — "living
+  room", "lounge", "the front room" — and the map used to be a single exact
+  key, so every other way a room got named fell through to matching device
+  names and missed. Values may now be `["<target>", "<spelling>", ...]`; the
+  string form still works. Both sides of every comparison are folded for
+  articles, possessives, case and punctuation, so "andie's office" and "Andies
+  Office" are one room and "Roku Express 4K+" survives losing its plus. The
+  target is best given as a `machine_identifier` — display names are
+  user-settable, already inconsistent across a real house, and a Roku's is the
+  retail box name that cannot be changed from here at all. Every tool now
+  reports a device by its room, `list_players` carries `room` per device and
+  lists anything unmapped under `unmapped`, and `now_playing` carries
+  `machine_identifier` so the two tools join on a stable key.
 
 ### Fixed
 
+- **Players that only a live session knew about vanished from
+  `list_players`.** `discover_players` merged plex.tv's device list with
+  `/clients` and read the session list only for playback state, so a device
+  streaming from this server while signed in as a *different* Plex user
+  appeared in `now_playing` and nowhere else. The two tools looked like they
+  were contradicting each other; the real boundary is the account. Such
+  players are now listed, with a status saying they can be named but not
+  driven.
 - **`discover decade=` rejected the values `library_overview` advertised.** The
   overview reports `"1990s"` because that is how Plex labels the filter choice;
   the filter itself only accepts the bare integer, so passing back the
