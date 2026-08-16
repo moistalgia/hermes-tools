@@ -308,5 +308,307 @@ class LibraryCache(unittest.TestCase):
         self.assertEqual(plex._library_cache, {})
 
 
+# ---------------------------------------------------------------------------
+# The room map. Every device below is a real one from the house this server
+# runs in, identifiers included, because the bugs here are all about which key
+# a lookup joins on and generic fixtures hide exactly that.
+# ---------------------------------------------------------------------------
+
+BEDROOM = "95c030af1faf5801835d4601a8b37004"
+LIVING = "a710a60ff65de04711dd2c4f217fada3"
+THEATER = "d2b46d2ad54416315e5e36862d2644a1"
+FIRETV = "gd91wa2zwieprb2mbmd1r0u3"
+GYM = "f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1"
+
+HOUSE = {
+    "bedroom": [BEDROOM, "master bedroom"],
+    "living room": [LIVING, "lounge", "front room"],
+    "theater": [THEATER, "theatre", "movie room"],
+    "nicks office": [FIRETV, "nick's office"],
+    "gym": ["andie's TV"],
+}
+
+
+class WithHouse(unittest.TestCase):
+    """Install the room map for the duration of a test."""
+
+    aliases = HOUSE
+
+    def setUp(self):
+        saved = (plex.PLEX_ALIASES, plex.PLEX_ROOMS)
+        plex.PLEX_ALIASES, plex.PLEX_ROOMS = plex.parse_aliases(self.aliases)
+        self.addCleanup(lambda: setattr_pair(saved))
+
+
+def setattr_pair(saved):
+    plex.PLEX_ALIASES, plex.PLEX_ROOMS = saved
+
+
+class NormalizeSpoken(unittest.TestCase):
+    """Each of these is a way the same room gets said or spelled."""
+
+    def test_possessive_folds_away(self):
+        self.assertEqual(plex.normalize_spoken("Andie's Office"),
+                         plex.normalize_spoken("andies office"))
+
+    def test_curly_apostrophe_matches_straight_one(self):
+        self.assertEqual(plex.normalize_spoken("Andie’s TV"),
+                         plex.normalize_spoken("Andie's TV"))
+
+    def test_punctuation_folds_away(self):
+        self.assertEqual(plex.normalize_spoken("Roku Express 4K+"),
+                         plex.normalize_spoken("roku express 4k"))
+
+    def test_leading_article_is_dropped(self):
+        self.assertEqual(plex.normalize_spoken("the theater"), "theater")
+
+    def test_interior_the_is_kept(self):
+        # Dropping every "the" would collapse distinct device names.
+        self.assertEqual(plex.normalize_spoken("Bedroom the Second"),
+                         "bedroom the second")
+
+    def test_none_is_not_a_crash(self):
+        self.assertEqual(plex.normalize_spoken(None), "")
+
+
+class AliasMap(WithHouse):
+
+    def test_string_value_still_means_target(self):
+        spoken, rooms = plex.parse_aliases({"theater": "Streaming Stick 4K"})
+        self.assertEqual(spoken["theater"], "Streaming Stick 4K")
+        self.assertEqual(rooms[plex.normalize_spoken("Streaming Stick 4K")],
+                         "theater")
+
+    def test_first_list_entry_is_the_target(self):
+        self.assertEqual(plex.PLEX_ALIASES["theater"], THEATER)
+
+    def test_extra_spellings_reach_the_same_target(self):
+        for said in ("theater", "theatre", "movie room"):
+            self.assertEqual(plex.PLEX_ALIASES[said], THEATER, said)
+
+    def test_room_label_is_itself_a_spelling(self):
+        self.assertEqual(plex.PLEX_ALIASES["living room"], LIVING)
+
+    def test_spellings_are_stored_folded(self):
+        # "nick's office" and "nicks office" are one spelling, not two.
+        self.assertEqual(plex.PLEX_ALIASES["nicks office"], FIRETV)
+
+    def test_empty_value_is_skipped_not_crashed(self):
+        spoken, rooms = plex.parse_aliases({"garage": [], "attic": ""})
+        self.assertEqual((spoken, rooms), ({}, {}))
+
+    def test_one_bad_room_does_not_cost_the_others(self):
+        # A dict here used to resolve to its first key, quietly pointing the
+        # room at a device named "nested" - a wrong answer that looks right
+        # until playback goes nowhere.
+        spoken, rooms = plex.parse_aliases({
+            "theater": {"nested": "object"},
+            "bedroom": [BEDROOM],
+        })
+        self.assertNotIn("theater", spoken)
+        self.assertEqual(spoken["bedroom"], BEDROOM)
+
+    def test_a_non_object_map_is_ignored_not_fatal(self):
+        with self.assertRaises(AttributeError):
+            plex.parse_aliases(["theater", "bedroom"])
+
+
+class RoomLookup(WithHouse):
+
+    def test_identifier_wins(self):
+        self.assertEqual(plex.room_of("Streaming Stick 4K", THEATER), "theater")
+
+    def test_display_name_works_when_no_identifier_is_mapped(self):
+        self.assertEqual(plex.room_of("andie's TV", None), "gym")
+
+    def test_name_is_folded_before_lookup(self):
+        self.assertEqual(plex.room_of("Andies TV", None), "gym")
+
+    def test_unmapped_device_has_no_room(self):
+        self.assertIsNone(plex.room_of("DESKTOP-CHB1M9E", "t0v7x03y0qggo77gd92xd2t9"))
+
+
+def device(name, mid, player=True, reachable=False,
+           product="Plex for Roku", platform="Roku"):
+    return {
+        "name": name, "product": product, "platform": platform,
+        "machine_identifier": mid, "provides": ["player"] if player else [],
+        "connections": [], "last_seen": None,
+        "advertises_player": player, "reachable": reachable,
+    }
+
+
+def session(mid, title, state="playing", product="Plex for Roku", platform="Roku"):
+    return Item(players=[Item(machineIdentifier=mid, title=title, state=state,
+                              product=product, platform=platform)])
+
+
+class FakePlex:
+    def __init__(self, clients=(), sessions=()):
+        self._clients, self._sessions = list(clients), list(sessions)
+
+    def clients(self):
+        return self._clients
+
+    def sessions(self):
+        return self._sessions
+
+
+class Discovery(WithHouse):
+    """The merge of three endpoints that disagree about what a player is."""
+
+    def install(self, devices=(), clients=(), sessions=()):
+        saved = (plex.plex, plex.account_devices)
+        plex.plex = lambda: FakePlex(clients, sessions)
+        plex.account_devices = lambda: list(devices)
+        self.addCleanup(lambda: restore(saved))
+        return plex.discover_players()
+
+    def test_session_only_player_is_not_lost(self):
+        # The regression: a device streaming right now that appears in neither
+        # plex.tv's device list nor /clients used to vanish from list_players
+        # while still showing in now_playing, which reads as the two tools
+        # contradicting each other.
+        found = self.install(sessions=[session(GYM, "andie's TV")])
+        self.assertEqual([d["machine_identifier"] for d in found], [GYM])
+        self.assertFalse(found[0]["controllable"])
+        self.assertEqual(found[0]["room"], "gym")
+
+    def test_session_only_player_says_why_it_cannot_be_driven(self):
+        found = self.install(sessions=[session(GYM, "andie's TV")])
+        self.assertIn("not registered", found[0]["status"])
+
+    def test_streaming_state_stays_a_string(self):
+        found = self.install(
+            devices=[device("Sleepy", LIVING, reachable=True)],
+            sessions=[session(LIVING, "Sleepy", state="paused")],
+        )
+        self.assertEqual(found[0]["streaming_now"], "paused")
+
+    def test_a_device_in_every_source_appears_once(self):
+        found = self.install(
+            devices=[device("Sleepy", LIVING, reachable=True)],
+            clients=[Item(machineIdentifier=LIVING, title="Sleepy",
+                          product="Plex for Roku", platform="Roku")],
+            sessions=[session(LIVING, "Sleepy")],
+        )
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0]["controllable"])
+
+    def test_rooms_are_attached_to_every_entry(self):
+        found = self.install(devices=[
+            device("Streaming Stick 4K", THEATER, reachable=True),
+            device("DESKTOP-CHB1M9E", "t0v7x03y0qggo77gd92xd2t9",
+                   product="Plex Media Player", platform="Konvergo"),
+        ])
+        rooms = {d["name"]: d["room"] for d in found}
+        self.assertEqual(rooms["Streaming Stick 4K"], "theater")
+        self.assertIsNone(rooms["DESKTOP-CHB1M9E"])
+
+    def test_a_renamed_device_keeps_its_room(self):
+        # The whole point of keying on the identifier: the Roku reports its
+        # retail box name and can be relabelled at any time.
+        found = self.install(devices=[device("Some New Name", THEATER,
+                                             reachable=True)])
+        self.assertEqual(found[0]["room"], "theater")
+
+
+def restore(saved):
+    plex.plex, plex.account_devices = saved
+
+
+class Resolution(WithHouse):
+    """Which device a spoken name lands on - the only thing that matters."""
+
+    def setUp(self):
+        super().setUp()
+        self.players = [
+            device("Roku Express 4K+", BEDROOM, reachable=True),
+            device("Sleepy", LIVING, reachable=True),
+            device("Streaming Stick 4K", THEATER, reachable=True),
+            device("unknown", FIRETV, player=False,
+                   product="Plex for Amazon FireTV", platform="Kepler"),
+        ]
+        for entry in self.players:
+            entry.update(controllable=entry["advertises_player"],
+                         route="server", streaming_now=None, relevant=True,
+                         status="ready (registered with the Plex server)",
+                         room=plex.room_of(entry["name"],
+                                           entry["machine_identifier"]))
+        self.players[-1]["status"] = (
+            "cannot be controlled - this app never advertises itself as a "
+            "player. No API call will work. Reporting this is the answer.")
+        saved = (plex.discover_players, plex.build_client)
+        plex.discover_players = lambda: list(self.players)
+        plex.build_client = lambda entry: entry
+        self.addCleanup(lambda: restore_resolution(saved))
+
+    def resolve(self, said):
+        return plex.resolve_player(said)["machine_identifier"]
+
+    def test_room_name_reaches_the_right_box(self):
+        self.assertEqual(self.resolve("theater"), THEATER)
+        self.assertEqual(self.resolve("bedroom"), BEDROOM)
+        self.assertEqual(self.resolve("living room"), LIVING)
+
+    def test_extra_spelling_reaches_the_same_box(self):
+        for said in ("theatre", "movie room", "the theater", "THEATER"):
+            self.assertEqual(self.resolve(said), THEATER, said)
+
+    def test_lounge_reaches_the_living_room(self):
+        # "Sleepy" contains none of these words; without the map this is a miss.
+        for said in ("lounge", "front room", "the lounge"):
+            self.assertEqual(self.resolve(said), LIVING, said)
+
+    def test_identifier_can_be_named_directly(self):
+        self.assertEqual(self.resolve(THEATER), THEATER)
+
+    def test_hyphenated_identifier_still_matches(self):
+        # Plenty of clients use a hyphenated UUID. Folding one side of the
+        # comparison and not the other made those unreachable by identifier.
+        uuid = "3f2a1c4e-9b7d-4a10-8e55-6c0f2b8d1a93"
+        self.players.append(dict(self.players[0], name="Shield",
+                                 machine_identifier=uuid, room=None))
+        self.assertEqual(self.resolve(uuid), uuid)
+
+    def test_display_name_still_works(self):
+        self.assertEqual(self.resolve("Streaming Stick 4K"), THEATER)
+
+    def test_display_name_survives_lost_punctuation(self):
+        self.assertEqual(self.resolve("roku express 4k"), BEDROOM)
+
+    def test_room_beats_a_substring_collision(self):
+        # "bedroom" is a substring of nothing here, but the room rung runs
+        # before the substring rung so a future device called "Bedroom TV" in
+        # another room cannot steal the mapped one.
+        self.players.append(dict(self.players[0], name="Bedroom TV",
+                                 machine_identifier="zzz", room=None))
+        self.assertEqual(self.resolve("bedroom"), BEDROOM)
+
+    def test_uncontrollable_device_reports_its_reason_by_room_name(self):
+        with self.assertRaises(plex.ToolError) as caught:
+            plex.resolve_player("nicks office")
+        self.assertIn("never advertises itself as a player",
+                      str(caught.exception))
+        self.assertEqual(caught.exception.extra["player"], "nicks office")
+
+    def test_unknown_room_lists_rooms_not_device_names(self):
+        with self.assertRaises(plex.ToolError) as caught:
+            plex.resolve_player("kitchen")
+        offered = caught.exception.extra["available_players"]
+        self.assertIn("theater", offered)
+        self.assertNotIn("Streaming Stick 4K", offered)
+
+    def test_punctuation_only_input_is_refused_not_matched(self):
+        # normalize_spoken empties this out; an empty needle would otherwise
+        # substring-match every device and resolve to an arbitrary one.
+        with self.assertRaises(plex.ToolError):
+            plex.resolve_player("???")
+
+
+def restore_resolution(saved):
+    plex.discover_players, plex.build_client = saved
+
+
 if __name__ == "__main__":
     unittest.main()

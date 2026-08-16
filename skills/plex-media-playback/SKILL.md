@@ -64,9 +64,12 @@ indirection on top. Never reach for it here.
 3. If `other_matches` looks like the user may have meant a different title, say
    so. Do not silently play the wrong thing.
 
-Player names: room names like "theater" or "office" work if configured. If a
-name does not resolve, `list_players` returns the real ones — use them verbatim.
-Never invent or abbreviate a player name.
+Player names: say the room. `list_players` gives each device a `room` when one
+is configured, and that is what to pass and what to say back — "playing in the
+theater", not "on Streaming Stick 4K". Wording is forgiving within a configured
+room ("the lounge", "front room"), but a room that is not in the map is not a
+room; anything listed under `unmapped` has no room yet, so use its `name`
+verbatim. Never invent or abbreviate either.
 
 Asking for a **show** plays the next unwatched episode, not a menu. That is
 intended.
@@ -159,7 +162,7 @@ retrying.
 
 ## Device status — read it before acting
 
-`list_players` reports `controllable` and a `status` for each device. The three
+`list_players` reports `controllable` and a `status` for each device. The
 outcomes and what to do:
 
 - **ready** — go ahead.
@@ -168,6 +171,9 @@ outcomes and what to do:
   If waking fails, the device is powered off. Say that and stop.
 - **"never advertises itself as a player"** — that device can **never** be a
   playback target. This is final. Report it and stop.
+- **"streaming now, but not registered as a controllable client on this
+  account"** — the device is signed in as a different Plex user. You can see
+  and name what it is playing; you cannot drive it. Report that and stop.
 
 That last case is not a transient error and not a configuration problem. There
 is no argument variation, alternate endpoint, or integration that changes it.

@@ -53,17 +53,100 @@ PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 PLEX_PROXY = os.environ.get("PLEX_PROXY", "1") not in ("0", "false", "False", "")
 PLEX_TIMEOUT = int(os.environ.get("PLEX_TIMEOUT", "15"))
 
-# {"theater": "Streaming Stick 4K", "office": "unknown"} - maps what people say
-# out loud onto what Plex calls the device. Plex names are frequently useless
+def normalize_spoken(value):
+    """Fold a room or device name to a comparison key.
+
+    Speech and device names disagree on articles, possessives and punctuation:
+    "andie's office", "Andies Office" and "the andie office" are one room, and
+    "Roku Express 4K+" arrives without the plus about half the time. Folding
+    both sides of every comparison is cheaper than enumerating the variants.
+    """
+    text = str(value or "").lower().replace("'", "").replace("’", "")
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9]+", " ", text).strip()
+    if text.startswith("the "):
+        text = text[4:]
+    return text
+
+
+def parse_aliases(raw):
+    """Build the spoken-name map from PLEX_ALIASES.
+
+    Two value forms, because one room is said more than one way and a config
+    that rejects the other way is a bug in the config, not in the speech:
+
+        "theater": "Streaming Stick 4K"
+        "theater": ["Streaming Stick 4K", "theatre", "movie room", "basement"]
+
+    The first element is the target; the rest are extra spellings for the same
+    room. A target may be a display name or a machine_identifier - prefer the
+    identifier, since it is the only key a device cannot change out from under
+    you. Roku boxes in particular report the retail box name and cannot be
+    renamed from here at all.
+
+    A room whose value is neither a string nor a list is skipped with a warning
+    rather than taking the other rooms down with it: one typo in config should
+    cost one room, not every room in the house.
+
+    Returns (spoken -> target, target key -> room label).
+    """
+    spoken, rooms = {}, {}
+    for room, value in (raw or {}).items():
+        if isinstance(value, str):
+            names = [value]
+        elif isinstance(value, (list, tuple)):
+            names = list(value)
+        else:
+            print(f"[plex-mcp] PLEX_ALIASES[{room!r}] must be a name or a list "
+                  f"of names, not {type(value).__name__}; skipping that room",
+                  file=sys.stderr)
+            continue
+        names = [str(n).strip() for n in names if str(n).strip()]
+        if not names:
+            continue
+        target, extra = names[0], names[1:]
+        label = str(room).strip()
+        rooms[normalize_spoken(target)] = label
+        for said in [label] + extra:
+            key = normalize_spoken(said)
+            if key:
+                spoken[key] = target
+    return spoken, rooms
+
+
+# {"theater": ["Streaming Stick 4K", "movie room"]} - maps what people say out
+# loud onto what Plex calls the device. Plex names are frequently useless
 # ("unknown", "Sleepy"), and a room name outlives the hardware in it.
 try:
-    PLEX_ALIASES = {
-        str(k).strip().lower(): str(v)
-        for k, v in json.loads(os.environ.get("PLEX_ALIASES", "{}")).items()
-    }
+    _raw_aliases = json.loads(os.environ.get("PLEX_ALIASES", "{}"))
 except (ValueError, AttributeError):
-    PLEX_ALIASES = {}
+    _raw_aliases = {}
     print("[plex-mcp] PLEX_ALIASES is not valid JSON; ignoring it", file=sys.stderr)
+
+try:
+    PLEX_ALIASES, PLEX_ROOMS = parse_aliases(_raw_aliases)
+except AttributeError:
+    PLEX_ALIASES, PLEX_ROOMS = {}, {}
+    print("[plex-mcp] PLEX_ALIASES must be a JSON object of room to player; "
+          "ignoring it", file=sys.stderr)
+
+
+def room_of(name=None, machine_identifier=None):
+    """The configured room label for a device, by identifier then by name."""
+    for key in (machine_identifier, name):
+        label = PLEX_ROOMS.get(normalize_spoken(key)) if key else None
+        if label:
+            return label
+    return None
+
+
+def said_name(player):
+    """What to call a session's player out loud: its room, else its own name."""
+    if player is None:
+        return "?"
+    title = getattr(player, "title", None)
+    return room_of(title, getattr(player, "machineIdentifier", None)) or title or "?"
 
 # Roku's External Control Protocol. Open on the LAN, no auth, and answers even
 # when the Plex app is closed - which is what lets us wake a device instead of
@@ -73,7 +156,7 @@ ROKU_PLEX_CHANNEL_ID = os.environ.get("ROKU_PLEX_CHANNEL_ID", "13535")
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "plex"
-SERVER_VERSION = "1.2.0"
+SERVER_VERSION = "1.3.0"
 
 
 def log(msg):
@@ -689,10 +772,20 @@ def discover_players():
         mid = getattr(c, "machineIdentifier", None)
         live[mid] = c
 
+    # Keep the whole player, not just its state: a session is the only place
+    # some devices appear at all, and rebuilding an entry for one needs a name.
     streaming = {}
     for session in p.sessions():
         for pl in getattr(session, "players", []) or []:
-            streaming[getattr(pl, "machineIdentifier", None)] = getattr(pl, "state", None)
+            mid = getattr(pl, "machineIdentifier", None)
+            if not mid:
+                continue
+            streaming[mid] = {
+                "state": getattr(pl, "state", None),
+                "name": getattr(pl, "title", None),
+                "product": getattr(pl, "product", None),
+                "platform": getattr(pl, "platform", None),
+            }
 
     out = []
     seen = set()
@@ -700,7 +793,7 @@ def discover_players():
         mid = d["machine_identifier"]
         seen.add(mid)
         entry = dict(d)
-        entry["streaming_now"] = streaming.get(mid)
+        entry["streaming_now"] = (streaming.get(mid) or {}).get("state")
         if mid in live:
             entry.update(controllable=True, route="server",
                          status="ready (registered with the Plex server)")
@@ -726,16 +819,46 @@ def discover_players():
     for mid, c in live.items():
         if mid in seen:
             continue
+        seen.add(mid)
         out.append({
             "name": c.title, "product": getattr(c, "product", None),
             "platform": getattr(c, "platform", None), "machine_identifier": mid,
             "provides": ["player"], "connections": [], "last_seen": None,
             "advertises_player": True, "reachable": True, "controllable": True,
-            "route": "server", "streaming_now": streaming.get(mid),
+            "route": "server", "streaming_now": (streaming.get(mid) or {}).get("state"),
             "status": "ready (registered with the Plex server)", "relevant": True,
         })
 
-    out.sort(key=lambda d: (not d["controllable"], (d["name"] or "").lower()))
+    # And anything that only a live session knows about. A device signed in to
+    # a different Plex user streams from this server without ever appearing on
+    # this token's plex.tv device list or in /clients, so without this pass it
+    # exists in now_playing and nowhere else - which reads as the two tools
+    # contradicting each other rather than as one account boundary.
+    for mid, info in streaming.items():
+        if mid in seen:
+            continue
+        out.append({
+            "name": info["name"] or "unknown", "product": info["product"],
+            "platform": info["platform"], "machine_identifier": mid,
+            "provides": [], "connections": [], "last_seen": None,
+            "advertises_player": False, "reachable": False, "controllable": False,
+            "route": None, "streaming_now": info["state"],
+            "status": (
+                "streaming now, but not registered as a controllable client on "
+                "this account - usually a device signed in as a different Plex "
+                "user. It can be seen and named, not driven. Reporting that is "
+                "the answer."),
+            "relevant": True,
+        })
+
+    for entry in out:
+        entry["room"] = room_of(entry.get("name"), entry.get("machine_identifier"))
+
+    # Room first when it is known: the map is the whole reason a caller says
+    # "theater" rather than "Streaming Stick 4K", and grouping by it makes a
+    # missing map entry obvious at a glance.
+    out.sort(key=lambda d: (not d["controllable"], d["room"] or "~",
+                            (d["name"] or "").lower()))
     return out
 
 
@@ -760,7 +883,10 @@ def build_client(entry):
 
     client = PlexClient(server=p, baseurl=baseurl, token=p._token, connect=False)
     client.machineIdentifier = entry["machine_identifier"]
-    client.title = entry["name"]
+    # Every tool reports client.title back as "player", so the mapped room name
+    # is what the agent echoes - "playing on the theater", not "on Streaming
+    # Stick 4K". Commands route on machineIdentifier, so this is display only.
+    client.title = entry.get("room") or entry["name"]
     client.product = entry.get("product") or ""
     client.protocolCapabilities = [
         "timeline", "playback", "navigation", "mirror", "playqueues",
@@ -809,30 +935,47 @@ def resolve_player(name):
         if not usable:
             raise ToolError(
                 "No player is controllable right now.",
-                players=[{"name": d["name"], "status": d["status"]} for d in notable],
+                players=[
+                    {"name": d["name"], "room": d["room"], "status": d["status"]}
+                    for d in notable
+                ],
             )
         raise ToolError(
             "No player specified and more than one is available.",
-            available_players=[d["name"] for d in usable],
+            available_players=[d["room"] or d["name"] for d in usable],
         )
 
-    want = name.strip().lower()
+    want = normalize_spoken(name)
     # A room name ("theater") is what gets said out loud; translate before
     # matching so aliases work with every downstream match rule.
-    want = PLEX_ALIASES.get(want, want).strip().lower()
+    want = normalize_spoken(PLEX_ALIASES.get(want, want))
+
+    def player_name(d):
+        return normalize_spoken(d.get("name"))
 
     def haystack(d):
         # Some clients report a useless name - the Fire TV registers as
         # literally "unknown" - so product and platform have to be searchable
         # or there is no way to refer to the device at all.
-        return " ".join(
-            filter(None, [d.get("name"), d.get("product"), d.get("platform")])
-        ).lower()
+        return normalize_spoken(" ".join(filter(None, [
+            d.get("name"), d.get("product"), d.get("platform"), d.get("room"),
+        ])))
+
+    if not want:
+        raise ToolError(
+            f"{name!r} does not contain anything to match a player on.",
+            available_players=[d["room"] or d["name"] for d in usable],
+        )
 
     for match in (
-        lambda d: (d["name"] or "").lower() == want,
-        lambda d: (d["name"] or "").lower().startswith(want),
-        lambda d: want in (d["name"] or "").lower(),
+        # Identifier first: it is the only key that survives a device being
+        # renamed, so a map pinned to one always beats a display-name collision.
+        # Folded on both sides because plenty of clients use a hyphenated UUID.
+        lambda d: normalize_spoken(d.get("machine_identifier")) == want,
+        lambda d: normalize_spoken(d.get("room")) == want if d.get("room") else False,
+        lambda d: player_name(d) == want,
+        lambda d: player_name(d).startswith(want),
+        lambda d: want in player_name(d),
         lambda d: want in haystack(d),
     ):
         matches = [d for d in players if match(d)]
@@ -842,9 +985,10 @@ def resolve_player(name):
     if not matches:
         raise ToolError(
             f"No player matches {name!r}.",
-            available_players=[d["name"] for d in usable],
+            available_players=[d["room"] or d["name"] for d in usable],
             all_known_players=[
-                {"name": d["name"], "status": d["status"]} for d in notable
+                {"name": d["name"], "room": d["room"], "status": d["status"]}
+                for d in notable
             ],
         )
     if len(matches) > 1:
@@ -852,15 +996,16 @@ def resolve_player(name):
         if len(usable_matches) != 1:
             raise ToolError(
                 f"{name!r} is ambiguous.",
-                candidates=[d["name"] for d in matches],
+                candidates=[d["room"] or d["name"] for d in matches],
             )
         matches = usable_matches
 
     chosen = matches[0]
+    said = chosen["room"] or chosen["name"]
     if not chosen["controllable"]:
         # A Roku with its app closed is a solvable problem, not a refusal.
         if chosen["advertises_player"] and _ecp(chosen):
-            log(f"{chosen['name']!r} is asleep; launching Plex on it")
+            log(f"{said!r} is asleep; launching Plex on it")
             woke, detail = wake_plex(chosen)
             if woke:
                 refreshed = [
@@ -870,16 +1015,16 @@ def resolve_player(name):
                 if refreshed and refreshed[0]["controllable"]:
                     return build_client(refreshed[0])
             raise ToolError(
-                f"{chosen['name']!r} could not be woken: {detail}",
-                player=chosen["name"],
-                controllable_players=[d["name"] for d in usable],
+                f"{said!r} could not be woken: {detail}",
+                player=said,
+                controllable_players=[d["room"] or d["name"] for d in usable],
             )
         raise ToolError(
-            f"{chosen['name']!r} cannot be controlled: {chosen['status']}",
-            player=chosen["name"],
+            f"{said!r} cannot be controlled: {chosen['status']}",
+            player=said,
             product=chosen.get("product"),
             streaming_now=chosen.get("streaming_now"),
-            controllable_players=[d["name"] for d in usable],
+            controllable_players=[d["room"] or d["name"] for d in usable],
         )
     return build_client(chosen)
 
@@ -937,8 +1082,8 @@ def stop_session(player_name=None):
     if not sessions:
         return None
 
-    want = (player_name or "").strip().lower()
-    want = PLEX_ALIASES.get(want, want).strip().lower()
+    want = normalize_spoken(player_name)
+    want = normalize_spoken(PLEX_ALIASES.get(want, want))
 
     def player_of(session):
         players = getattr(session, "players", []) or []
@@ -948,10 +1093,16 @@ def stop_session(player_name=None):
         chosen = None
         for session in sessions:
             pl = player_of(session)
-            hay = " ".join(
-                filter(None, [getattr(pl, "title", ""), getattr(pl, "product", "")])
-            ).lower()
-            if pl and want in hay:
+            if not pl:
+                continue
+            mid = getattr(pl, "machineIdentifier", "") or ""
+            # Same ladder as resolve_player: identifier, then room, then the
+            # display name. A session-only device has no other way to be named.
+            hay = normalize_spoken(" ".join(filter(None, [
+                getattr(pl, "title", ""), getattr(pl, "product", ""),
+                room_of(getattr(pl, "title", None), mid) or "",
+            ])))
+            if normalize_spoken(mid) == want or want in hay:
                 chosen = session
                 break
         if chosen is None:
@@ -962,7 +1113,7 @@ def stop_session(player_name=None):
         raise ToolError(
             "More than one thing is playing; say which player to stop.",
             playing=[
-                {"player": getattr(player_of(x), "title", "?"), "title": x.title}
+                {"player": said_name(player_of(x)), "title": x.title}
                 for x in sessions
             ],
         )
@@ -972,7 +1123,7 @@ def stop_session(player_name=None):
     return {
         "ok": True,
         "action": "stop",
-        "player": getattr(pl, "title", "?"),
+        "player": said_name(pl),
         "stopped": chosen.title,
         "method": "server-side session terminate",
     }
@@ -1042,9 +1193,9 @@ def plex_status():
         "url": PLEX_URL,
         "proxy_through_server": PLEX_PROXY,
         "libraries": sections,
-        "players": [d["name"] for d in players if d["controllable"]],
+        "players": [d["room"] or d["name"] for d in players if d["controllable"]],
         "players_unavailable": [
-            {"name": d["name"], "reason": d["status"]}
+            {"name": d["room"] or d["name"], "reason": d["status"]}
             for d in players if not d["controllable"] and d.get("relevant")
         ],
         "active_sessions": len(p.sessions()),
@@ -1053,8 +1204,9 @@ def plex_status():
 
 @tool(
     "List every known Plex player and whether it can be controlled right now. "
-    "Playback is NOT required for a device to appear here. Use the 'name' value "
-    "verbatim as the 'player' argument elsewhere.",
+    "Playback is NOT required for a device to appear here. Pass a player's "
+    "'room' as the 'player' argument elsewhere when it has one, otherwise its "
+    "'name' verbatim.",
     {
         "only_controllable": b("Return only players that can be driven right now."),
         "include_all": b(
@@ -1074,14 +1226,20 @@ def list_players(only_controllable=False, include_all=False):
         "ok": True,
         "players": shown,
         "count": len(shown),
-        "controllable": [d["name"] for d in usable],
+        "controllable": [d["room"] or d["name"] for d in usable],
+        "unmapped": [
+            d["name"] for d in players if not d["room"] and d.get("relevant")
+        ],
         "unavailable": [
-            {"name": d["name"], "reason": d["status"]} for d in blocked
+            {"name": d["name"], "room": d["room"], "reason": d["status"]}
+            for d in blocked
         ],
         "note": (
             "A player with controllable=false cannot be driven. When the reason "
             "says the app never advertises itself as a player, that is final - "
-            "report it and stop. No argument variation or alternate API fixes it."
+            "report it and stop. No argument variation or alternate API fixes it. "
+            "Prefer a player's room name when talking to the user; anything in "
+            "'unmapped' has no room configured in PLEX_ALIASES yet."
         ),
     }
 
@@ -1808,7 +1966,8 @@ def search(query, media_type=None, limit=10):
     "Search for a title and play the best match on a player. This is the main playback tool.",
     {
         "query": s("Title to find and play."),
-        "player": s("Player name from list_players. Optional if only one player exists."),
+        "player": s("Room name, or a player name from list_players. Optional if "
+                    "only one player exists."),
         "media_type": s("Optional filter: movie, show, episode."),
         "offset_seconds": i("Start position in seconds.", 0),
     },
@@ -1845,7 +2004,7 @@ def play(query, player=None, media_type=None, offset_seconds=0):
     "Play an exact item by rating_key, from a previous search. Use when search returned several plausible matches and the right one has been chosen.",
     {
         "rating_key": s("rating_key from a search result."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
         "offset_seconds": i("Start position in seconds.", 0),
     },
     ["rating_key"],
@@ -1866,7 +2025,7 @@ def play_rating_key(rating_key, player=None, offset_seconds=0):
     "Play the next unwatched episode of a TV show, continuing a partially watched episode if there is one.",
     {
         "show": s("Show title."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
     },
     ["show"],
 )
@@ -1894,7 +2053,7 @@ def play_next_episode(show, player=None):
             "One of: play, pause, stop, next, previous, step_forward, "
             "step_back, shuffle_on, shuffle_off, repeat_all, repeat_one, "
             "repeat_off. For a specific jump use 'seek' instead."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
     },
     ["action"],
 )
@@ -1953,7 +2112,7 @@ def current_session(machine_identifier):
         "delta_seconds": i(
             "Move this many seconds from the current position. Negative "
             "rewinds."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
     },
 )
 def seek(seconds=None, delta_seconds=None, player=None):
@@ -2001,7 +2160,7 @@ def seek(seconds=None, delta_seconds=None, player=None):
     "playing. Something has to be playing - stream ids come from the active "
     "session.",
     {
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
         "subtitles": s(
             "'off' to disable, 'on' for the first available track, or a "
             "language name or code like 'English' / 'eng' / 'Spanish'."),
@@ -2115,7 +2274,7 @@ def set_streams(player=None, subtitles=None, audio=None):
     "Set player volume (0-100). Not every client supports this.",
     {
         "level": i("Volume 0-100."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
     },
     ["level"],
 )
@@ -2132,8 +2291,15 @@ def now_playing():
     for session in plex().sessions():
         info = describe_item(session)
         players = getattr(session, "players", []) or []
-        info["player"] = players[0].title if players else None
-        info["state"] = players[0].state if players else None
+        pl = players[0] if players else None
+        # machine_identifier is carried so this joins cleanly against
+        # list_players. Display names are user-settable and already inconsistent
+        # across this house; the identifier is the only stable key between the
+        # two tools.
+        info["machine_identifier"] = getattr(pl, "machineIdentifier", None)
+        info["player"] = said_name(pl) if pl else None
+        info["device_name"] = getattr(pl, "title", None)
+        info["state"] = getattr(pl, "state", None)
         info["position"] = ms_to_clock(getattr(session, "viewOffset", 0))
         info["user"] = (getattr(session, "usernames", []) or [None])[0]
         sessions.append(info)
@@ -2393,7 +2559,7 @@ def list_playlists():
     "Play a playlist on a player.",
     {
         "name": s("Playlist name."),
-        "player": s("Player name from list_players."),
+        "player": s("Room name, or a player name from list_players."),
         "shuffle": b("Shuffle the playlist."),
     },
     ["name"],
