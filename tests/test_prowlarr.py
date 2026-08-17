@@ -422,10 +422,17 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(len(result["results"]), 2)
         self.assertIn("usenet", protocols)
 
-    def test_every_result_carries_a_ready_to_send_fetch_line(self):
-        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264")]).install(self.server)
-        row = self.server.search(query="Film")["results"][0]
-        self.assertTrue(row["fetch_command"].startswith("!fetch magnet:?xt=urn:btih:"))
+    def test_only_the_top_ranked_result_carries_a_ready_to_send_fetch_line(self):
+        # Every row already repeats the full magnet in `magnet`; giving every
+        # row a second copy in `fetch_command` was pure duplication for the
+        # 9 times out of 10 that result is never the one picked.
+        FakeProwlarr(releases=[
+            release("Film.2026.1080p.BluRay.x264-A", infoHash="a" * 40, seeders=50),
+            release("Film.2026.1080p.BluRay.x264-B", infoHash="b" * 40, seeders=10),
+        ]).install(self.server)
+        rows = self.server.search(query="Film", sort="seeders")["results"]
+        self.assertTrue(rows[0]["fetch_command"].startswith("!fetch magnet:?xt=urn:btih:"))
+        self.assertNotIn("fetch_command", rows[1])
 
     def test_the_fetch_line_is_omitted_when_no_prefix_is_configured(self):
         server = load(PROWLARR_FETCH_PREFIX="")

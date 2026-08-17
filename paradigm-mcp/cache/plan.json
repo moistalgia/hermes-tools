@@ -1,16 +1,16 @@
 {
- "fetched_at": "2026-08-11T15:18:26-04:00",
+ "fetched_at": "2026-08-17T12:11:40-04:00",
  "user_id": "usr_01kt1y3db3fhybcjffv83ba3rv",
  "requested_range": {
-  "start": "2026-07-12",
-  "end": "2027-02-07"
+  "start": "2026-07-18",
+  "end": "2027-02-13"
  },
  "date_range": {
   "start": "2026-07-30",
-  "end": "2027-02-07"
+  "end": "2027-02-13"
  },
- "session_count": 280,
- "detailed_count": 32,
+ "session_count": 288,
+ "detailed_count": 33,
  "sessions": [
   {
    "id": "ts_01ky7vs28yecnsbrmbab0grcz6",
@@ -4710,209 +4710,13 @@
     "max": 193.0
    },
    "duration_label": "3h 13m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 1h 10m",
     "Workout 2h 3m"
    ],
-   "exercise_count": 18,
+   "exercise_count": 5,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 70.0,
-      "max": 70.0
-     },
-     "duration_label": "1h 10m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 1,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 40.0
-       },
-       "exercises": [
-        {
-         "name": "Finger Base Warm-Up",
-         "exercise_id": "tex_01jws10jq5ec0vfvwf1z6nz99r",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 15.0
-         },
-         "prescription": "15m"
-        },
-        {
-         "name": "Step 1: Dynamic Stretching",
-         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
-         "prescription": "15m"
-        },
-        {
-         "name": "Muscular Activation",
-         "exercise_id": "tex_01j8pfhdxwe2g90qemp1gzj95g",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 20.0
-         },
-         "prescription": "20m"
-        },
-        {
-         "name": "Hang Warm-Up",
-         "exercise_id": "tex_01j8p8p43pftkb058mrggamg2k",
-         "type": "duration",
-         "position": 1,
-         "optional": true,
-         "duration_min": {
-          "min": 5.0,
-          "max": 10.0
-         },
-         "video": "https://www.youtube.com/watch?v=yYA3kXgzMPM",
-         "prescription": "10m"
-        }
-       ]
-      },
-      {
-       "position": 2,
-       "number": 2,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 30.0
-       },
-       "exercises": [
-        {
-         "name": "Twisting + Opening the Hips",
-         "exercise_id": "tex_01j8pbvz9fecxbwckk9caqq0fc",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=dW4oDmH06uQ",
-         "prescription": "15m"
-        },
-        {
-         "name": "Toe Placements",
-         "exercise_id": "tex_01j8pbwm7xec0r1tr4xmvqa4jy",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=jFTzHomU0RU",
-         "prescription": "15m"
-        },
-        {
-         "name": "Deadpoint Focused",
-         "exercise_id": "tex_01j8pbx7aqecfst5tx4nbbt11v",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=8NtYU94DwsE",
-         "prescription": "15m"
-        },
-        {
-         "name": "Flagging Perfection",
-         "exercise_id": "tex_01j8pbzc0ffrps9v9bmqb2nhj5",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=lAbQ41NOabA",
-         "prescription": "15m"
-        },
-        {
-         "name": "Directional Holds and Body Positioning",
-         "exercise_id": "tex_01j8pbzy99fp1ry9rv2hwneegh",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=3apLxqWvTXU",
-         "prescription": "15m"
-        },
-        {
-         "name": "Drop-Knees and Perching",
-         "exercise_id": "tex_01j8pc0g37fk2b1ah33mek70ts",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=fDqotYWElcs",
-         "prescription": "15m"
-        },
-        {
-         "name": "High-Step + Through-Step",
-         "exercise_id": "tex_01j8pc220jfmqs72rsrjjmzfzf",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=FzN01EhPqjc",
-         "prescription": "15m"
-        },
-        {
-         "name": "Foot Switching",
-         "exercise_id": "tex_01j8pc2hk8ewav42tzrenk1sfr",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=ODMuRgduTds",
-         "prescription": "15m"
-        },
-        {
-         "name": "Heel Hooks and Toe Grabbing",
-         "exercise_id": "tex_01j8pc30arfzj9z9bpfsm25cp6",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=u8faToBNnao",
-         "prescription": "15m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -4948,6 +4752,24 @@
           "max": 3.0
          },
          "note": "I have seen far too many climbers push too hard and get minimal results and even get injured, from pushing too hard during the Capacity Phase. Please read this and commit it to memory. Leave you EGO at the door!",
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 1,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw32vghf3fs158c0hn31b0h"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-12T22:56:55.578",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kr2319gzff7v81zbvasbvtv4"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561js"
+          }
+         },
          "prescription": "3m"
         }
        ]
@@ -5010,6 +4832,24 @@
           "max": 7.0,
           "reference": "rpe"
          },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 7,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw4y9xqeq9rjamb6nv5ws6j"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-12T23:29:21.023",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01j8p1vsaafn09b5m7ze9v061n"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561jz"
+          }
+         },
          "prescription": "30m @ 7 RPE"
         }
        ]
@@ -5066,6 +4906,24 @@
          },
          "note": "Please bias toward more open handed grips during the Capacity Phase (3 Finger Drag, 4 Finger Open Hand, Slopers, Big Pinches, etc). The goal of this phase is to build your grip “engine” and increase tissue capacity through sustainable submaximal loading, not to maximize peak force through aggressive crimping. Open handed positions generally create less pulley and joint stress while still building tremendous forearm, tendon, and work capacity adaptations. Overusing high force crimp positions during this phase often shifts the stimulus away from capacity development and toward excessive structural finger loading, which can fry your fingers, increase fatigue, and raise injury risk before the higher intensity phases even begin.",
          "video": "https://www.youtube.com/watch?v=K30druQcvos",
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 9,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw85xbwfs8bb6gxsyx2q9pg"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T00:25:54.104",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kn2ry2yxfsdtzwbfzv47vf14"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561k1"
+          }
+         },
          "prescription": "1h 30m"
         }
        ]
@@ -5089,52 +4947,13 @@
     "max": 70.0
    },
    "duration_label": "1h 10m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 15m",
     "Workout 55m"
    ],
-   "exercise_count": 5,
+   "exercise_count": 4,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 15.0,
-      "max": 15.0
-     },
-     "duration_label": "15m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 1,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 15.0
-       },
-       "exercises": [
-        {
-         "name": "Step 1: Dynamic Stretching",
-         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
-         "prescription": "15m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -5185,6 +5004,24 @@
           "min": 5.0,
           "max": 6.0,
           "reference": "rpe"
+         },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 7,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw8qk51f44azac7br8cy0mk"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T00:35:36.773",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kn2tkr6vfr6rey9wyh2x64s8"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561k8"
+          }
          },
          "prescription": "1 - 2 sets x 12 reps @ 5-6 RPE"
         }
@@ -5278,6 +5115,24 @@
           "max": 6.0,
           "reference": "rpe"
          },
+         "logged": {
+          "skipped": false,
+          "score": 80,
+          "rpe": 8,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw8r0n2fqea083ayjaeyr7q"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T00:35:47.928",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kn2sf4ckeq4rsgxg1xb79d11"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561ka"
+          }
+         },
          "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
@@ -5323,6 +5178,24 @@
           "max": 6.0,
           "reference": "rpe"
          },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 7,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzw8q8ycfga8521jzxbyfc6x"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T00:35:24.908",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kn2ssxkvf53r0yw56mxhshxs"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d3e1bt43tskjc561k6"
+          }
+         },
          "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
@@ -5346,52 +5219,13 @@
     "max": 65.0
    },
    "duration_label": "1h 5m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 10m",
     "Workout 55m"
    ],
-   "exercise_count": 7,
+   "exercise_count": 6,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 8.0,
-      "max": 10.0
-     },
-     "duration_label": "10m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 2,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": 8.0,
-        "max": 10.0
-       },
-       "exercises": [
-        {
-         "name": "Mobility Warm-Up",
-         "exercise_id": "tex_01kh7qg20sem4teh7qfcypf53e",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 8.0,
-          "max": 10.0
-         },
-         "video": "https://www.youtube.com/watch?v=bWDwARgnDSQ",
-         "prescription": "10m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -5434,6 +5268,24 @@
          "rep_rest_min": 0.167,
          "rep_duration_min": 0.1,
          "video": "https://www.youtube.com/watch?v=9bYyJPA0tGQ",
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 5,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzyk87q8f14tp1cpdaff3egj"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:17:54.308",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kh7qk5qfftfrhke54dn58zh0"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1c1"
+          }
+         },
          "prescription": "1 sets x 8 reps"
         }
        ]
@@ -5478,6 +5330,24 @@
           "max": null,
           "reference": "mildStretch"
          },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 6,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzykkg7pf6nr08wr5j1tc8kb"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:24:05.316",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01jmjzahfve09t1hwnmj9ky120"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1bz"
+          }
+         },
          "prescription": "3 sets x 8 reps"
         }
        ]
@@ -5517,6 +5387,24 @@
           "max": 0.75
          },
          "video": "https://www.youtube.com/watch?v=rtBH4Z9eBzo",
+         "logged": {
+          "skipped": false,
+          "score": 85,
+          "rpe": 7,
+          "note": "My legs are cooked from legs yesterday",
+          "id": {
+           "id": "tsel_01kzykxq0ae62te11xvbf8tvss"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:29:21.516",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01kh7qz0rzem88zzcs9g2q095g"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1bx"
+          }
+         },
          "prescription": "2 sets x 8 reps per side"
         }
        ]
@@ -5557,6 +5445,24 @@
          "rep_duration_min": 0.667,
          "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 7,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzymaz6wf7vrwgpr334ymg75"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:36:53.979",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01jm08qn1zejqtbtg285stnq0s"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1bs"
+          }
+         },
          "prescription": "2 sets x 1 reps"
         }
        ]
@@ -5601,6 +5507,24 @@
           "min": null,
           "max": null,
           "reference": "mildStretch"
+         },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 6,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzyn3v1mejt9q7bqrjxymd7n"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:50:28.298",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01j9aqbqmjega9wyc8bnfjfcnd"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1bq"
+          }
          },
          "prescription": "3 sets x 8 reps"
         }
@@ -5647,6 +5571,24 @@
           "max": null,
           "reference": "mildStretch"
          },
+         "logged": {
+          "skipped": false,
+          "score": 100,
+          "rpe": 7,
+          "note": null,
+          "id": {
+           "id": "tsel_01kzynaqw5epmrmyeya1146vby"
+          },
+          "position": 1,
+          "loggedOn": "2026-08-13T22:54:15.38",
+          "inherited": false,
+          "inventoryExerciseId": {
+           "id": "tex_01knqkbv31fny94zhvp00d24nw"
+          },
+          "exerciseId": {
+           "id": "tse_01ky7vs3d4ev899ex0we47g1bv"
+          }
+         },
          "prescription": "3 sets x 6 reps"
         }
        ]
@@ -5658,7 +5600,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1c2",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-14",
+   "date": "2026-08-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -5670,209 +5612,13 @@
     "max": 196.0
    },
    "duration_label": "3h 16m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 1h 10m",
     "Workout 2h 6m"
    ],
-   "exercise_count": 18,
+   "exercise_count": 5,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 70.0,
-      "max": 70.0
-     },
-     "duration_label": "1h 10m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 1,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 40.0
-       },
-       "exercises": [
-        {
-         "name": "Finger Base Warm-Up",
-         "exercise_id": "tex_01jws10jq5ec0vfvwf1z6nz99r",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 15.0
-         },
-         "prescription": "15m"
-        },
-        {
-         "name": "Step 1: Dynamic Stretching",
-         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
-         "prescription": "15m"
-        },
-        {
-         "name": "Muscular Activation",
-         "exercise_id": "tex_01j8pfhdxwe2g90qemp1gzj95g",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 20.0
-         },
-         "prescription": "20m"
-        },
-        {
-         "name": "Hang Warm-Up",
-         "exercise_id": "tex_01j8p8p43pftkb058mrggamg2k",
-         "type": "duration",
-         "position": 1,
-         "optional": true,
-         "duration_min": {
-          "min": 5.0,
-          "max": 10.0
-         },
-         "video": "https://www.youtube.com/watch?v=yYA3kXgzMPM",
-         "prescription": "10m"
-        }
-       ]
-      },
-      {
-       "position": 2,
-       "number": 2,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 30.0
-       },
-       "exercises": [
-        {
-         "name": "Twisting + Opening the Hips",
-         "exercise_id": "tex_01j8pbvz9fecxbwckk9caqq0fc",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=dW4oDmH06uQ",
-         "prescription": "15m"
-        },
-        {
-         "name": "Toe Placements",
-         "exercise_id": "tex_01j8pbwm7xec0r1tr4xmvqa4jy",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=jFTzHomU0RU",
-         "prescription": "15m"
-        },
-        {
-         "name": "Deadpoint Focused",
-         "exercise_id": "tex_01j8pbx7aqecfst5tx4nbbt11v",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=8NtYU94DwsE",
-         "prescription": "15m"
-        },
-        {
-         "name": "Flagging Perfection",
-         "exercise_id": "tex_01j8pbzc0ffrps9v9bmqb2nhj5",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=lAbQ41NOabA",
-         "prescription": "15m"
-        },
-        {
-         "name": "Directional Holds and Body Positioning",
-         "exercise_id": "tex_01j8pbzy99fp1ry9rv2hwneegh",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=3apLxqWvTXU",
-         "prescription": "15m"
-        },
-        {
-         "name": "Drop-Knees and Perching",
-         "exercise_id": "tex_01j8pc0g37fk2b1ah33mek70ts",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=fDqotYWElcs",
-         "prescription": "15m"
-        },
-        {
-         "name": "High-Step + Through-Step",
-         "exercise_id": "tex_01j8pc220jfmqs72rsrjjmzfzf",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=FzN01EhPqjc",
-         "prescription": "15m"
-        },
-        {
-         "name": "Foot Switching",
-         "exercise_id": "tex_01j8pc2hk8ewav42tzrenk1sfr",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=ODMuRgduTds",
-         "prescription": "15m"
-        },
-        {
-         "name": "Heel Hooks and Toe Grabbing",
-         "exercise_id": "tex_01j8pc30arfzj9z9bpfsm25cp6",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=u8faToBNnao",
-         "prescription": "15m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -6015,7 +5761,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1cv",
    "name": "Pull Supplementals",
-   "date": "2026-08-14",
+   "date": "2026-08-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -6027,52 +5773,13 @@
     "max": 75.0
    },
    "duration_label": "1h 15m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 15m",
     "Workout 1h"
    ],
-   "exercise_count": 8,
+   "exercise_count": 7,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 10.0,
-      "max": 15.0
-     },
-     "duration_label": "15m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 10,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": 10.0,
-        "max": 15.0
-       },
-       "exercises": [
-        {
-         "name": "Step 1: Dynamic Stretching",
-         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
-         "type": "duration",
-         "position": 1,
-         "duration_min": {
-          "min": 10.0,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
-         "prescription": "15m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -6425,7 +6132,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1dc",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-15",
+   "date": "2026-08-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -6437,54 +6144,13 @@
     "max": 45.0
    },
    "duration_label": "45m",
-   "detailed": true,
+   "detailed": false,
    "prescribed": true,
    "section_summary": [
-    "Warm-up 15m",
     "Workout 30m"
    ],
-   "exercise_count": 3,
+   "exercise_count": 2,
    "sections": [
-    {
-     "kind": "Warm-up",
-     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
-     "duration_min": {
-      "min": 15.0,
-      "max": 15.0
-     },
-     "duration_label": "15m",
-     "choose_from": null,
-     "groups": [
-      {
-       "position": 1,
-       "number": 1,
-       "optional": true,
-       "repeats": {
-        "min": null,
-        "max": 1
-       },
-       "duration_min": {
-        "min": null,
-        "max": 15.0
-       },
-       "exercises": [
-        {
-         "name": "Step 1: Dynamic Stretching",
-         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
-         "type": "duration",
-         "position": 1,
-         "optional": true,
-         "duration_min": {
-          "min": null,
-          "max": 15.0
-         },
-         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
-         "prescription": "15m"
-        }
-       ]
-      }
-     ]
-    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -6557,7 +6223,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1dk",
    "name": "Movement Capacity Builder",
-   "date": "2026-08-16",
+   "date": "2026-08-17",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -6902,7 +6568,7 @@
   {
    "id": "ts_01ky7vs3d4ev899ex0we47g1eb",
    "name": "Push Supplementals",
-   "date": "2026-08-16",
+   "date": "2026-08-17",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7208,7 +6874,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndke98",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-17",
+   "date": "2026-08-18",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7532,7 +7198,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndke9q",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-08-18",
+   "date": "2026-08-19",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -7934,7 +7600,7 @@
   {
    "id": "ts_01ky7vs3d5ftd876kercndkeak",
    "name": "Pull Supplementals",
-   "date": "2026-08-18",
+   "date": "2026-08-19",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8344,7 +8010,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4dt",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-08-19",
+   "date": "2026-08-20",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8449,7 +8115,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4dz",
    "name": "Ideal Circuit",
-   "date": "2026-08-20",
+   "date": "2026-08-21",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -8828,7 +8494,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4es",
    "name": "Legs/Core Supplementals",
-   "date": "2026-08-20",
+   "date": "2026-08-21",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9085,7 +8751,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4f4",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-21",
+   "date": "2026-08-22",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9409,7 +9075,7 @@
   {
    "id": "ts_01ky7vs3d6fem80v7cq347b4fk",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-22",
+   "date": "2026-08-23",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -9766,7 +9432,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pnh",
    "name": "Pull Supplementals",
-   "date": "2026-08-22",
+   "date": "2026-08-23",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -10176,7 +9842,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pp2",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-23",
+   "date": "2026-08-24",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -10308,7 +9974,7 @@
   {
    "id": "ts_01ky7vs3d7f929bt8r0hg66pp9",
    "name": "Movement Capacity Builder",
-   "date": "2026-08-24",
+   "date": "2026-08-25",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -10653,7 +10319,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tsn",
    "name": "Push Supplementals",
-   "date": "2026-08-24",
+   "date": "2026-08-25",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -10959,7 +10625,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tt2",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-25",
+   "date": "2026-08-26",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -11283,7 +10949,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tth",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-08-26",
+   "date": "2026-08-27",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -11685,7 +11351,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tvd",
    "name": "Pull Supplementals",
-   "date": "2026-08-26",
+   "date": "2026-08-27",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12095,7 +11761,7 @@
   {
    "id": "ts_01ky7vs3d8ferr1bgds2jp1tvy",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-08-27",
+   "date": "2026-08-28",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12200,7 +11866,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea24h",
    "name": "Ideal Circuit",
-   "date": "2026-08-28",
+   "date": "2026-08-29",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12579,7 +12245,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea25b",
    "name": "Legs/Core Supplementals",
-   "date": "2026-08-28",
+   "date": "2026-08-29",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -12836,7 +12502,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea25p",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-08-29",
+   "date": "2026-08-30",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13160,7 +12826,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea265",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-08-30",
+   "date": "2026-08-31",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13517,7 +13183,7 @@
   {
    "id": "ts_01ky7vs3d9f75tawehhwhea26y",
    "name": "Pull Supplementals",
-   "date": "2026-08-30",
+   "date": "2026-08-31",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -13927,7 +13593,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkyrj",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-08-31",
+   "date": "2026-09-01",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -14059,7 +13725,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkyrs",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-01",
+   "date": "2026-09-02",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14404,7 +14070,7 @@
   {
    "id": "ts_01ky7vs3daebav6x0t858qkysh",
    "name": "Push Supplementals",
-   "date": "2026-09-01",
+   "date": "2026-09-02",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14710,7 +14376,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwgy",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-02",
+   "date": "2026-09-03",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -14722,21 +14388,60 @@
     "max": 60.0
    },
    "duration_label": "1h",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
-    "Workout 50m"
+    "Warm-up 10m",
+    "Workout 55m"
    ],
-   "exercise_count": 6,
+   "exercise_count": 7,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 8.0,
+      "max": 10.0
+     },
+     "duration_label": "10m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 2,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 8.0,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Mobility Warm-Up",
+         "exercise_id": "tex_01kh7qg20sem4teh7qfcypf53e",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 8.0,
+          "max": 10.0
+         },
+         "video": "https://www.youtube.com/watch?v=bWDwARgnDSQ",
+         "prescription": "10m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
      "duration_min": {
-      "min": 50.0,
-      "max": 50.0
+      "min": 55.0,
+      "max": 55.0
      },
-     "duration_label": "50m",
+     "duration_label": "55m",
      "choose_from": null,
      "groups": [
       {
@@ -14874,7 +14579,7 @@
          "name": "Isometric Side Split",
          "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
           "min": null,
           "max": 2
@@ -14891,8 +14596,8 @@
           "min": null,
           "max": 1.0
          },
-         "rep_duration_min": 0.917,
-         "cycle_note": "4",
+         "rep_duration_min": 0.667,
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
          "prescription": "2 sets x 1 reps"
         }
@@ -14952,27 +14657,31 @@
        },
        "duration_min": {
         "min": null,
-        "max": 5.0
+        "max": 10.0
        },
        "exercises": [
         {
          "name": "Step Ups",
          "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
          "type": "repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
           "min": null,
-          "max": 1
+          "max": 3
          },
          "reps": {
           "min": null,
-          "max": 7
+          "max": 6
          },
          "duration_min": {
           "min": null,
-          "max": 5.0
+          "max": 10.0
          },
-         "cycle_note": "4",
+         "set_rest_min": {
+          "min": null,
+          "max": 1.0
+         },
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
          "intensity": {
           "type": "other",
@@ -14980,7 +14689,7 @@
           "max": null,
           "reference": "mildStretch"
          },
-         "prescription": "1 sets x 7 reps"
+         "prescription": "3 sets x 6 reps"
         }
        ]
       }
@@ -14991,7 +14700,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwhd",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-09-03",
+   "date": "2026-09-04",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15003,13 +14712,209 @@
     "max": 200.0
    },
    "duration_label": "3h 20m",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
+    "Warm-up 1h 10m",
     "Workout 2h 10m"
    ],
-   "exercise_count": 6,
+   "exercise_count": 19,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 70.0,
+      "max": 70.0
+     },
+     "duration_label": "1h 10m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 10,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 40.0
+       },
+       "exercises": [
+        {
+         "name": "Finger Base Warm-Up",
+         "exercise_id": "tex_01jws10jq5ec0vfvwf1z6nz99r",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 15.0
+         },
+         "prescription": "15m"
+        },
+        {
+         "name": "Step 1: Dynamic Stretching",
+         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
+         "prescription": "15m"
+        },
+        {
+         "name": "Muscular Activation",
+         "exercise_id": "tex_01j8pfhdxwe2g90qemp1gzj95g",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 20.0
+         },
+         "prescription": "20m"
+        },
+        {
+         "name": "Hang Warm-Up",
+         "exercise_id": "tex_01j8p8p43pftkb058mrggamg2k",
+         "type": "duration",
+         "position": 1,
+         "optional": true,
+         "duration_min": {
+          "min": 5.0,
+          "max": 10.0
+         },
+         "video": "https://www.youtube.com/watch?v=yYA3kXgzMPM",
+         "prescription": "10m"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 2,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 30.0
+       },
+       "exercises": [
+        {
+         "name": "Twisting + Opening the Hips",
+         "exercise_id": "tex_01j8pbvz9fecxbwckk9caqq0fc",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=dW4oDmH06uQ",
+         "prescription": "15m"
+        },
+        {
+         "name": "Toe Placements",
+         "exercise_id": "tex_01j8pbwm7xec0r1tr4xmvqa4jy",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=jFTzHomU0RU",
+         "prescription": "15m"
+        },
+        {
+         "name": "Deadpoint Focused",
+         "exercise_id": "tex_01j8pbx7aqecfst5tx4nbbt11v",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=8NtYU94DwsE",
+         "prescription": "15m"
+        },
+        {
+         "name": "Flagging Perfection",
+         "exercise_id": "tex_01j8pbzc0ffrps9v9bmqb2nhj5",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=lAbQ41NOabA",
+         "prescription": "15m"
+        },
+        {
+         "name": "Directional Holds and Body Positioning",
+         "exercise_id": "tex_01j8pbzy99fp1ry9rv2hwneegh",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=3apLxqWvTXU",
+         "prescription": "15m"
+        },
+        {
+         "name": "Drop-Knees and Perching",
+         "exercise_id": "tex_01j8pc0g37fk2b1ah33mek70ts",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=fDqotYWElcs",
+         "prescription": "15m"
+        },
+        {
+         "name": "High-Step + Through-Step",
+         "exercise_id": "tex_01j8pc220jfmqs72rsrjjmzfzf",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=FzN01EhPqjc",
+         "prescription": "15m"
+        },
+        {
+         "name": "Foot Switching",
+         "exercise_id": "tex_01j8pc2hk8ewav42tzrenk1sfr",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=ODMuRgduTds",
+         "prescription": "15m"
+        },
+        {
+         "name": "Heel Hooks and Toe Grabbing",
+         "exercise_id": "tex_01j8pc30arfzj9z9bpfsm25cp6",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=u8faToBNnao",
+         "prescription": "15m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -15197,7 +15102,7 @@
   {
    "id": "ts_01ky7vs3dbfwysa30e008ywwj9",
    "name": "Pull Supplementals",
-   "date": "2026-09-03",
+   "date": "2026-09-04",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15209,13 +15114,52 @@
     "max": 75.0
    },
    "duration_label": "1h 15m",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
+    "Warm-up 15m",
     "Workout 1h"
    ],
-   "exercise_count": 7,
+   "exercise_count": 8,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 10.0,
+      "max": 15.0
+     },
+     "duration_label": "15m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 10,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 10.0,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Step 1: Dynamic Stretching",
+         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
+         "prescription": "15m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -15248,10 +15192,10 @@
          "name": "1-arm lock-off 90 degrees",
          "exercise_id": "tex_01kn2tp3defsj8re2wxcqyjrmx",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 3
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
@@ -15266,7 +15210,7 @@
           "max": 5.0
          },
          "rep_duration_min": 0.333,
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=aDeEkQ0g5cA",
          "intensity": {
           "type": "numeric",
@@ -15274,7 +15218,7 @@
           "max": 5.0,
           "reference": "fail"
          },
-         "prescription": "2 - 3 sets x 1 reps @ 5 FAIL"
+         "prescription": "1 - 2 sets x 1 reps @ 5 FAIL"
         }
        ]
       },
@@ -15296,10 +15240,10 @@
          "name": "2-Arm Lock-Off 90 degrees",
          "exercise_id": "tex_01kn2tpsd1e6bvtmt4ct52qpcs",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 3
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
@@ -15314,7 +15258,7 @@
           "max": 5.0
          },
          "rep_duration_min": 0.333,
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=YmPv-YZZK4U",
          "intensity": {
           "type": "numeric",
@@ -15322,7 +15266,7 @@
           "max": 5.0,
           "reference": "fail"
          },
-         "prescription": "2 - 3 sets x 1 reps @ 5 FAIL"
+         "prescription": "1 - 2 sets x 1 reps @ 5 FAIL"
         }
        ]
       },
@@ -15344,10 +15288,10 @@
          "name": "1-Arm Lock-Off 120 degrees",
          "exercise_id": "tex_01kn2tqby2fktbcc7e0sjg16y7",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 3
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
@@ -15362,7 +15306,7 @@
           "max": 5.0
          },
          "rep_duration_min": 0.333,
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=aDeEkQ0g5cA",
          "intensity": {
           "type": "numeric",
@@ -15370,7 +15314,7 @@
           "max": 5.0,
           "reference": "fail"
          },
-         "prescription": "2 - 3 sets x 1 reps @ 5 FAIL"
+         "prescription": "1 - 2 sets x 1 reps @ 5 FAIL"
         }
        ]
       },
@@ -15392,10 +15336,10 @@
          "name": "2-Arm Lock-Off 120 degrees",
          "exercise_id": "tex_01kn2tr7wtf1wvmpcpdkcvkyt4",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 3
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
@@ -15410,7 +15354,7 @@
           "max": 5.0
          },
          "rep_duration_min": 0.333,
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=YmPv-YZZK4U",
          "intensity": {
           "type": "numeric",
@@ -15418,7 +15362,7 @@
           "max": 5.0,
           "reference": "fail"
          },
-         "prescription": "2 - 3 sets x 1 reps @ 5 FAIL"
+         "prescription": "1 - 2 sets x 1 reps @ 5 FAIL"
         }
        ]
       },
@@ -15440,14 +15384,14 @@
          "name": "Dumbbell Row",
          "exercise_id": "tex_01kn2trwsyerhayv4vt3yeqhjw",
          "type": "repetition",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 10
+          "max": 12
          },
          "duration_min": {
           "min": null,
@@ -15457,15 +15401,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=51R8SFuDuTI",
          "intensity": {
           "type": "numeric",
-          "min": 7.0,
-          "max": 8.0,
+          "min": 6.0,
+          "max": 6.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 10 reps @ 7-8 RPE"
+         "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
       },
@@ -15487,14 +15431,14 @@
          "name": "High Bar/Ring Rows",
          "exercise_id": "tex_01kn2tsemvek2tfambw368vb58",
          "type": "repetition",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 10
+          "max": 12
          },
          "duration_min": {
           "min": null,
@@ -15504,15 +15448,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=4Oqh6kXAGTA",
          "intensity": {
           "type": "numeric",
-          "min": 7.0,
-          "max": 8.0,
+          "min": 6.0,
+          "max": 6.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 10 reps @ 7-8 RPE"
+         "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
       },
@@ -15532,14 +15476,14 @@
          "name": "Wide Grip Pull-Ups",
          "exercise_id": "tex_01kn2tt25vfxd8pbkqx67sqqbn",
          "type": "repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 5
+          "max": 6
          },
          "duration_min": {
           "min": null,
@@ -15549,15 +15493,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=4vm2Wl-CWnE",
          "intensity": {
           "type": "numeric",
           "min": null,
-          "max": 8.5,
+          "max": 8.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 5 reps @ 8.5 RPE"
+         "prescription": "1 - 2 sets x 6 reps @ 8 RPE"
         }
        ]
       }
@@ -15568,7 +15512,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq5r",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-09-04",
+   "date": "2026-09-05",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15580,13 +15524,54 @@
     "max": 35.0
    },
    "duration_label": "35m",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
+    "Warm-up 15m",
     "Workout 20m"
    ],
-   "exercise_count": 1,
+   "exercise_count": 2,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 15.0,
+      "max": 15.0
+     },
+     "duration_label": "15m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 1,
+       "optional": true,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Step 1: Dynamic Stretching",
+         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
+         "type": "duration",
+         "position": 1,
+         "optional": true,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
+         "prescription": "15m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -15632,7 +15617,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq5x",
    "name": "Ideal Circuit",
-   "date": "2026-09-05",
+   "date": "2026-09-06",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15644,13 +15629,209 @@
     "max": 193.0
    },
    "duration_label": "3h 13m",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
+    "Warm-up 1h 10m",
     "Workout 2h 3m"
    ],
-   "exercise_count": 5,
+   "exercise_count": 18,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 70.0,
+      "max": 70.0
+     },
+     "duration_label": "1h 10m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 1,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 40.0
+       },
+       "exercises": [
+        {
+         "name": "Finger Base Warm-Up",
+         "exercise_id": "tex_01jws10jq5ec0vfvwf1z6nz99r",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 15.0
+         },
+         "prescription": "15m"
+        },
+        {
+         "name": "Step 1: Dynamic Stretching",
+         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
+         "prescription": "15m"
+        },
+        {
+         "name": "Muscular Activation",
+         "exercise_id": "tex_01j8pfhdxwe2g90qemp1gzj95g",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 10.0,
+          "max": 20.0
+         },
+         "prescription": "20m"
+        },
+        {
+         "name": "Hang Warm-Up",
+         "exercise_id": "tex_01j8p8p43pftkb058mrggamg2k",
+         "type": "duration",
+         "position": 1,
+         "optional": true,
+         "duration_min": {
+          "min": 5.0,
+          "max": 10.0
+         },
+         "video": "https://www.youtube.com/watch?v=yYA3kXgzMPM",
+         "prescription": "10m"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 2,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 30.0
+       },
+       "exercises": [
+        {
+         "name": "Twisting + Opening the Hips",
+         "exercise_id": "tex_01j8pbvz9fecxbwckk9caqq0fc",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=dW4oDmH06uQ",
+         "prescription": "15m"
+        },
+        {
+         "name": "Toe Placements",
+         "exercise_id": "tex_01j8pbwm7xec0r1tr4xmvqa4jy",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=jFTzHomU0RU",
+         "prescription": "15m"
+        },
+        {
+         "name": "Deadpoint Focused",
+         "exercise_id": "tex_01j8pbx7aqecfst5tx4nbbt11v",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=8NtYU94DwsE",
+         "prescription": "15m"
+        },
+        {
+         "name": "Flagging Perfection",
+         "exercise_id": "tex_01j8pbzc0ffrps9v9bmqb2nhj5",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=lAbQ41NOabA",
+         "prescription": "15m"
+        },
+        {
+         "name": "Directional Holds and Body Positioning",
+         "exercise_id": "tex_01j8pbzy99fp1ry9rv2hwneegh",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=3apLxqWvTXU",
+         "prescription": "15m"
+        },
+        {
+         "name": "Drop-Knees and Perching",
+         "exercise_id": "tex_01j8pc0g37fk2b1ah33mek70ts",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=fDqotYWElcs",
+         "prescription": "15m"
+        },
+        {
+         "name": "High-Step + Through-Step",
+         "exercise_id": "tex_01j8pc220jfmqs72rsrjjmzfzf",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=FzN01EhPqjc",
+         "prescription": "15m"
+        },
+        {
+         "name": "Foot Switching",
+         "exercise_id": "tex_01j8pc2hk8ewav42tzrenk1sfr",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=ODMuRgduTds",
+         "prescription": "15m"
+        },
+        {
+         "name": "Heel Hooks and Toe Grabbing",
+         "exercise_id": "tex_01j8pc30arfzj9z9bpfsm25cp6",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=u8faToBNnao",
+         "prescription": "15m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
@@ -15815,7 +15996,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq6q",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-05",
+   "date": "2026-09-06",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -15827,21 +16008,60 @@
     "max": 75.0
    },
    "duration_label": "1h 15m",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
-    "Workout 1h"
+    "Warm-up 15m",
+    "Workout 55m"
    ],
-   "exercise_count": 4,
+   "exercise_count": 5,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 15.0,
+      "max": 15.0
+     },
+     "duration_label": "15m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 1,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Step 1: Dynamic Stretching",
+         "exercise_id": "tex_01j8pe20gpevzt2hx99xq5mmhm",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "video": "https://www.youtube.com/watch?v=58fr4fxk5MA",
+         "prescription": "15m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
      "duration_min": {
-      "min": 60.0,
-      "max": 60.0
+      "min": 50.0,
+      "max": 55.0
      },
-     "duration_label": "1h",
+     "duration_label": "55m",
      "choose_from": null,
      "groups": [
       {
@@ -15860,14 +16080,14 @@
          "name": "Single Leg Romanian Deadlift",
          "exercise_id": "tex_01kn2tkr6vfr6rey9wyh2x64s8",
          "type": "repetition",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 10
+          "max": 12
          },
          "duration_min": {
           "min": null,
@@ -15877,15 +16097,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=hBN0V2WMXhE",
          "intensity": {
           "type": "numeric",
-          "min": 6.0,
-          "max": 7.0,
+          "min": 5.0,
+          "max": 6.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 10 reps @ 6-7 RPE"
+         "prescription": "1 - 2 sets x 12 reps @ 5-6 RPE"
         }
        ]
       },
@@ -15897,8 +16117,8 @@
         "max": 1
        },
        "duration_min": {
-        "min": null,
-        "max": 15.0
+        "min": 5.0,
+        "max": 10.0
        },
        "note": "Do 1 Set of EACH ANGLE (total 3 sets). Then, progress in later weeks to 2 Sets of EACH ANGLE (total 6 Sets). DO NOT DO 3 (OR LATER, 6) SETS OFF EACH ANGLE!",
        "exercises": [
@@ -15906,33 +16126,33 @@
          "name": "Heel-Hook Isometric Pull  60, 90, 120 Degrees",
          "exercise_id": "tex_01kn2tmkthfntb843enqet89h2",
          "type": "duration_set",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 4,
-          "max": 6
+          "min": 1,
+          "max": 3
          },
          "duration_min": {
-          "min": null,
-          "max": 15.0
+          "min": 5.0,
+          "max": 10.0
          },
          "set_duration_min": {
           "min": null,
-          "max": 0.333
+          "max": 0.5
          },
          "set_rest_min": {
           "min": null,
           "max": 1.0
          },
          "note": "Do 1 Set of EACH ANGLE (total 3 sets). Then, progress in later weeks to 2 Sets of EACH ANGLE (total 6 Sets). DO NOT DO 3 (OR LATER, 6) SETS OFF EACH ANGLE!",
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=12e6VfaYYoo",
          "intensity": {
           "type": "numeric",
-          "min": 8.0,
-          "max": 9.0,
+          "min": 7.0,
+          "max": 8.0,
           "reference": "rpe"
          },
-         "prescription": "4 - 6 sets x 20s @ 8-9 RPE"
+         "prescription": "1 - 3 sets x 30s @ 7-8 RPE"
         }
        ]
       },
@@ -15952,14 +16172,14 @@
          "name": "TRX/Rings Body Saws",
          "exercise_id": "tex_01kn2sf4ckeq4rsgxg1xb79d11",
          "type": "repetition",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 10
+          "max": 12
          },
          "duration_min": {
           "min": null,
@@ -15969,15 +16189,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=5AeKcMpqK2g",
          "intensity": {
           "type": "numeric",
-          "min": 7.0,
-          "max": 8.0,
+          "min": 6.0,
+          "max": 6.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 10 reps @ 7-8 RPE"
+         "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
       },
@@ -15997,14 +16217,14 @@
          "name": "Bulgarian Split Squats",
          "exercise_id": "tex_01kn2ssxkvf53r0yw56mxhshxs",
          "type": "repetition",
-         "position": 3,
+         "position": 1,
          "sets": {
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 2
          },
          "reps": {
           "min": null,
-          "max": 10
+          "max": 12
          },
          "duration_min": {
           "min": null,
@@ -16014,15 +16234,15 @@
           "min": 2.0,
           "max": 5.0
          },
-         "cycle_note": "4",
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=1-GzXim_jtw",
          "intensity": {
           "type": "numeric",
-          "min": 7.0,
-          "max": 8.0,
+          "min": 6.0,
+          "max": 6.0,
           "reference": "rpe"
          },
-         "prescription": "2 - 4 sets x 10 reps @ 7-8 RPE"
+         "prescription": "1 - 2 sets x 12 reps @ 6 RPE"
         }
        ]
       }
@@ -16033,7 +16253,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq72",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-06",
+   "date": "2026-09-07",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16045,21 +16265,60 @@
     "max": 60.0
    },
    "duration_label": "1h",
-   "detailed": false,
+   "detailed": true,
    "prescribed": true,
    "section_summary": [
-    "Workout 50m"
+    "Warm-up 10m",
+    "Workout 55m"
    ],
-   "exercise_count": 6,
+   "exercise_count": 7,
    "sections": [
+    {
+     "kind": "Warm-up",
+     "type_id": "wt_01hhg52bz9ete801mgbj0eq7c7",
+     "duration_min": {
+      "min": 8.0,
+      "max": 10.0
+     },
+     "duration_label": "10m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 2,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 8.0,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Mobility Warm-Up",
+         "exercise_id": "tex_01kh7qg20sem4teh7qfcypf53e",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 8.0,
+          "max": 10.0
+         },
+         "video": "https://www.youtube.com/watch?v=bWDwARgnDSQ",
+         "prescription": "10m"
+        }
+       ]
+      }
+     ]
+    },
     {
      "kind": "Workout",
      "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
      "duration_min": {
-      "min": 50.0,
-      "max": 50.0
+      "min": 55.0,
+      "max": 55.0
      },
-     "duration_label": "50m",
+     "duration_label": "55m",
      "choose_from": null,
      "groups": [
       {
@@ -16197,7 +16456,7 @@
          "name": "Isometric Side Split",
          "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
          "type": "timed_repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
           "min": null,
           "max": 2
@@ -16214,8 +16473,8 @@
           "min": null,
           "max": 1.0
          },
-         "rep_duration_min": 0.917,
-         "cycle_note": "4",
+         "rep_duration_min": 0.667,
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
          "prescription": "2 sets x 1 reps"
         }
@@ -16275,27 +16534,31 @@
        },
        "duration_min": {
         "min": null,
-        "max": 5.0
+        "max": 10.0
        },
        "exercises": [
         {
          "name": "Step Ups",
          "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
          "type": "repetition",
-         "position": 4,
+         "position": 1,
          "sets": {
           "min": null,
-          "max": 1
+          "max": 3
          },
          "reps": {
           "min": null,
-          "max": 7
+          "max": 6
          },
          "duration_min": {
           "min": null,
-          "max": 5.0
+          "max": 10.0
          },
-         "cycle_note": "4",
+         "set_rest_min": {
+          "min": null,
+          "max": 1.0
+         },
+         "cycle_note": "1",
          "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
          "intensity": {
           "type": "other",
@@ -16303,7 +16566,7 @@
           "max": null,
           "reference": "mildStretch"
          },
-         "prescription": "1 sets x 7 reps"
+         "prescription": "3 sets x 6 reps"
         }
        ]
       }
@@ -16314,7 +16577,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq7h",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-07",
+   "date": "2026-09-08",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16475,7 +16738,7 @@
   {
    "id": "ts_01ky7vs3dcfk1s06mrk54fpq8a",
    "name": "Pull Supplementals",
-   "date": "2026-09-07",
+   "date": "2026-09-08",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16846,7 +17109,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwfp",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-08",
+   "date": "2026-09-09",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -16937,7 +17200,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwfx",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-09",
+   "date": "2026-09-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17024,7 +17287,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgh",
    "name": "Goal Reflection",
-   "date": "2026-09-09",
+   "date": "2026-09-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17085,7 +17348,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgm",
    "name": "Recovery + Movement",
-   "date": "2026-09-10",
+   "date": "2026-09-11",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17149,7 +17412,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwgs",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-11",
+   "date": "2026-09-12",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17236,7 +17499,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhd",
    "name": "Recovery + Movement",
-   "date": "2026-09-12",
+   "date": "2026-09-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17298,7 +17561,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhj",
    "name": "End of Deload Check-In",
-   "date": "2026-09-13",
+   "date": "2026-09-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17359,7 +17622,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwhn",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-09-13",
+   "date": "2026-09-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17446,7 +17709,7 @@
   {
    "id": "ts_01ky7vs3ddecnvhdynqmt2gwj9",
    "name": "Recovery + Movement",
-   "date": "2026-09-14",
+   "date": "2026-09-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -17508,7 +17771,7 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqat6",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-15",
+   "date": "2026-09-16",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -17657,7 +17920,7 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqaty",
    "name": "Push Supplementals",
-   "date": "2026-09-15",
+   "date": "2026-09-16",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -17924,154 +18187,1611 @@
   {
    "id": "ts_01ky7vs3defg0sc387s12mqavb",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-16",
-   "position": 1,
-   "optional": false,
-   "cycle": 5,
-   "cycle_length": 8,
-   "note": null,
-   "description": null,
-   "duration_min": {
-    "min": 68.0,
-    "max": 70.0
-   },
-   "duration_label": "1h 10m",
-   "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
-  },
-  {
-   "id": "ts_01ky7vs3defg0sc387s12mqavt",
-   "name": "Skill Practice + Density Hangs",
    "date": "2026-09-17",
    "position": 1,
    "optional": false,
    "cycle": 5,
    "cycle_length": 8,
    "note": null,
-   "description": null,
+   "description": "Phase 1 is about building control before range.\nThe goal of this phase is to establish correct positioning, active tension, and left–right symmetry in wide stances and high-step positions before chasing deeper mobility. Rather than forcing flexibility, Phase 1 teaches you how to support yourself at the edges of your current range through slow, controlled reps and isometric holds. This creates tissue tolerance, improves coordination, and reduces injury risk, setting the foundation for all deeper range, load, and speed work later in the year.\n\nSession Intention\nBuild hip mobility and end-range strength that improves climbing positions. Move slowly and intentionally. This is not a stretching session — it’s strength training for mobility.\nThese exercises train positions that climbers constantly struggle with:\n• high feet\n• wide stances\n• drop knees\n• compression positions\n\nInstead of forcing flexibility, you are teaching your body to control these positions under load. Move slowly. Pause in the end ranges. Focus on breathing and balance.\nWhen this work is done consistently, climbers often notice that:\n• high steps feel easier\n• hips stay closer to the wall\n• tension becomes easier to maintain",
+   "duration_min": {
+    "min": 68.0,
+    "max": 70.0
+   },
+   "duration_label": "1h 10m",
+   "detailed": false,
+   "prescribed": true,
+   "section_summary": [
+    "Workout 1h"
+   ],
+   "exercise_count": 6,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 60.0,
+      "max": 60.0
+     },
+     "duration_label": "1h",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 3,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Horse Stance Slides",
+         "exercise_id": "tex_01kh7qk5qfftfrhke54dn58zh0",
+         "type": "timed_repetition",
+         "position": 1,
+         "sets": {
+          "min": 1,
+          "max": 1
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "rep_rest_min": 0.167,
+         "rep_duration_min": 0.1,
+         "video": "https://www.youtube.com/watch?v=9bYyJPA0tGQ",
+         "prescription": "1 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 4,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Taylors Pose",
+         "exercise_id": "tex_01jmjzahfve09t1hwnmj9ky120",
+         "type": "repetition",
+         "position": 1,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 10.0
+         },
+         "set_rest_min": {
+          "min": null,
+          "max": 1.25
+         },
+         "video": "https://www.youtube.com/watch?v=RAfCOcAaBSs",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 5,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 5.0
+       },
+       "exercises": [
+        {
+         "name": "Drop-Stance Squats",
+         "exercise_id": "tex_01kh7qz0rzem88zzcs9g2q095g",
+         "type": "repetition",
+         "position": 1,
+         "per_side": true,
+         "sets": {
+          "min": null,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 5.0
+         },
+         "set_rest_min": {
+          "min": null,
+          "max": 0.75
+         },
+         "video": "https://www.youtube.com/watch?v=rtBH4Z9eBzo",
+         "prescription": "2 sets x 8 reps per side"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 6,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 5.0
+       },
+       "exercises": [
+        {
+         "name": "Isometric Side Split",
+         "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": null,
+          "max": 1
+         },
+         "reps": {
+          "min": 1,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 5.0
+         },
+         "rep_duration_min": 1.0,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
+         "prescription": "1 sets x 1 reps"
+        }
+       ]
+      },
+      {
+       "position": 5,
+       "number": 7,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Cable Pull-In",
+         "exercise_id": "tex_01j9aqbqmjega9wyc8bnfjfcnd",
+         "type": "repetition",
+         "position": 1,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 10.0
+         },
+         "set_rest_min": {
+          "min": 0.75,
+          "max": 1.0
+         },
+         "note": "If you don't have a cable machine, use a resistance band around a pole instead.",
+         "video": "https://www.youtube.com/watch?v=CTFPbhPWVOk",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 6,
+       "number": 8,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Step Ups",
+         "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
+         "type": "repetition",
+         "position": 5,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 7
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 7 reps"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ts_01ky7vs3defg0sc387s12mqavt",
+   "name": "Skill Practice + Density Hangs",
+   "date": "2026-09-18",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": "This is a big one. Because you are already loading the fingers with Density Hangs, you need to be smart about grip overlap in the climbing and pull work around it.\n\nA few rules:\n\t•\tYour density hangs are on an edge, avoid making the rest of the session heavily edge-dominant.\n\t•\tIf the skill drill or free climbing is already crimp-heavy, choose a more open-hand or varied grip for the hangs if possible.\n\t•\tAvoid stacking repeated half crimp stress across the entire day.\n\t•\tIf fingers feel stiff, puffy, or irritated during the hangs, reduce the intensity immediately or skip them.\n\nThe goal is distributed stress, not hammering the exact same tissues over and over.\n\nThink:\n\t•\tedges + slopers\n\t•\topen hand + pinch\n\t•\tvaried movement + submax hang loading\n\nThat is how you build finger capacity without accidentally turning a capacity day into the beginning of a finger issue.",
+   "description": "Session Intention\n\nBuild finger and tissue capacity through submaximal finger loading while continuing to improve movement skill on the wall. Stay controlled and patient. This is not a max strength day. Your job is to build capacity, accumulate quality reps, and leave your fingers feeling worked, not irritated.\n\nThis day combines movement practice with one of the most important finger-loading tools in the entire Capacity Phase: Density Hangs.\n\nThat matters because this phase is not about testing how strong your fingers are. It’s about teaching them to tolerate repeatable loading. The session starts with your assigned skill drill so you can sharpen movement quality while fresh.\n\nThen you move into either:\nDensity Hangs, or\nFree Climbing (at a low intensity if your fingers are too fatigued for Density Hangs)\n\nIf you are doing Density Hangs, the goal is simple: Build finger capacity through controlled, submaximal time under tension.\n\nThat means:\n\nno grinding\nno shaking\nno ugly form\nno “let’s see how much I can survive” energy\n\nYou should be using a hold size and intensity that lets you stay smooth and repeatable. The point is to give the fingers, pulleys, and connective tissue a consistent signal that says: “Get better at handling load.” Not: “Emergency. Panic. Survive this hang.”\n\nIf you are doing the Free Climbing version instead, the same rule applies. Climb in that RPE 5–6 zone where you can still focus on precision, body position, and efficient movement.\nThen finish with the assigned Pull session, keeping the quality high and the ego low. This day should leave you feeling like you trained. Not like you got away with something.",
    "duration_min": {
     "min": 135.0,
     "max": 200.0
    },
    "duration_label": "3h 20m",
    "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
+   "prescribed": true,
+   "section_summary": [
+    "Workout 2h 10m"
+   ],
+   "exercise_count": 6,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 65.0,
+      "max": 130.0
+     },
+     "duration_label": "2h 10m",
+     "choose_from": [
+      "A",
+      "B"
+     ],
+     "groups": [
+      {
+       "position": 1,
+       "number": 12,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 20.0,
+        "max": 40.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Tension Trainers",
+         "exercise_id": "tex_01j8p2bppbfnw9jzrz45xfqgbw",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 20.0,
+          "max": 40.0
+         },
+         "video": "https://www.youtube.com/watch?v=RSu2Kz6GMoo",
+         "prescription": "40m"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 13,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 20.0,
+        "max": 40.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Cross Trainers",
+         "exercise_id": "tex_01j8p0cp9cfrasq0bjd7jb8tsg",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 20.0,
+          "max": 40.0
+         },
+         "video": "https://www.youtube.com/watch?v=bKlaj1eycsU",
+         "prescription": "40m"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 14,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 20.0,
+        "max": 40.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Heel Trainers",
+         "exercise_id": "tex_01j8p2dy59fhtaf04c7vntvbxq",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 20.0,
+          "max": 40.0
+         },
+         "video": "https://www.youtube.com/watch?v=9z2UPSN0-dY",
+         "prescription": "40m"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 15,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 20.0,
+        "max": 40.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Twist Trainers",
+         "exercise_id": "tex_01j8nyemqnebkar8xtx803wfnb",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 20.0,
+          "max": 40.0
+         },
+         "video": "https://www.youtube.com/watch?v=7949GvnCQfg",
+         "prescription": "40m"
+        }
+       ]
+      },
+      {
+       "position": 5,
+       "number": 3,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 45.0,
+        "max": 60.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Density Hangs",
+         "exercise_id": "tex_01kn2rebr4e418dhbwnnhq1yc7",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 45.0,
+          "max": 60.0
+         },
+         "video": "https://www.youtube.com/watch?v=9Ff0mb2jfgU",
+         "prescription": "1h"
+        }
+       ]
+      },
+      {
+       "position": 6,
+       "number": 16,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 60.0,
+        "max": 90.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Free Climbing",
+         "exercise_id": "tex_01kdrv806mem882w2qhcvcz3ta",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 60.0,
+          "max": 90.0
+         },
+         "prescription": "1h 30m"
+        }
+       ]
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "ts_01ky7vs3defg0sc387s12mqawp",
    "name": "Pull Supplementals",
-   "date": "2026-09-17",
-   "position": 1,
-   "optional": false,
-   "cycle": 5,
-   "cycle_length": 8,
-   "note": null,
-   "description": null,
-   "duration_min": {
-    "min": 70.0,
-    "max": 75.0
-   },
-   "duration_label": "1h 15m",
-   "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
-  },
-  {
-   "id": "ts_01ky7vs3dfeap843kd7hyk3b79",
-   "name": "Recovery + Optional Stretching",
    "date": "2026-09-18",
    "position": 1,
    "optional": false,
    "cycle": 5,
    "cycle_length": 8,
    "note": null,
-   "description": null,
+   "description": "Supplemental Session Warm-Up Notes\n\nIf lifting is done at a different time of day than climbing:\nDo the dynamic stretching routine \nPerform ramping warm-up sets before your working sets \n\nWarm-up set guidelines:\n\nIf your workout's intensity ranges are as follows, do the recommended amount of warm-up sets.\n\nLow intensity (6-7 RPE): 1–2 warm-up sets\nModerate intensity (7-8.5 RPE): 2–3 warm-up sets\nHigh intensity / heavy (8.5-9.5 RPE): 3–5 warm-up sets with smaller load jumps as you get heavier\n\nWarm-ups should increase intensity, decrease reps, and not cause fatigue.\n\nIf lifting is done immediately after climbing:\n\nYou likely need fewer warm-up sets\nYou do not need to repeat the dynamic warm-up\nStart closer to your working weight, but always do at least one lighter set\n\nAdjust based on how much that muscle group was used during climbing.\n\nKey rule:\nHeavier lifts = more careful ramping.\nWhen unsure, add one light set rather than skipping one.",
+   "duration_min": {
+    "min": 70.0,
+    "max": 75.0
+   },
+   "duration_label": "1h 15m",
+   "detailed": false,
+   "prescribed": true,
+   "section_summary": [
+    "Workout 1h"
+   ],
+   "exercise_count": 7,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 60.0,
+      "max": 60.0
+     },
+     "duration_label": "1h",
+     "choose_from": [
+      "A",
+      "B",
+      "C"
+     ],
+     "groups": [
+      {
+       "position": 1,
+       "number": 6,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "1-arm lock-off 90 degrees",
+         "exercise_id": "tex_01kn2tp3defsj8re2wxcqyjrmx",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "rep_duration_min": 0.333,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=aDeEkQ0g5cA",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 10.0,
+          "reference": "fail"
+         },
+         "prescription": "1 - 2 sets x 1 reps @ 10 FAIL"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 13,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "2-Arm Lock-Off 90 degrees",
+         "exercise_id": "tex_01kn2tpsd1e6bvtmt4ct52qpcs",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "rep_duration_min": 0.333,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=YmPv-YZZK4U",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 10.0,
+          "reference": "fail"
+         },
+         "prescription": "1 - 2 sets x 1 reps @ 10 FAIL"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 11,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "1-Arm Lock-Off 120 degrees",
+         "exercise_id": "tex_01kn2tqby2fktbcc7e0sjg16y7",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "rep_duration_min": 0.333,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=aDeEkQ0g5cA",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 10.0,
+          "reference": "fail"
+         },
+         "prescription": "1 - 2 sets x 1 reps @ 10 FAIL"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 12,
+       "label": "B",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "2-Arm Lock-Off 120 degrees",
+         "exercise_id": "tex_01kn2tr7wtf1wvmpcpdkcvkyt4",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "rep_duration_min": 0.333,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=YmPv-YZZK4U",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 10.0,
+          "reference": "fail"
+         },
+         "prescription": "1 - 2 sets x 1 reps @ 10 FAIL"
+        }
+       ]
+      },
+      {
+       "position": 5,
+       "number": 8,
+       "label": "C",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Dumbbell Row",
+         "exercise_id": "tex_01kn2trwsyerhayv4vt3yeqhjw",
+         "type": "repetition",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=51R8SFuDuTI",
+         "intensity": {
+          "type": "numeric",
+          "min": 5.0,
+          "max": 6.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 5-6 RPE"
+        }
+       ]
+      },
+      {
+       "position": 6,
+       "number": 14,
+       "label": "C",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "High Bar/Ring Rows",
+         "exercise_id": "tex_01kn2tsemvek2tfambw368vb58",
+         "type": "repetition",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=4Oqh6kXAGTA",
+         "intensity": {
+          "type": "numeric",
+          "min": 5.0,
+          "max": 6.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 5-6 RPE"
+        }
+       ]
+      },
+      {
+       "position": 7,
+       "number": 9,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Wide Grip Pull-Ups",
+         "exercise_id": "tex_01kn2tt25vfxd8pbkqx67sqqbn",
+         "type": "repetition",
+         "position": 5,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=4vm2Wl-CWnE",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 7.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 7 RPE"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ts_01ky7vs3dfeap843kd7hyk3b79",
+   "name": "Recovery + Optional Stretching",
+   "date": "2026-09-19",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": "Today is a rest day, but gentle movement can still be beneficial if it supports recovery rather than adding fatigue. A brief dynamic warm-up followed by relaxed static stretching can help increase blood flow, reduce residual muscle tension, and restore comfortable ranges of motion without stressing the nervous system. This combination supports tissue hydration, improves joint comfort, and can enhance relaxation and parasympathetic recovery, often leaving you feeling looser, calmer, and more refreshed for the days ahead. The goal is not to push flexibility or create strain, but to move easily, breathe well, and support overall recovery.\n\nThese static stretches have been intentionally selected to complement and support the hip mobility work you are doing throughout the program. Feel free to do this routine 5-6 days per week.",
    "duration_min": {
     "min": null,
     "max": 35.0
    },
    "duration_label": "35m",
    "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
+   "prescribed": true,
+   "section_summary": [
+    "Workout 20m"
+   ],
+   "exercise_count": 1,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 10.0,
+      "max": 20.0
+     },
+     "duration_label": "20m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 3,
+       "optional": true,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 10.0,
+        "max": 20.0
+       },
+       "exercises": [
+        {
+         "name": "Static Stretching",
+         "exercise_id": "tex_01keza6659ft3r5cer5hwafp48",
+         "type": "duration",
+         "position": 1,
+         "optional": true,
+         "duration_min": {
+          "min": 10.0,
+          "max": 20.0
+         },
+         "video": "https://www.youtube.com/watch?v=vCYBEbLkbH8",
+         "prescription": "20m"
+        }
+       ]
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b7e",
    "name": "Ideal Circuit",
-   "date": "2026-09-19",
+   "date": "2026-09-20",
    "position": 1,
    "optional": false,
    "cycle": 5,
    "cycle_length": 8,
-   "note": null,
-   "description": null,
+   "note": "Grip Overlap Warning: Pay attention to repeated small crimps. If several attempts involve the same edge size, switch to a problem with a different grip style. Your finger joints are still building capacity in this phase.",
+   "description": "Session Intention\nIntroduce slightly higher-intensity climbing while maintaining excellent movement quality and control. The goal of this session is to begin nudging intensity upward without sacrificing efficiency, coordination, or finger health.\nSeek out a wide range of boulders that expose your biggest opportunities for improvement—different wall angles, hold types, movement styles, and body positions. This spreads the mechanical load across the fingers, shoulders, core, and lower body while developing more complete climbing ability.\nCommit fully to each move and climb with purpose, but avoid desperate attempts, excessive fighting, or repeated failures. You should be operating at an intensity where the moves feel challenging and engaging, yet still allow you to execute them with precision, timing, and control.\nThink of this session as high-quality problem solving under moderate stress—training your body and brain to perform difficult climbing movements while staying composed, efficient, and technically sharp.",
    "duration_min": {
     "min": 147.0,
     "max": 193.0
    },
    "duration_label": "3h 13m",
    "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
+   "prescribed": true,
+   "section_summary": [
+    "Workout 2h 3m"
+   ],
+   "exercise_count": 5,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 77.0,
+      "max": 123.0
+     },
+     "duration_label": "2h 3m",
+     "choose_from": [
+      "A"
+     ],
+     "groups": [
+      {
+       "position": 1,
+       "number": 9,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 2.0,
+        "max": 3.0
+       },
+       "note": "I have seen far too many climbers push too hard and get minimal results and even get injured, from pushing too hard during the Capacity Phase. Please read this and commit it to memory. Leave you EGO at the door!",
+       "exercises": [
+        {
+         "name": "Capacity Phase Warning!",
+         "exercise_id": "tex_01kr2319gzff7v81zbvasbvtv4",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 2.0,
+          "max": 3.0
+         },
+         "note": "I have seen far too many climbers push too hard and get minimal results and even get injured, from pushing too hard during the Capacity Phase. Please read this and commit it to memory. Leave you EGO at the door!",
+         "prescription": "3m"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 6,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 15.0,
+        "max": 30.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Dynos",
+         "exercise_id": "tex_01j8nxp6v1fgj9mzqswkk8wfn1",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 15.0,
+          "max": 30.0
+         },
+         "video": "https://www.youtube.com/watch?v=p7jHvrQE-qA",
+         "prescription": "30m"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 7,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 15.0,
+        "max": 30.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Hover Drill",
+         "exercise_id": "tex_01j8p1vsaafn09b5m7ze9v061n",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 15.0,
+          "max": 30.0
+         },
+         "video": "https://www.youtube.com/watch?v=BBjC3GnqxDg",
+         "intensity": {
+          "type": "numeric",
+          "min": null,
+          "max": 7.0,
+          "reference": "rpe"
+         },
+         "prescription": "30m @ 7 RPE"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 8,
+       "label": "A",
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 20.0,
+        "max": 30.0
+       },
+       "pick": 1,
+       "exercises": [
+        {
+         "name": "Slab Up-Down Repeats",
+         "exercise_id": "tex_01j8p04n3ke88tp9qgddj3gfns",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 20.0,
+          "max": 30.0
+         },
+         "video": "https://www.youtube.com/watch?v=hOcdGw-Q8Ys",
+         "prescription": "30m"
+        }
+       ]
+      },
+      {
+       "position": 5,
+       "number": 4,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": 60.0,
+        "max": 90.0
+       },
+       "note": "Please bias toward more open handed grips during the Capacity Phase (3 Finger Drag, 4 Finger Open Hand, Slopers, Big Pinches, etc). The goal of this phase is to build your grip “engine” and increase tissue capacity through sustainable submaximal loading, not to maximize peak force through aggressive crimping. Open handed positions generally create less pulley and joint stress while still building tremendous forearm, tendon, and work capacity adaptations. Overusing high force crimp positions during this phase often shifts the stimulus away from capacity development and toward excessive structural finger loading, which can fry your fingers, increase fatigue, and raise injury risk before the higher intensity phases even begin.",
+       "exercises": [
+        {
+         "name": "Ideal Circuit",
+         "exercise_id": "tex_01kn2ry2yxfsdtzwbfzv47vf14",
+         "type": "duration",
+         "position": 1,
+         "duration_min": {
+          "min": 60.0,
+          "max": 90.0
+         },
+         "note": "Please bias toward more open handed grips during the Capacity Phase (3 Finger Drag, 4 Finger Open Hand, Slopers, Big Pinches, etc). The goal of this phase is to build your grip “engine” and increase tissue capacity through sustainable submaximal loading, not to maximize peak force through aggressive crimping. Open handed positions generally create less pulley and joint stress while still building tremendous forearm, tendon, and work capacity adaptations. Overusing high force crimp positions during this phase often shifts the stimulus away from capacity development and toward excessive structural finger loading, which can fry your fingers, increase fatigue, and raise injury risk before the higher intensity phases even begin.",
+         "video": "https://www.youtube.com/watch?v=K30druQcvos",
+         "prescription": "1h 30m"
+        }
+       ]
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b88",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-19",
-   "position": 1,
-   "optional": false,
-   "cycle": 5,
-   "cycle_length": 8,
-   "note": null,
-   "description": null,
-   "duration_min": {
-    "min": 70.0,
-    "max": 70.0
-   },
-   "duration_label": "1h 10m",
-   "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
-  },
-  {
-   "id": "ts_01ky7vs3dfeap843kd7hyk3b8k",
-   "name": "Capacity Phase Mobility Development Day",
    "date": "2026-09-20",
    "position": 1,
    "optional": false,
    "cycle": 5,
    "cycle_length": 8,
    "note": null,
-   "description": null,
+   "description": "Supplemental Session Warm-Up Notes\n\nIf lifting is done at a different time of day than climbing:\nDo the dynamic stretching routine \nPerform ramping warm-up sets before your working sets \n\nWarm-up set guidelines:\n\nIf your workout's intensity ranges are as follows, do the recommended amount of warm-up sets.\n\nLow intensity (6-7 RPE): 1–2 warm-up sets\nModerate intensity (7-8.5 RPE): 2–3 warm-up sets\nHigh intensity / heavy (8.5-9.5 RPE): 3–5 warm-up sets with smaller load jumps as you get heavier\n\nWarm-ups should increase intensity, decrease reps, and not cause fatigue.\n\nIf lifting is done immediately after climbing:\n\nYou likely need fewer warm-up sets\nYou do not need to repeat the dynamic warm-up\nStart closer to your working weight, but always do at least one lighter set\n\nAdjust based on how much that muscle group was used during climbing.\n\nKey rule:\nHeavier lifts = more careful ramping.\nWhen unsure, add one light set rather than skipping one.",
+   "duration_min": {
+    "min": 70.0,
+    "max": 70.0
+   },
+   "duration_label": "1h 10m",
+   "detailed": false,
+   "prescribed": true,
+   "section_summary": [
+    "Workout 55m"
+   ],
+   "exercise_count": 4,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 55.0,
+      "max": 55.0
+     },
+     "duration_label": "55m",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 5,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Single Leg Romanian Deadlift",
+         "exercise_id": "tex_01kn2tkr6vfr6rey9wyh2x64s8",
+         "type": "repetition",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=hBN0V2WMXhE",
+         "intensity": {
+          "type": "numeric",
+          "min": 5.0,
+          "max": 6.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 5-6 RPE"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 6,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 10.0
+       },
+       "note": "Do 1 Set of EACH ANGLE (total 3 sets). Then, progress in later weeks to 2 Sets of EACH ANGLE (total 6 Sets). DO NOT DO 3 (OR LATER, 6) SETS OFF EACH ANGLE!",
+       "exercises": [
+        {
+         "name": "Heel-Hook Isometric Pull  60, 90, 120 Degrees",
+         "exercise_id": "tex_01kn2tmkthfntb843enqet89h2",
+         "type": "duration_set",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 3
+         },
+         "duration_min": {
+          "min": null,
+          "max": 10.0
+         },
+         "set_duration_min": {
+          "min": null,
+          "max": 0.333
+         },
+         "set_rest_min": {
+          "min": null,
+          "max": 1.0
+         },
+         "note": "Do 1 Set of EACH ANGLE (total 3 sets). Then, progress in later weeks to 2 Sets of EACH ANGLE (total 6 Sets). DO NOT DO 3 (OR LATER, 6) SETS OFF EACH ANGLE!",
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=12e6VfaYYoo",
+         "intensity": {
+          "type": "numeric",
+          "min": 8.0,
+          "max": 9.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 3 sets x 20s @ 8-9 RPE"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 7,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "TRX/Rings Body Saws",
+         "exercise_id": "tex_01kn2sf4ckeq4rsgxg1xb79d11",
+         "type": "repetition",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=5AeKcMpqK2g",
+         "intensity": {
+          "type": "numeric",
+          "min": 5.0,
+          "max": 6.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 5-6 RPE"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 8,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Bulgarian Split Squats",
+         "exercise_id": "tex_01kn2ssxkvf53r0yw56mxhshxs",
+         "type": "repetition",
+         "position": 4,
+         "sets": {
+          "min": 1,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 10
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=1-GzXim_jtw",
+         "intensity": {
+          "type": "numeric",
+          "min": 5.0,
+          "max": 6.0,
+          "reference": "rpe"
+         },
+         "prescription": "1 - 2 sets x 10 reps @ 5-6 RPE"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ts_01ky7vs3dfeap843kd7hyk3b8k",
+   "name": "Capacity Phase Mobility Development Day",
+   "date": "2026-09-21",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": "Phase 1 is about building control before range.\nThe goal of this phase is to establish correct positioning, active tension, and left–right symmetry in wide stances and high-step positions before chasing deeper mobility. Rather than forcing flexibility, Phase 1 teaches you how to support yourself at the edges of your current range through slow, controlled reps and isometric holds. This creates tissue tolerance, improves coordination, and reduces injury risk, setting the foundation for all deeper range, load, and speed work later in the year.",
    "duration_min": {
     "min": 68.0,
     "max": 70.0
    },
    "duration_label": "1h 10m",
    "detailed": false,
-   "prescribed": false,
-   "section_summary": [],
-   "exercise_count": 0,
-   "sections": []
+   "prescribed": true,
+   "section_summary": [
+    "Workout 1h"
+   ],
+   "exercise_count": 6,
+   "sections": [
+    {
+     "kind": "Workout",
+     "type_id": "wt_01hhg52tnkefmr64bqhw0ez7at",
+     "duration_min": {
+      "min": 60.0,
+      "max": 60.0
+     },
+     "duration_label": "1h",
+     "choose_from": null,
+     "groups": [
+      {
+       "position": 1,
+       "number": 3,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Horse Stance Slides",
+         "exercise_id": "tex_01kh7qk5qfftfrhke54dn58zh0",
+         "type": "timed_repetition",
+         "position": 1,
+         "sets": {
+          "min": 1,
+          "max": 1
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "rep_rest_min": 0.167,
+         "rep_duration_min": 0.1,
+         "video": "https://www.youtube.com/watch?v=9bYyJPA0tGQ",
+         "prescription": "1 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 2,
+       "number": 4,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Taylors Pose",
+         "exercise_id": "tex_01jmjzahfve09t1hwnmj9ky120",
+         "type": "repetition",
+         "position": 1,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 10.0
+         },
+         "set_rest_min": {
+          "min": null,
+          "max": 1.25
+         },
+         "video": "https://www.youtube.com/watch?v=RAfCOcAaBSs",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 3,
+       "number": 5,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 5.0
+       },
+       "exercises": [
+        {
+         "name": "Drop-Stance Squats",
+         "exercise_id": "tex_01kh7qz0rzem88zzcs9g2q095g",
+         "type": "repetition",
+         "position": 1,
+         "per_side": true,
+         "sets": {
+          "min": null,
+          "max": 2
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 5.0
+         },
+         "set_rest_min": {
+          "min": null,
+          "max": 0.75
+         },
+         "video": "https://www.youtube.com/watch?v=rtBH4Z9eBzo",
+         "prescription": "2 sets x 8 reps per side"
+        }
+       ]
+      },
+      {
+       "position": 4,
+       "number": 6,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 5.0
+       },
+       "exercises": [
+        {
+         "name": "Isometric Side Split",
+         "exercise_id": "tex_01jm08qn1zejqtbtg285stnq0s",
+         "type": "timed_repetition",
+         "position": 5,
+         "sets": {
+          "min": null,
+          "max": 1
+         },
+         "reps": {
+          "min": 1,
+          "max": 1
+         },
+         "duration_min": {
+          "min": null,
+          "max": 5.0
+         },
+         "rep_duration_min": 1.0,
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=R0ooXQuSjGc",
+         "prescription": "1 sets x 1 reps"
+        }
+       ]
+      },
+      {
+       "position": 5,
+       "number": 7,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 10.0
+       },
+       "exercises": [
+        {
+         "name": "Cable Pull-In",
+         "exercise_id": "tex_01j9aqbqmjega9wyc8bnfjfcnd",
+         "type": "repetition",
+         "position": 1,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 8
+         },
+         "duration_min": {
+          "min": null,
+          "max": 10.0
+         },
+         "set_rest_min": {
+          "min": 0.75,
+          "max": 1.0
+         },
+         "note": "If you don't have a cable machine, use a resistance band around a pole instead.",
+         "video": "https://www.youtube.com/watch?v=CTFPbhPWVOk",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 8 reps"
+        }
+       ]
+      },
+      {
+       "position": 6,
+       "number": 8,
+       "repeats": {
+        "min": null,
+        "max": 1
+       },
+       "duration_min": {
+        "min": null,
+        "max": 15.0
+       },
+       "exercises": [
+        {
+         "name": "Step Ups",
+         "exercise_id": "tex_01knqkbv31fny94zhvp00d24nw",
+         "type": "repetition",
+         "position": 5,
+         "sets": {
+          "min": null,
+          "max": 3
+         },
+         "reps": {
+          "min": null,
+          "max": 7
+         },
+         "duration_min": {
+          "min": null,
+          "max": 15.0
+         },
+         "set_rest_min": {
+          "min": 2.0,
+          "max": 5.0
+         },
+         "cycle_note": "5",
+         "video": "https://www.youtube.com/watch?v=h7h45_-Sm4M",
+         "intensity": {
+          "type": "other",
+          "min": null,
+          "max": null,
+          "reference": "mildStretch"
+         },
+         "prescription": "3 sets x 7 reps"
+        }
+       ]
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "ts_01ky7vs3dfeap843kd7hyk3b92",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-21",
+   "date": "2026-09-22",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18092,7 +19812,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpxr",
    "name": "Pull Supplementals",
-   "date": "2026-09-21",
+   "date": "2026-09-22",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18113,7 +19833,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpy9",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-22",
+   "date": "2026-09-23",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -18134,7 +19854,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpyg",
    "name": "Movement Capacity Builder",
-   "date": "2026-09-23",
+   "date": "2026-09-24",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18155,7 +19875,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpz8",
    "name": "Push Supplementals",
-   "date": "2026-09-23",
+   "date": "2026-09-24",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18176,7 +19896,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anpzn",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-24",
+   "date": "2026-09-25",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18197,7 +19917,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anq04",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-09-25",
+   "date": "2026-09-26",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18218,7 +19938,7 @@
   {
    "id": "ts_01ky7vs3dgemxsxb6byf3anq10",
    "name": "Pull Supplementals",
-   "date": "2026-09-25",
+   "date": "2026-09-26",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18239,7 +19959,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sq8",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-09-26",
+   "date": "2026-09-27",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18260,7 +19980,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sqd",
    "name": "Ideal Circuit",
-   "date": "2026-09-27",
+   "date": "2026-09-28",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18281,7 +20001,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sr7",
    "name": "Legs/Core Supplementals",
-   "date": "2026-09-27",
+   "date": "2026-09-28",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18302,7 +20022,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55srj",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-09-28",
+   "date": "2026-09-29",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18323,7 +20043,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55ss1",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-09-29",
+   "date": "2026-09-30",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18344,7 +20064,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sst",
    "name": "Pull Supplementals",
-   "date": "2026-09-29",
+   "date": "2026-09-30",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18365,7 +20085,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55stb",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-09-30",
+   "date": "2026-10-01",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -18386,7 +20106,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55stj",
    "name": "Movement Capacity Builder",
-   "date": "2026-10-01",
+   "date": "2026-10-02",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18407,7 +20127,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sva",
    "name": "Push Supplementals",
-   "date": "2026-10-01",
+   "date": "2026-10-02",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18428,7 +20148,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55svq",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-10-02",
+   "date": "2026-10-03",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18449,7 +20169,7 @@
   {
    "id": "ts_01ky7vs3dhewq967czrsp55sw6",
    "name": "Skill Practice + Density Hangs",
-   "date": "2026-10-03",
+   "date": "2026-10-04",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18470,7 +20190,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr422a",
    "name": "Pull Supplementals",
-   "date": "2026-10-03",
+   "date": "2026-10-04",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18491,7 +20211,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr422v",
    "name": "Recovery + Optional Stretching",
-   "date": "2026-10-04",
+   "date": "2026-10-05",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18512,7 +20232,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4230",
    "name": "Ideal Circuit",
-   "date": "2026-10-05",
+   "date": "2026-10-06",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18533,7 +20253,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr423t",
    "name": "Legs/Core Supplementals",
-   "date": "2026-10-05",
+   "date": "2026-10-06",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18554,7 +20274,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4245",
    "name": "Capacity Phase Mobility Development Day",
-   "date": "2026-10-06",
+   "date": "2026-10-07",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18575,7 +20295,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr424m",
    "name": "Project Practice Or High End Skill Development",
-   "date": "2026-10-07",
+   "date": "2026-10-08",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18596,7 +20316,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr425d",
    "name": "Pull Supplementals",
-   "date": "2026-10-07",
+   "date": "2026-10-08",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18617,7 +20337,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr425y",
    "name": "End of Week Reflection + Stretch",
-   "date": "2026-10-08",
+   "date": "2026-10-09",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -18638,7 +20358,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4265",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-09",
+   "date": "2026-10-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18659,7 +20379,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr426s",
    "name": "Goal Reflection",
-   "date": "2026-10-09",
+   "date": "2026-10-10",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18680,7 +20400,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr426w",
    "name": "Recovery + Movement",
-   "date": "2026-10-10",
+   "date": "2026-10-11",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18701,7 +20421,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr4271",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-11",
+   "date": "2026-10-12",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18722,7 +20442,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427n",
    "name": "Recovery + Movement",
-   "date": "2026-10-12",
+   "date": "2026-10-13",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18743,7 +20463,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427t",
    "name": "Goal Setting",
-   "date": "2026-10-13",
+   "date": "2026-10-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18764,7 +20484,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr427x",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-10-13",
+   "date": "2026-10-14",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18785,7 +20505,7 @@
   {
    "id": "ts_01ky7vs3djetgb8a96wthr428h",
    "name": "Recovery + Movement",
-   "date": "2026-10-14",
+   "date": "2026-10-15",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18806,7 +20526,7 @@
   {
    "id": "ts_01ky7vs7r7e9183aj13zg0r6jg",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-15",
+   "date": "2026-10-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18827,7 +20547,7 @@
   {
    "id": "ts_01ky7vs7r8e98tm39gry59cjn3",
    "name": "Pulls Supplemental",
-   "date": "2026-10-15",
+   "date": "2026-10-16",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18848,7 +20568,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r4g",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-16",
+   "date": "2026-10-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18869,7 +20589,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r4z",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-17",
+   "date": "2026-10-18",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18890,7 +20610,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r5s",
    "name": "Push Supplementals",
-   "date": "2026-10-17",
+   "date": "2026-10-18",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18911,7 +20631,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r62",
    "name": "Recovery + Movement",
-   "date": "2026-10-18",
+   "date": "2026-10-19",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18932,7 +20652,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r67",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-19",
+   "date": "2026-10-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18953,7 +20673,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r6v",
    "name": "Pulls Supplemental",
-   "date": "2026-10-19",
+   "date": "2026-10-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18974,7 +20694,7 @@
   {
    "id": "ts_01ky7vs7r9eaptxqxy3y1d2r76",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-20",
+   "date": "2026-10-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -18995,7 +20715,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7202",
    "name": "Limit Bouldering",
-   "date": "2026-10-21",
+   "date": "2026-10-22",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19016,7 +20736,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr720s",
    "name": "Legs/Core Supplemental",
-   "date": "2026-10-21",
+   "date": "2026-10-22",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19037,7 +20757,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7214",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-10-22",
+   "date": "2026-10-23",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19058,7 +20778,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr721b",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-23",
+   "date": "2026-10-24",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19079,7 +20799,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr7223",
    "name": "Pulls Supplemental",
-   "date": "2026-10-23",
+   "date": "2026-10-24",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19100,7 +20820,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr722e",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-24",
+   "date": "2026-10-25",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19121,7 +20841,7 @@
   {
    "id": "ts_01ky7vs7rae79sf6zhcpgr722x",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-25",
+   "date": "2026-10-26",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19142,7 +20862,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f98",
    "name": "Push Supplementals",
-   "date": "2026-10-25",
+   "date": "2026-10-26",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19163,7 +20883,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f9h",
    "name": "Recovery + Movement",
-   "date": "2026-10-26",
+   "date": "2026-10-27",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19184,7 +20904,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8f9p",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-10-27",
+   "date": "2026-10-28",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19205,7 +20925,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8faa",
    "name": "Pulls Supplemental",
-   "date": "2026-10-27",
+   "date": "2026-10-28",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19226,7 +20946,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fan",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-10-28",
+   "date": "2026-10-29",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19247,7 +20967,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fb4",
    "name": "Limit Bouldering",
-   "date": "2026-10-29",
+   "date": "2026-10-30",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19268,7 +20988,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fbv",
    "name": "Legs/Core Supplemental",
-   "date": "2026-10-29",
+   "date": "2026-10-30",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19289,7 +21009,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fc6",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-10-30",
+   "date": "2026-10-31",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -19310,7 +21030,7 @@
   {
    "id": "ts_01ky7vs7rbfveb52n0jdmr8fcd",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-10-31",
+   "date": "2026-11-01",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19331,7 +21051,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek32",
    "name": "Pulls Supplemental",
-   "date": "2026-10-31",
+   "date": "2026-11-01",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19352,7 +21072,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek3d",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-01",
+   "date": "2026-11-02",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19373,7 +21093,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek3w",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-02",
+   "date": "2026-11-03",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19394,7 +21114,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek4p",
    "name": "Push Supplementals",
-   "date": "2026-11-02",
+   "date": "2026-11-03",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19415,7 +21135,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek4z",
    "name": "Recovery + Movement",
-   "date": "2026-11-03",
+   "date": "2026-11-04",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19436,7 +21156,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek54",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-04",
+   "date": "2026-11-05",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19457,7 +21177,7 @@
   {
    "id": "ts_01ky7vs7rcex49055me0wxek5r",
    "name": "Pulls Supplemental",
-   "date": "2026-11-04",
+   "date": "2026-11-05",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19478,7 +21198,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdqr",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-05",
+   "date": "2026-11-06",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19499,7 +21219,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdr7",
    "name": "Limit Bouldering",
-   "date": "2026-11-06",
+   "date": "2026-11-07",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19520,7 +21240,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tdry",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-06",
+   "date": "2026-11-07",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19541,7 +21261,7 @@
   {
    "id": "ts_01ky7vs7rde15trb2pk1m3tds9",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-07",
+   "date": "2026-11-08",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -19562,7 +21282,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrs0",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-08",
+   "date": "2026-11-09",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19583,7 +21303,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrsr",
    "name": "Pulls Supplemental",
-   "date": "2026-11-08",
+   "date": "2026-11-09",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19604,7 +21324,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrt3",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-09",
+   "date": "2026-11-10",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19625,7 +21345,7 @@
   {
    "id": "ts_01ky7vs7ref3rsgmtp59qckrtj",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-10",
+   "date": "2026-11-11",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19646,7 +21366,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzne",
    "name": "Push Supplementals",
-   "date": "2026-11-10",
+   "date": "2026-11-11",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19667,7 +21387,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyznq",
    "name": "Recovery + Movement",
-   "date": "2026-11-11",
+   "date": "2026-11-12",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19688,7 +21408,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyznw",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-12",
+   "date": "2026-11-13",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19709,7 +21429,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzpg",
    "name": "Pulls Supplemental",
-   "date": "2026-11-12",
+   "date": "2026-11-13",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19730,7 +21450,7 @@
   {
    "id": "ts_01ky7vs7rfeaesfcsddwzbyzpv",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-13",
+   "date": "2026-11-14",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19751,7 +21471,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6b0",
    "name": "Limit Bouldering",
-   "date": "2026-11-14",
+   "date": "2026-11-15",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19772,7 +21492,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6bq",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-14",
+   "date": "2026-11-15",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19793,7 +21513,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6c2",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-15",
+   "date": "2026-11-16",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -19814,7 +21534,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6c9",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-16",
+   "date": "2026-11-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19835,7 +21555,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6cx",
    "name": "Goal Reflection",
-   "date": "2026-11-16",
+   "date": "2026-11-17",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19856,7 +21576,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6d0",
    "name": "Recovery + Movement",
-   "date": "2026-11-17",
+   "date": "2026-11-18",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19877,7 +21597,7 @@
   {
    "id": "ts_01ky7vs7rge24b6q83e8vhj6d5",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-18",
+   "date": "2026-11-19",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19898,7 +21618,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rv9",
    "name": "Recovery + Movement",
-   "date": "2026-11-19",
+   "date": "2026-11-20",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19919,7 +21639,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rve",
    "name": "End of Deload Check-In",
-   "date": "2026-11-20",
+   "date": "2026-11-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19940,7 +21660,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rvh",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-11-20",
+   "date": "2026-11-21",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19961,7 +21681,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rw5",
    "name": "Recovery + Movement",
-   "date": "2026-11-21",
+   "date": "2026-11-22",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -19982,7 +21702,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rwa",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-22",
+   "date": "2026-11-23",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20003,7 +21723,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rx2",
    "name": "Pulls Supplemental",
-   "date": "2026-11-22",
+   "date": "2026-11-23",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20024,7 +21744,7 @@
   {
    "id": "ts_01ky7vs7rhfk4szpr5nnhj6rxd",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-23",
+   "date": "2026-11-24",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20045,7 +21765,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719qc",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-24",
+   "date": "2026-11-25",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20066,7 +21786,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719r6",
    "name": "Push Supplementals",
-   "date": "2026-11-24",
+   "date": "2026-11-25",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20087,7 +21807,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719rf",
    "name": "Recovery + Movement",
-   "date": "2026-11-25",
+   "date": "2026-11-26",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20108,7 +21828,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719rm",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-11-26",
+   "date": "2026-11-27",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20129,7 +21849,7 @@
   {
    "id": "ts_01ky7vs7rjf9svmjrptf8719s8",
    "name": "Pulls Supplemental",
-   "date": "2026-11-26",
+   "date": "2026-11-27",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20150,7 +21870,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39ye",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-11-27",
+   "date": "2026-11-28",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20171,7 +21891,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39yx",
    "name": "Limit Bouldering",
-   "date": "2026-11-28",
+   "date": "2026-11-29",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20192,7 +21912,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39zm",
    "name": "Legs/Core Supplemental",
-   "date": "2026-11-28",
+   "date": "2026-11-29",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20213,7 +21933,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd39zz",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-11-29",
+   "date": "2026-11-30",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -20234,7 +21954,7 @@
   {
    "id": "ts_01ky7vs7rkfa9vbw8z2tnd3a06",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-11-30",
+   "date": "2026-12-01",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20255,7 +21975,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853w4",
    "name": "Pulls Supplemental",
-   "date": "2026-11-30",
+   "date": "2026-12-01",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20276,7 +21996,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853wf",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-01",
+   "date": "2026-12-02",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20297,7 +22017,7 @@
   {
    "id": "ts_01ky7vs7rmekhttf9rypq853wy",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-02",
+   "date": "2026-12-03",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20318,7 +22038,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een742r",
    "name": "Push Supplementals",
-   "date": "2026-12-02",
+   "date": "2026-12-03",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20339,7 +22059,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7431",
    "name": "Recovery + Movement",
-   "date": "2026-12-03",
+   "date": "2026-12-04",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20360,7 +22080,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7436",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-04",
+   "date": "2026-12-05",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20381,7 +22101,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een743t",
    "name": "Pulls Supplemental",
-   "date": "2026-12-04",
+   "date": "2026-12-05",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20402,7 +22122,7 @@
   {
    "id": "ts_01ky7vs7rnfge8bhbn2een7445",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-05",
+   "date": "2026-12-06",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20423,7 +22143,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np2k",
    "name": "Limit Bouldering",
-   "date": "2026-12-06",
+   "date": "2026-12-07",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20444,7 +22164,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3a",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-06",
+   "date": "2026-12-07",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20465,7 +22185,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3n",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-07",
+   "date": "2026-12-08",
    "position": 1,
    "optional": false,
    "cycle": 6,
@@ -20486,7 +22206,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np3w",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-12-08",
+   "date": "2026-12-09",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20507,7 +22227,7 @@
   {
    "id": "ts_01ky7vs7rpe8ks3jmsywc5np4m",
    "name": "Pulls Supplemental",
-   "date": "2026-12-08",
+   "date": "2026-12-09",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20528,7 +22248,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38vb",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-09",
+   "date": "2026-12-10",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20549,7 +22269,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38vt",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-10",
+   "date": "2026-12-11",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20570,7 +22290,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38wm",
    "name": "Push Supplementals",
-   "date": "2026-12-10",
+   "date": "2026-12-11",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20591,7 +22311,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38wx",
    "name": "Recovery + Movement",
-   "date": "2026-12-11",
+   "date": "2026-12-12",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20612,7 +22332,7 @@
   {
    "id": "ts_01ky7vs7rqepnawkfdf1mq38x2",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-12",
+   "date": "2026-12-13",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20633,7 +22353,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw32q",
    "name": "Pulls Supplemental",
-   "date": "2026-12-12",
+   "date": "2026-12-13",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20654,7 +22374,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw332",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-13",
+   "date": "2026-12-14",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20675,7 +22395,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw33h",
    "name": "Limit Bouldering",
-   "date": "2026-12-14",
+   "date": "2026-12-15",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20696,7 +22416,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw348",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-14",
+   "date": "2026-12-15",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20717,7 +22437,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw34k",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-15",
+   "date": "2026-12-16",
    "position": 1,
    "optional": false,
    "cycle": 7,
@@ -20738,7 +22458,7 @@
   {
    "id": "ts_01ky7vs7rreq0tef1vartsw34t",
    "name": "Skills + Strength Building Blocks (Basic Strength)",
-   "date": "2026-12-16",
+   "date": "2026-12-17",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20759,7 +22479,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq8x",
    "name": "Pulls Supplemental",
-   "date": "2026-12-16",
+   "date": "2026-12-17",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20780,7 +22500,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq98",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-17",
+   "date": "2026-12-18",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20801,7 +22521,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcq9q",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-18",
+   "date": "2026-12-19",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20822,7 +22542,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqah",
    "name": "Push Supplementals",
-   "date": "2026-12-18",
+   "date": "2026-12-19",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20843,7 +22563,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqat",
    "name": "Recovery + Movement",
-   "date": "2026-12-19",
+   "date": "2026-12-20",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20864,7 +22584,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqaz",
    "name": "Skills + Max Hangs OR Free Climbing",
-   "date": "2026-12-20",
+   "date": "2026-12-21",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20885,7 +22605,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqbk",
    "name": "Pulls Supplemental",
-   "date": "2026-12-20",
+   "date": "2026-12-21",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20906,7 +22626,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqby",
    "name": "Basic Strength Phase Mobility Development Day",
-   "date": "2026-12-21",
+   "date": "2026-12-22",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20927,7 +22647,7 @@
   {
    "id": "ts_01ky7vs7rsegnv9bvtgjvkcqcd",
    "name": "Limit Bouldering",
-   "date": "2026-12-22",
+   "date": "2026-12-23",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20948,7 +22668,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1my3",
    "name": "Legs/Core Supplemental",
-   "date": "2026-12-22",
+   "date": "2026-12-23",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20969,7 +22689,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mye",
    "name": "End of Week Reflection + Full Recovery Day",
-   "date": "2026-12-23",
+   "date": "2026-12-24",
    "position": 1,
    "optional": false,
    "cycle": 8,
@@ -20990,7 +22710,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1myn",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-24",
+   "date": "2026-12-25",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21011,7 +22731,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mz9",
    "name": "Goal Reflection",
-   "date": "2026-12-24",
+   "date": "2026-12-25",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21032,7 +22752,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mzc",
    "name": "Recovery + Movement",
-   "date": "2026-12-25",
+   "date": "2026-12-26",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21053,7 +22773,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1mzh",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-26",
+   "date": "2026-12-27",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21074,7 +22794,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n05",
    "name": "Recovery + Movement",
-   "date": "2026-12-27",
+   "date": "2026-12-28",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21095,7 +22815,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n0a",
    "name": "Goal Setting",
-   "date": "2026-12-28",
+   "date": "2026-12-29",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21116,7 +22836,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n0d",
    "name": "Deload, Light Climbing Session",
-   "date": "2026-12-28",
+   "date": "2026-12-29",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21137,7 +22857,7 @@
   {
    "id": "ts_01ky7vs7rtfxtv5a7df33r1n11",
    "name": "Recovery + Movement",
-   "date": "2026-12-29",
+   "date": "2026-12-30",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21158,7 +22878,7 @@
   {
    "id": "ts_01ky7vsb5aekps5q18hn24zkcy",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2026-12-30",
+   "date": "2026-12-31",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21179,7 +22899,7 @@
   {
    "id": "ts_01ky7vsb5aekps5q18hn24zkdj",
    "name": "Pull Supplemental",
-   "date": "2026-12-30",
+   "date": "2026-12-31",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21200,7 +22920,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mf9",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2026-12-31",
+   "date": "2027-01-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21221,7 +22941,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mfr",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-01",
+   "date": "2027-01-02",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21242,7 +22962,7 @@
   {
    "id": "ts_01ky7vsb5beph9y8ny9dcp7mgg",
    "name": "Push Supplemental",
-   "date": "2027-01-01",
+   "date": "2027-01-02",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21263,7 +22983,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgnq",
    "name": "Recovery + Movement",
-   "date": "2027-01-02",
+   "date": "2027-01-03",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21284,7 +23004,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgnw",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-03",
+   "date": "2027-01-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21305,7 +23025,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgpq",
    "name": "Pull Supplemental",
-   "date": "2027-01-03",
+   "date": "2027-01-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21326,7 +23046,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgq8",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-04",
+   "date": "2027-01-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21347,7 +23067,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgqq",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-05",
+   "date": "2027-01-06",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21368,7 +23088,7 @@
   {
    "id": "ts_01ky7vsb5cfk2szwsnbx9yfgrd",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-05",
+   "date": "2027-01-06",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21389,7 +23109,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avwa",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-06",
+   "date": "2027-01-07",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -21410,7 +23130,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avwh",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-07",
+   "date": "2027-01-08",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21431,7 +23151,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avx5",
    "name": "Pull Supplemental",
-   "date": "2027-01-07",
+   "date": "2027-01-08",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21452,7 +23172,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avxp",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-08",
+   "date": "2027-01-09",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21473,7 +23193,7 @@
   {
    "id": "ts_01ky7vsb5dfpbvawg0mdn7avy5",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-09",
+   "date": "2027-01-10",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21494,7 +23214,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7xf",
    "name": "Push Supplemental",
-   "date": "2027-01-09",
+   "date": "2027-01-10",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21515,7 +23235,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7xw",
    "name": "Recovery + Movement",
-   "date": "2027-01-10",
+   "date": "2027-01-11",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21536,7 +23256,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7y1",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-11",
+   "date": "2027-01-12",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21557,7 +23277,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7yw",
    "name": "Pull Supplemental",
-   "date": "2027-01-11",
+   "date": "2027-01-12",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21578,7 +23298,7 @@
   {
    "id": "ts_01ky7vsb5efrwsfsg6snt2j7zd",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-12",
+   "date": "2027-01-13",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21599,7 +23319,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqhz",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-13",
+   "date": "2027-01-14",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21620,7 +23340,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqjn",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-13",
+   "date": "2027-01-14",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21641,7 +23361,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqk0",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-14",
+   "date": "2027-01-15",
    "position": 1,
    "optional": false,
    "cycle": 2,
@@ -21662,7 +23382,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqk7",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-15",
+   "date": "2027-01-16",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21683,7 +23403,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqkv",
    "name": "Pull Supplemental",
-   "date": "2027-01-15",
+   "date": "2027-01-16",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21704,7 +23424,7 @@
   {
    "id": "ts_01ky7vsb5ffdwtmmpbk93faqmc",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-16",
+   "date": "2027-01-17",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21725,7 +23445,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq42",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-17",
+   "date": "2027-01-18",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21746,7 +23466,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq4t",
    "name": "Push Supplemental",
-   "date": "2027-01-17",
+   "date": "2027-01-18",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21767,7 +23487,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq57",
    "name": "Recovery + Movement",
-   "date": "2027-01-18",
+   "date": "2027-01-19",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21788,7 +23508,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq5c",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-19",
+   "date": "2027-01-20",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21809,7 +23529,7 @@
   {
    "id": "ts_01ky7vsb5gfvkrrae6gyefqq67",
    "name": "Pull Supplemental",
-   "date": "2027-01-19",
+   "date": "2027-01-20",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21830,7 +23550,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3m9",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-20",
+   "date": "2027-01-21",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21851,7 +23571,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3mr",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-21",
+   "date": "2027-01-22",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21872,7 +23592,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3ne",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-21",
+   "date": "2027-01-22",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21893,7 +23613,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3ns",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-22",
+   "date": "2027-01-23",
    "position": 1,
    "optional": false,
    "cycle": 3,
@@ -21914,7 +23634,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3p0",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-01-23",
+   "date": "2027-01-24",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -21935,7 +23655,7 @@
   {
    "id": "ts_01ky7vsb5he989z8hd2kj9w3pm",
    "name": "Pull Supplemental",
-   "date": "2027-01-23",
+   "date": "2027-01-24",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -21956,7 +23676,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s75",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-24",
+   "date": "2027-01-25",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -21977,7 +23697,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s7m",
    "name": "Max Hangs OR Free Climbing + Honest Project",
-   "date": "2027-01-25",
+   "date": "2027-01-26",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -21998,7 +23718,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8c",
    "name": "Push Supplemental",
-   "date": "2027-01-25",
+   "date": "2027-01-26",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22019,7 +23739,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8s",
    "name": "Recovery + Movement",
-   "date": "2027-01-26",
+   "date": "2027-01-27",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22040,7 +23760,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s8y",
    "name": "Skills + Footwork Project + Tension Project",
-   "date": "2027-01-27",
+   "date": "2027-01-28",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22061,7 +23781,7 @@
   {
    "id": "ts_01ky7vsb5je7eajmn04w1v0s9s",
    "name": "Pull Supplemental",
-   "date": "2027-01-27",
+   "date": "2027-01-28",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22082,7 +23802,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr6s",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-01-28",
+   "date": "2027-01-29",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22103,7 +23823,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr78",
    "name": "Skills + Limit & Sub Limit Bouldering",
-   "date": "2027-01-29",
+   "date": "2027-01-30",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22124,7 +23844,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr7y",
    "name": "Legs/Core Supplementals",
-   "date": "2027-01-29",
+   "date": "2027-01-30",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22145,7 +23865,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr89",
    "name": "End of Week Reflection + Stretch",
-   "date": "2027-01-30",
+   "date": "2027-01-31",
    "position": 1,
    "optional": false,
    "cycle": 4,
@@ -22166,7 +23886,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr8g",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-01-31",
+   "date": "2027-02-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22187,7 +23907,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr94",
    "name": "Goal Reflection",
-   "date": "2027-01-31",
+   "date": "2027-02-01",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22208,7 +23928,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr97",
    "name": "Recovery + Movement",
-   "date": "2027-02-01",
+   "date": "2027-02-02",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22229,7 +23949,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadr9c",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-02-02",
+   "date": "2027-02-03",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22250,7 +23970,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra0",
    "name": "Recovery + Movement",
-   "date": "2027-02-03",
+   "date": "2027-02-04",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22271,7 +23991,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra5",
    "name": "End of Deload Check-In",
-   "date": "2027-02-04",
+   "date": "2027-02-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22292,7 +24012,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadra8",
    "name": "Deload, Light Climbing Session",
-   "date": "2027-02-04",
+   "date": "2027-02-05",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22313,7 +24033,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadraw",
    "name": "Recovery + Movement",
-   "date": "2027-02-05",
+   "date": "2027-02-06",
    "position": 1,
    "optional": false,
    "cycle": 1,
@@ -22334,7 +24054,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadrb1",
    "name": "Technical Proficiency OR Sub-Max Batch",
-   "date": "2027-02-06",
+   "date": "2027-02-07",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22355,7 +24075,7 @@
   {
    "id": "ts_01ky7vsb5kfg98prhckjhadrbn",
    "name": "Pull Supplemental",
-   "date": "2027-02-06",
+   "date": "2027-02-07",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22376,7 +24096,7 @@
   {
    "id": "ts_01ky7vsb5me86vf3avpqmm5y6w",
    "name": "Max Strength Phase Mobility Development Day",
-   "date": "2027-02-07",
+   "date": "2027-02-08",
    "position": 1,
    "optional": false,
    "cycle": 5,
@@ -22388,6 +24108,174 @@
     "max": 55.0
    },
    "duration_label": "55m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5me86vf3avpqmm5y7b",
+   "name": "Max Hangs OR Free Climbing + Honest Project",
+   "date": "2027-02-09",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 99.0,
+    "max": 203.0
+   },
+   "duration_label": "3h 23m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5me86vf3avpqmm5y83",
+   "name": "Push Supplemental",
+   "date": "2027-02-09",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 75.0,
+    "max": 75.0
+   },
+   "duration_label": "1h 15m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5me86vf3avpqmm5y8g",
+   "name": "Recovery + Movement",
+   "date": "2027-02-10",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": null,
+    "max": 35.0
+   },
+   "duration_label": "35m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5me86vf3avpqmm5y8n",
+   "name": "Skills + Footwork Project + Tension Project",
+   "date": "2027-02-11",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 140.0,
+    "max": 230.0
+   },
+   "duration_label": "3h 50m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5me86vf3avpqmm5y9g",
+   "name": "Pull Supplemental",
+   "date": "2027-02-11",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 75.0,
+    "max": 75.0
+   },
+   "duration_label": "1h 15m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5nfd4rza3p3k5ettak",
+   "name": "Max Strength Phase Mobility Development Day",
+   "date": "2027-02-12",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 42.0,
+    "max": 55.0
+   },
+   "duration_label": "55m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5nfd4rza3p3k5ettb2",
+   "name": "Skills + Limit & Sub Limit Bouldering",
+   "date": "2027-02-13",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 145.0,
+    "max": 220.0
+   },
+   "duration_label": "3h 40m",
+   "detailed": false,
+   "prescribed": false,
+   "section_summary": [],
+   "exercise_count": 0,
+   "sections": []
+  },
+  {
+   "id": "ts_01ky7vsb5nfd4rza3p3k5ettbr",
+   "name": "Legs/Core Supplementals",
+   "date": "2027-02-13",
+   "position": 1,
+   "optional": false,
+   "cycle": 5,
+   "cycle_length": 8,
+   "note": null,
+   "description": null,
+   "duration_min": {
+    "min": 70.0,
+    "max": 70.0
+   },
+   "duration_label": "1h 10m",
    "detailed": false,
    "prescribed": false,
    "section_summary": [],

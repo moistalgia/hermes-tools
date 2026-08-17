@@ -299,9 +299,12 @@ def build_magnet(info_hash, name, trackers=()):
         text = tracker.decode("utf-8", "replace") if isinstance(tracker, bytes) else str(tracker)
         if text and text not in seen:
             seen.append(text)
-    # Enough for a client to find peers without turning the magnet into a wall
-    # of text. DHT does the rest.
-    parts.extend("tr=" + urllib.parse.quote(t, safe="") for t in seen[:8])
+    # DHT finds peers on its own; a handful of trackers just speeds that up.
+    # Kept short on purpose - each one is 30-90 chars once URL-encoded, and
+    # this magnet gets embedded in a search result returned up to `limit`
+    # times over, so the tracker list is the single biggest lever on how much
+    # of a search response is dead weight.
+    parts.extend("tr=" + urllib.parse.quote(t, safe="") for t in seen[:3])
     return "&".join(parts)
 
 
@@ -824,7 +827,11 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
     unusable = sum(1 for r in rows if r["magnet"] is None)
     for rank, row in enumerate(rows, 1):
         row["n"] = rank
-        if FETCH_PREFIX and row["magnet"]:
+        # Only the top pick gets a ready-to-send line. Every row already
+        # carries the magnet itself, so repeating it a second time for all
+        # `limit` results - the usual case is one picked, the rest discarded -
+        # was pure duplication of the largest field in the response.
+        if FETCH_PREFIX and row["magnet"] and rank == 1:
             row["fetch_command"] = f"{FETCH_PREFIX} {row['magnet']}"
 
     if not rows:
@@ -856,7 +863,9 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
         "total_before_ranking": len(raw),
         "without_magnet": unusable,
         "note": f"{len(rows) - unusable} of {len(rows)} results carry a magnet in "
-                "`magnet`" + (" with a ready-to-send line in `fetch_command`."
+                "`magnet`" + (" The top-ranked result also has a ready-to-send "
+                              "line in `fetch_command`; for the rest, prefix "
+                              f"`magnet` with {FETCH_PREFIX!r} yourself if needed."
                               if FETCH_PREFIX else "."),
     }
 

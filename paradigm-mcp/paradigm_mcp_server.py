@@ -1271,11 +1271,12 @@ def export_ics(path=None, start=None, end=None, include_rest=False):
         "detail_days": i(
             "How far ahead to pull per-session detail.", default=DETAIL_DAYS, minimum=0
         ),
+        "include_rest": b("Emit rest days too, instead of leaving them empty.", False),
     },
 )
-def refresh(path=None, detail_days=None):
+def refresh(path=None, detail_days=None, include_rest=False):
     synced = sync(detail_days=detail_days)
-    written = export_ics(path=path)
+    written = export_ics(path=path, include_rest=include_rest)
     # Reported together because "synced fine, wrote nothing" and "wrote a stale
     # file" are both silent failures when these run unattended.
     return {
