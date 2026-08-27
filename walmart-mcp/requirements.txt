@@ -4,3 +4,10 @@
 #   playwright install chromium
 # See README's Setup section.
 playwright>=1.40
+
+# Patches the browser fingerprint signals Walmart's bot detection checks for
+# (WebGL vendor, navigator.webdriver, iframe.contentWindow, media codecs,
+# and more). Load-bearing, not optional - confirmed live that Walmart walls
+# off requests without it. Never pass its *_override kwargs a hardcoded
+# value (UA, WebGL renderer, etc.) - see walmart_mcp_server.py's page().
+playwright-stealth>=2.0

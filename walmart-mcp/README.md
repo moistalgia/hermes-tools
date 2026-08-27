@@ -33,14 +33,18 @@ playwright install chromium
 ```
 
 The second command is not optional — it fetches a browser binary, not a
-package. Nothing else in this repo needs this step.
+package. Nothing else in this repo needs this step. `playwright-stealth`
+installs alongside `playwright` automatically (it's a listed dependency) —
+it's load-bearing, not optional either, see below.
 
-That's it. **No login step, no credentials anywhere in this server, ever** —
-see the module docstring in `walmart_mcp_server.py` for the two reasons why
-(a guest session sidesteps Walmart's login-specific bot detection, and it
-turns out to be a stronger safety property besides: the human is physically
-the one who logs in and spends the money, not a token proving an agent got
-permission to).
+That's it — no separate login script to run. **No tool ever scripts a
+login**, on purpose: see the module docstring in `walmart_mcp_server.py` for
+why (a guest session sidesteps Walmart's login-specific bot detection, and
+it turns out to be a stronger safety property besides — the human is
+physically the one who logs in and spends the money, not a token proving an
+agent got permission to). That said, this is **not** a credential-free
+server in the way that phrasing might imply — read "One browser, one
+profile" below before assuming nothing here ever touches your login.
 
 ### 2. Hermes
 
@@ -52,6 +56,7 @@ permission to).
 
 | Var | Default | Purpose |
 | --- | --- | --- |
+| `WALMART_PROFILE_DIR` | `~/.hermes/walmart_profile` | Persistent Chrome profile — see below |
 | `WALMART_STORE_ID` | unset | Optional saved default store |
 | `WALMART_TIMEOUT` | `20` | Page-action timeout, seconds |
 | `WALMART_CONFIRM_TIMEOUT` | `15` | Cart read-back poll budget, seconds |
@@ -63,6 +68,48 @@ navigation, regardless of stealth patches or a real Chrome binary — only
 switching to a visible (headful) browser fixed it. So this server opens one
 visible browser window and keeps it open for the life of the process; that's
 not configurable, and there's no headless mode to opt into.
+
+### One browser, one profile
+
+This server runs on a **persistent** Chrome profile at `WALMART_PROFILE_DIR`,
+not a fresh throwaway one per run. That's also confirmed by direct testing,
+not a guess: a brand-new, history-less browser gets challenged by Walmart's
+bot-check noticeably more than a normal browser with real visit history
+behind it, even with an identical fingerprint otherwise. So cookies and
+browsing history accumulate across restarts the same way an ordinary
+returning visitor's browser would.
+
+**The practical consequence: after the first time you actually complete a
+checkout, this profile holds your real, logged-in Walmart session — on
+disk, indefinitely, across restarts, not just for one run.** That was a
+deliberate choice (see the module docstring's "One browser, headful,
+persistent, and shared with checkout") over keeping automation and login on
+two separate profiles: simpler, and a logged-in profile is if anything
+*more* trusted by Walmart for the plain browsing this server does the rest
+of the time. It does not weaken anything upstream of it — `open_checkout`
+still requires a fresh, matching token regardless of whether the browser
+happens to be logged in; being authenticated changes what you see when you
+take over the window, not what any tool here can do unattended.
+
+To reset to a clean, logged-out profile (e.g. you no longer want a Walmart
+session sitting on this disk), delete the `WALMART_PROFILE_DIR` folder.
+Expect more frequent bot-checks for a while afterward until it re-ages.
+
+**Optional: give it a head start.** A brand-new profile earns trust through
+real use over time, same as any new browser install — but since it's
+already sharing state with checkout, logging in yourself once is a shortcut
+to the single strongest trust signal available, rather than waiting for that
+to happen organically. Run:
+
+```bash
+python warm_profile.py
+```
+
+Opens the exact same profile/browser/stealth setup this server uses, headful,
+and leaves it open for you to browse or log in by hand — not an MCP tool,
+never agent-callable, and not required. Press Enter in the terminal when
+you're done; there's no separate save step, the profile directory itself is
+the persistence.
 
 ### 3. Prove it
 
@@ -179,4 +226,7 @@ part that actually spends money.
 - **No browsing by category, no reordering past purchases, no multi-store
   cart merging.** The surface is curated to exactly: select store → search →
   cart → verify → hand off.
-- **No `login` tool, and no credentials anywhere in this server.** Ever.
+- **No `login` tool.** Ever — no tool call, at any point, scripts entering a
+  password. The profile can still end up holding a real logged-in session
+  after a completed checkout, though — see "One browser, one profile" in
+  Setup. That's the human logging in by hand, not this server doing it.

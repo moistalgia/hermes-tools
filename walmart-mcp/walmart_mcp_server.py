@@ -24,39 +24,65 @@ context window in one session. The fix is architectural, not a tuning knob:
 this server eats the DOM-reading cost once, internally, and hands back
 compact JSON instead.
 
-## No login, ever, on the automation side - and no headless, either
+## One browser, headful, persistent, and shared with checkout
 
-Every tool here (`find_stores` through `checkout_preview`) runs against a
-plain **guest** session - no account, no saved credentials, nothing
-persisted to disk. Confirmed live: search, store selection, and cart
-add/view/update/remove all work fully logged out. This sidesteps a problem
-an earlier version of this server had to solve badly: Walmart's login flow
-is adversarial toward automation specifically (bot detection, 2FA on a new
-device fingerprint), and scripting a login - even a one-time, human-assisted
-one - meant fighting that arms race and keeping a persisted session alive.
+No tool here ever scripts a login. `find_stores` through `checkout_preview`
+work perfectly well before anyone has ever logged in - confirmed live:
+search, store selection, and cart add/view/update/remove all work fully
+logged out. This sidesteps a problem an earlier version of this server had
+to solve badly: Walmart's login flow is adversarial toward automation
+specifically (bot detection, 2FA on a new device fingerprint), and scripting
+one - even a one-time, human-assisted step - meant fighting that arms race
+directly.
 
-There's a second, less expected constraint the guest session runs into:
-**it has to be headful.** Confirmed by direct, repeated testing - an
-otherwise-identical launch with `headless=True` gets walled off by Walmart's
-bot-check ("Robot or human?", redirected to `/blocked`) on the very first
-navigation, every time. Switching to a real installed Chrome via
-`channel="chrome"` made no difference; only headless vs. headful did. So
-this server keeps exactly one visible browser window open for the life of
-the process - not by design preference, by necessity - and every tool drives
-that same window.
+Three constraints, discovered in this order by direct testing rather than
+assumed, shape everything else here:
 
-That turns out to make the checkout handoff simpler, not harder:
-`open_checkout` doesn't open a second window or copy cookies anywhere, it
-just brings the *same* window (which built the cart) back to `/cart` and
-stops touching it. The user logs in right there, with their own eyes on it -
-not Playwright pretending to be them - and clicks "Place order" themselves.
-This is a stronger safety property than an automated purchase behind a gate
-could ever be: the human is physically the one spending the money, not a
-token proving an agent got permission to. One consequence worth knowing:
-because it's the same window, anything Hermes does with this server *after*
-a completed checkout runs with the account still logged in, not as a fresh
-guest - harmless for search/browsing, and still gated the same way at
-checkout by a new token either way.
+1. **It has to be headful.** An otherwise-identical launch with
+   `headless=True` gets walled off by Walmart's bot-check ("Robot or
+   human?", redirected to `/blocked`) on the very first navigation, every
+   time - a real installed Chrome via `channel="chrome"` made no difference,
+   only headless vs. headful did.
+2. **Stealth patches matter, and hand-rolled ones are a liability.** This
+   server used its own small init script at first; that script hardcoded a
+   "Chrome/124" user-agent against an engine that was actually v151, and the
+   version mismatch was itself a bigger tell than having no stealth patches
+   at all. Replaced with the `playwright-stealth` library, which covers far
+   more signals (WebGL vendor, iframe.contentWindow, media codecs, and more)
+   and - checked directly in its source - reads the browser's real UA rather
+   than hardcoding one.
+3. **A brand-new browser gets challenged more than an aged one, even with
+   an identical fingerprint.** Confirmed by comparing against a real, normal
+   browser with years of Walmart visit history: it browsed and switched
+   stores with no challenge at all, from the same network. So this server
+   runs on a **persistent Chrome profile** (`PROFILE_DIR` below), not a
+   throwaway context - real cookies and visit history accumulate across
+   restarts instead of starting from zero every launch, the same way any
+   ordinary returning visitor's browser does.
+
+Because of (1) and (3), there is exactly one visible browser window,
+launched from that one persistent profile, open for the life of the
+process - and `open_checkout` reuses it rather than opening a second one:
+it just brings that same window back to `/cart` and stops touching it. The
+user logs in right there, with their own eyes on it - not Playwright
+pretending to be them - and clicks "Place order" themselves. This is a
+stronger safety property than an automated purchase behind a gate could
+ever be: the human is physically the one spending the money, not a token
+proving an agent got permission to.
+
+**This means the profile ends up holding a real, logged-in session after the
+first completed checkout - persisted to disk, indefinitely, across restarts,
+not just for the life of one process.** That was a deliberate choice over
+keeping a separate, permanently-anonymous profile for automation and a
+disposable one just for login: simpler, and a logged-in profile is if
+anything *more* trusted by Walmart's risk scoring for the read-only browsing
+this server does the rest of the time, not less. It does not weaken the
+checkout gate - `open_checkout` still requires a fresh, matching token
+regardless of whether the browser happens to be authenticated; being logged
+in changes what the *human* sees when they take over, not what any tool here
+is able to do on its own. To reset to a clean, logged-out profile, delete
+`PROFILE_DIR` - accepting a return to more frequent challenges until it
+re-ages.
 
 ## The checkout gate
 
@@ -110,6 +136,18 @@ from mcpkit import ToolError, b, i, run, s, tool  # noqa: E402
 
 BASE_URL = "https://www.walmart.com"
 
+# A persistent Chrome profile, not a throwaway context. This is load-bearing,
+# not a nicety: confirmed live that a brand-new, history-less browser context
+# gets challenged far more readily than a normal browser with years of real
+# cookies/visit history behind it, even with identical stealth patches and an
+# identical fingerprint otherwise - trust here is partly a function of age,
+# not just of looking clean in the moment. See module docstring for what
+# this means once a real checkout happens in it.
+PROFILE_DIR = os.environ.get(
+    "WALMART_PROFILE_DIR",
+    os.path.join(os.path.expanduser("~"), ".hermes", "walmart_profile"),
+)
+
 DEFAULT_STORE_ID = os.environ.get("WALMART_STORE_ID", "").strip() or None
 TIMEOUT_MS = int(os.environ.get("WALMART_TIMEOUT", "20")) * 1000
 
@@ -132,25 +170,21 @@ CHECKOUT_TOKEN_TTL = int(os.environ.get("WALMART_CHECKOUT_TOKEN_TTL", "300"))
 # and "behaves like Chrome 151" is a bigger tell than not overriding the UA
 # at all. Let Chromium report its own real, internally-consistent one.
 
-# Patches the handful of signals headless Chromium leaves that a bot-detection
-# script checks for. Without this, a headless session can get walled off
-# before any tool call reaches real content - not a way to defeat detection
-# aimed at abuse, just to look like an ordinary browser instead of an
-# obviously automated one for the plain guest browsing this server does.
-STEALTH_INIT_SCRIPT = """
-Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-window.chrome = window.chrome || { runtime: {} };
-const originalQuery = window.navigator.permissions && window.navigator.permissions.query;
-if (originalQuery) {
-    window.navigator.permissions.query = (params) => (
-        params.name === 'notifications'
-            ? Promise.resolve({ state: Notification.permission })
-            : originalQuery(params)
-    );
-}
-"""
+# Patches the signals a bare Chromium leaves that a bot-detection script
+# checks for (navigator.webdriver, plugins/languages arrays, WebGL vendor,
+# iframe.contentWindow, media codecs, chrome.runtime, and more). This used
+# to be a short hand-rolled init script covering four or five of these -
+# replaced with the `playwright-stealth` library instead, deliberately,
+# after that hand-rolled version taught the wrong lesson once already: it
+# hardcoded a UA claiming "Chrome/124" against an engine that was actually
+# v151, and the mismatch was itself a detection signal (see git history).
+# `playwright-stealth`'s equivalent evasion reads the browser's real,
+# current UA and only strips a leftover "HeadlessChrome/" marker - it never
+# hardcodes a version - which is the safer pattern this project should have
+# used from the start. Defaults are used as-is below; none of the *_override
+# kwargs (navigator_user_agent_override, webgl_renderer_override, etc.) are
+# set, on purpose - those are exactly the kind of hardcoded, driftable value
+# that already caused one detection bug here.
 
 # URL fragments meaning the guest session got walled off - a login prompt
 # (some flows probe for one even without requiring it) or a bot-check
@@ -164,7 +198,6 @@ BLOCKED_MARKERS = ("account/login", "account/verify", "blocked", "challenge")
 # ---------------------------------------------------------------------------
 
 _playwright = None
-_browser = None
 _context = None
 _page = None
 
@@ -187,20 +220,24 @@ _pending_checkouts = {}
 
 
 def page():
-    """The guest browsing session, built once and reused for the life of the
-    process. Always headless, never logs in - see module docstring."""
-    global _playwright, _browser, _context, _page
+    """The browsing session, built once and reused for the life of the
+    process, on a persistent profile that outlives the process too - see
+    PROFILE_DIR and the module docstring. Never headless - see below."""
+    global _playwright, _context, _page
     if _page is not None:
         return _page
 
     try:
         from playwright.sync_api import sync_playwright
+        from playwright_stealth import Stealth
     except ImportError:
         raise RuntimeError(
-            "playwright is not installed. Run: pip install playwright && "
+            "playwright and playwright-stealth are required. Run: "
+            "pip install playwright playwright-stealth && "
             "playwright install chromium"
         )
 
+    os.makedirs(PROFILE_DIR, exist_ok=True)
     _playwright = sync_playwright().start()
     # headless=False is load-bearing, confirmed by direct testing, not a
     # style choice: an identical launch with headless=True gets walled off
@@ -209,16 +246,21 @@ def page():
     # "chrome" made no difference, only headless vs headful did. This is the
     # one visible window this server has, and it stays open the whole
     # session; open_checkout reuses it rather than opening a second one.
-    _browser = _playwright.chromium.launch(
+    #
+    # launch_persistent_context, not launch()+new_context(): a persistent
+    # user-data-dir is what lets this profile accumulate real cookies and
+    # visit history across restarts instead of starting from zero every
+    # time - see PROFILE_DIR. It returns the BrowserContext directly; there
+    # is no separate Browser object to track here.
+    _context = _playwright.chromium.launch_persistent_context(
+        PROFILE_DIR,
         headless=False,
+        viewport={"width": 1280, "height": 900},
         args=["--disable-blink-features=AutomationControlled"],
     )
-    _context = _browser.new_context(
-        viewport={"width": 1280, "height": 900},
-    )
-    _context.add_init_script(STEALTH_INIT_SCRIPT)
+    Stealth().apply_stealth_sync(_context)
     _context.set_default_timeout(TIMEOUT_MS)
-    _page = _context.new_page()
+    _page = _context.pages[0] if _context.pages else _context.new_page()
     return _page
 
 
@@ -883,6 +925,8 @@ def open_checkout(confirmation_token):
 
 def banner():
     return (
+        f"WALMART_PROFILE_DIR={PROFILE_DIR} "
+        f"({'exists' if os.path.isdir(PROFILE_DIR) else 'will be created on first use'})  "
         f"WALMART_STORE_ID={DEFAULT_STORE_ID or 'unset'}  "
         f"WALMART_CHECKOUT_TOKEN_TTL={CHECKOUT_TOKEN_TTL}s  "
         f"WALMART_TIMEOUT={TIMEOUT_MS // 1000}s"
