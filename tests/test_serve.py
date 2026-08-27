@@ -32,6 +32,7 @@ SERVERS = {
     # without them - a server that needs a working backend before it can
     # advertise its tools fails at startup with nothing to read.
     "prowlarr": ("prowlarr-mcp/prowlarr_mcp_server.py", {"PROWLARR_API_KEY": ""}),
+    "obsidian": ("obsidian-mcp/obsidian_mcp_server.py", {"OBSIDIAN_VAULT_PATH": os.path.join(TMP, "vault")}),
 }
 
 HANDSHAKE = [

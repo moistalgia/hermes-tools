@@ -15,6 +15,7 @@ server here follows, and what gets built next.
 | [prowlarr-mcp](prowlarr-mcp/) | One search across every indexer, returning magnet links. No dependencies, and drop-in on its own. |
 | [qbt-mcp](qbt-mcp/) | Starts a download in qBittorrent and confirms it started. No dependencies. |
 | [paradigm-mcp](paradigm-mcp/) | Climbing training plan from Paradigm — calendar feed, session detail, `.ics` export. No dependencies. |
+| [obsidian-mcp](obsidian-mcp/) | Read, write, and search a local Obsidian vault — notes, tags, links, daily notes. No dependencies. |
 | [mcpkit.py](mcpkit.py) | Shared protocol layer. Not a server; imported by the ones above. |
 | [scripts/](scripts/) | Host-side jobs. Backups, for now. |
 | [tests/](tests/) | `python -m unittest discover -s tests`. No dependencies. |
@@ -54,10 +55,10 @@ One clone, anywhere `hermes update` does not manage:
 git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-tools
 ```
 
-`state-mcp`, `notify-mcp`, `discord-mcp`, `hass-mcp`, and `prowlarr-mcp` have
-**no dependencies** — standard library only. No venv, no install, no packaging.
-Hermes runs them with the interpreter it already has, straight from the
-checkout.
+`state-mcp`, `notify-mcp`, `discord-mcp`, `hass-mcp`, `prowlarr-mcp`, `qbt-mcp`,
+`paradigm-mcp`, and `obsidian-mcp` have **no dependencies** — standard library
+only. No venv, no install, no packaging. Hermes runs them with the interpreter
+it already has, straight from the checkout.
 
 `plex-mcp` is the exception: it needs `plexapi`, so it keeps its venv and
 editable install. See [its README](plex-mcp/README.md).
@@ -109,6 +110,11 @@ mcp_servers:
       QBT_PASS: "<Web UI password>"
       QBT_MOVIES_PATH: "P:/Movies"
       QBT_SHOWS_PATH: "P:/Shows"
+  obsidian:
+    command: "python"
+    args: ["E:/hermes-mcp/hermes-tools/obsidian-mcp/obsidian_mcp_server.py", "serve"]
+    env:
+      OBSIDIAN_VAULT_PATH: "C:/Users/you/Documents/Vault"
 ```
 
 Every credential above is a **literal value**. None of these servers reads a

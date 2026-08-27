@@ -194,6 +194,7 @@ confirms that the **setpoint** changed and explicitly not that the room is warm.
 | [hass-mcp](hass-mcp/) | Lights, blinds, tilt, thermostats, scenes | Home Assistant |
 | [prowlarr-mcp](prowlarr-mcp/) | Indexer search, returning magnets | Prowlarr |
 | [qbt-mcp](qbt-mcp/) | Starting a download, and confirming it | qBittorrent |
+| [obsidian-mcp](obsidian-mcp/) | Reading, writing, and searching a notes vault | Filesystem only |
 
 Plus [tests/](tests/) and [scripts/backup_state.py](scripts/backup_state.py),
 neither of which the agent ever touches — they are for the human running the

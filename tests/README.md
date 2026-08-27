@@ -31,6 +31,7 @@ installed, same as every other server in the suite.
 | [test_discord.py](test_discord.py) | The closed recipient list, and that a DM never posts before the channel it's posting to exists. |
 | [test_prowlarr.py](test_prowlarr.py) | Title parsing, magnet reconstruction, and the four different reasons a search returns nothing. |
 | [test_qbt.py](test_qbt.py) | Which library a release lands in, read-back after adding, and the stall that reads as progress. |
+| [test_obsidian.py](test_obsidian.py) | The vault jail against path traversal, frontmatter parsed against real Obsidian shapes, and the empty-result ambiguity in search. |
 | [test_plex.py](test_plex.py) | Title matching across the spellings a person and a library disagree on, episode-gap arithmetic, and how much of an item each `detail` level prints. |
 | [test_serve.py](test_serve.py) | The stdio handshake, run as a real subprocess. |
 | [support.py](support.py) | Loading a server under a chosen environment, and `FakeHass`. |

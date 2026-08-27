@@ -120,23 +120,53 @@ of acclaim, one line, per pick.
 ## Batch / continuous curation
 
 When asked to "just curate for a while" rather than answer one question, this
-is a long-running batch job, not a single-shot report:
+is a long-running batch job, not a single-shot report. The title count itself
+is cheap — `check_titles` returns almost nothing per title — so the actual
+budget risk lives in two other places: re-fetching canon sources, and how the
+report file gets written across passes. Both have a specific fix below; don't
+substitute a vaguer version of either.
 
 1. Decide scope up front: a target count (e.g. "150 titles"), a time/call
    budget, or both. State it before starting so there's a stopping condition.
-2. Work in passes across different canon sources / genres / decades / national
+2. **Cache canon sources instead of re-fetching them live.** AFI 100, Sight &
+   Sound, TSPDT 1000 and similar lists don't change week to week, so a
+   `web_search`/`web_extract` pull is a one-time cost, not a per-run one.
+   Before fetching a source, check `references/canon-lists/<source>.md` in
+   this skill's own folder. If it exists and is under ~90 days old, read that
+   instead of hitting the web. If it's missing or stale, fetch it, reduce it
+   immediately to just `title (year)` pairs — discard the rest of the page,
+   don't keep the full extracted article in context — and write that reduced
+   list to `references/canon-lists/<source>.md`, overwriting the old one. This
+   turns a 10-30K-token research cost into a one-time quarterly cost instead of
+   something paid on every run.
+3. Work in passes across different canon sources / genres / decades / national
    cinemas so the batch doesn't collapse into one list's ordering (e.g. don't
    just walk the AFI 100 top-to-bottom and call it done — mix in Sight & Sound,
    genre-specific canons, a few national-cinema lists, and structural gaps from
    `find_gaps`/`library_stats`).
-3. Batch the absence check: accumulate candidates and run them through
+4. Batch the absence check: accumulate candidates and run them through
    `mcp__plex__check_titles` in large groups rather than one at a time — it's
    built for exactly this.
-4. Write incrementally to the output file rather than holding the whole batch
-   in context until the end — append sections as passes complete, so a
-   long-running job that gets interrupted still leaves a partial, usable
-   report on disk.
-5. This is a case where delegating to a subagent is more defensible than the
+5. **Write incrementally by true append, never by read-modify-write.** Do not
+   use a generic file-write/patch tool that reads the current file before
+   rewriting it — on a growing report, that means every later pass re-loads
+   everything every earlier pass wrote, and cost climbs with the square of the
+   pass count instead of staying flat. Instead:
+   - Write report sections 1-3 (census, taste model, gaps) once, near the
+     start, and don't revisit them.
+   - For section 4 (Picks), use `terminal` to genuinely append each pass's new
+     entries — e.g. `printf '%s\n' "<pass output>" >> /sandbox/out/plex-curation-<date>.md`
+     — which touches only the bytes being added, never the bytes already
+     there.
+   - If a true append isn't available in whatever path is running this,
+     write each pass's picks to its own small file instead
+     (`picks-pass-1.md`, `picks-pass-2.md`, ...) in a scratch dir, and do one
+     final `cat` to assemble them into the report at the end. Either way, no
+     pass should ever need to read what an earlier pass wrote.
+   - The point of both: a long-running job that gets interrupted still leaves
+     a partial, usable report on disk, and no single pass's cost grows just
+     because earlier passes happened.
+6. This is a case where delegating to a subagent is more defensible than the
    single-title lookups warned about elsewhere in this skill — a large batch
    with a stated count/budget and instructions to use `library_export` +
    `check_titles` in bulk (not `discover` looped per genre) is bounded work,
@@ -190,9 +220,12 @@ of specific probes, never "get the full inventory."
      That's a different kind of hole than acquisition gaps — it's about fixing
      what's already partly there, not proposing new titles — but it belongs in
      the same report if this is a periodic review.
-   - *Canon* — pull real lists with `web_search`/`web_extract`: Sight & Sound
-     (critics + directors), AFI 100, Criterion, TSPDT 1000, Letterboxd Top 250,
-     and per-genre canons. Diff against the census.
+   - *Canon* — check `references/canon-lists/<source>.md` first (see
+     [Batch / continuous curation](#batch--continuous-curation) for the
+     caching rule); only `web_search`/`web_extract` a source if its cache is
+     missing or stale. Sources: Sight & Sound (critics + directors), AFI 100,
+     Criterion, TSPDT 1000, Letterboxd Top 250, and per-genre canons. Diff
+     against the census.
    - *Lineage* — incomplete trilogies/franchises, originals missing behind
      remakes, a director represented by one film when the library's own logic
      wants three.
