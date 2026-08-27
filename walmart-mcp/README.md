@@ -1,7 +1,8 @@
 # walmart-mcp
 
-Select a store, search, manage a cart, and check out on Walmart.com — through
-a handful of narrow tools that return compact JSON, never a DOM.
+Select a store, search, and build a cart on Walmart.com — through a handful
+of narrow tools that return compact JSON, never a DOM — then hand the cart
+off, in the same browser window, for you to log in and check out yourself.
 
 ## This is a deliberate exception to DESIGN.md
 
@@ -9,10 +10,10 @@ a handful of narrow tools that return compact JSON, never a DOM.
 built: *"The demo everyone asks for. Brittle scraping, real money, low
 trust."* That reasoning still holds everywhere else in this repo, and
 DESIGN.md was not edited to say otherwise — it stays a correct general rule
-of thumb. This server exists anyway because the convenience was judged worth
-it for one narrow flow, on the explicit condition that **no order places
-itself.** See "The checkout gate" below for how that's enforced — as a
-property of the tool surface, not a prompt.
+of thumb. This server exists anyway, and it lands closer to that original
+caution than it might look: **it never places an order, at all.** It builds
+a cart, then hands the window to a human for the purchase. See "The checkout
+gate" below for the mechanics.
 
 This server also exists because of a concrete failure: Hermes was driving
 Walmart.com through a generic browser-automation tool, and it blew out a 64k
@@ -34,65 +35,56 @@ playwright install chromium
 The second command is not optional — it fetches a browser binary, not a
 package. Nothing else in this repo needs this step.
 
-### 2. Log in once, by hand
+That's it. **No login step, no credentials anywhere in this server, ever** —
+see the module docstring in `walmart_mcp_server.py` for the two reasons why
+(a guest session sidesteps Walmart's login-specific bot detection, and it
+turns out to be a stronger safety property besides: the human is physically
+the one who logs in and spends the money, not a token proving an agent got
+permission to).
 
-```bash
-python auth_setup.py
-```
-
-Opens a real, visible browser window. Log in — including any 2FA prompt —
-then press Enter in the terminal. This saves cookies/localStorage to
-`WALMART_STORAGE_STATE` (default `~/.hermes/walmart_state.json`). No tool in
-this server can do this step itself, on purpose — see `auth_setup.py`'s own
-docstring for why. Re-run it whenever a tool reports the session expired.
-
-### 3. Hermes
+### 2. Hermes
 
 ```yaml
   walmart:
     command: "python"
     args: ["E:/hermes-mcp/hermes-tools/walmart-mcp/walmart_mcp_server.py", "serve"]
-    env:
-      WALMART_STORAGE_STATE: "C:/Users/<you>/.hermes/walmart_state.json"
-      WALMART_HEADLESS: "1"
 ```
 
 | Var | Default | Purpose |
 | --- | --- | --- |
-| `WALMART_STORAGE_STATE` | `~/.hermes/walmart_state.json` | Session cookies from `auth_setup.py` |
-| `WALMART_HEADLESS` | `1` | Always headless for the agent-facing server |
 | `WALMART_STORE_ID` | unset | Optional saved default store |
 | `WALMART_TIMEOUT` | `20` | Page-action timeout, seconds |
 | `WALMART_CONFIRM_TIMEOUT` | `15` | Cart read-back poll budget, seconds |
 | `WALMART_CHECKOUT_TOKEN_TTL` | `300` | Checkout approval token lifetime, seconds |
 
-### 4. Prove it
+The host running this needs a real display. Confirmed by direct testing:
+Walmart's bot-check blocks a headless session outright, on the very first
+navigation, regardless of stealth patches or a real Chrome binary — only
+switching to a visible (headful) browser fixed it. So this server opens one
+visible browser window and keeps it open for the life of the process; that's
+not configurable, and there's no headless mode to opt into.
+
+### 3. Prove it
 
 ```bash
 python walmart_mcp_server.py find_stores location=<your zip>
 ```
 
-Every DOM selector in this server was driven and confirmed against the live
-site while it was built — as a guest for search/cart/store-finder, and
-against a real logged-in account for the fulfillment toggle and checkout.
-Two corrections came out of that: the pickup/delivery toggle only works from
-the cart page, not the store finder or homepage (`select_store` routes
-through `/cart` because of this), and "Continue to checkout" opens a delivery
-slot picker before checkout proper, not a payment page directly. The real
-checkout was driven all the way to a page titled "Review your order" with a
-button whose exact accessible name is `"Place order for $19.64"` (the real
-total) — confirmed, screenshotted, and never clicked. The only thing left
-unverified is the order-confirmation page itself, which can't be reached
-without actually placing an order — see `submit_order`'s docstring in
-`walmart_mcp_server.py` if `place_order` ever reports a "layout may have
-changed" error past that point.
+A visible Chromium window will open (this is normal — see above) and the
+call should return a list of stores. Every DOM selector in this server was
+driven and confirmed against the live site while it was built — search,
+store finder, and cart add/view/update/remove all work as a plain guest, no
+login required. Two corrections came out of that process worth knowing: the
+pickup/delivery toggle only works from the cart page, not the store finder
+or homepage (`select_store` routes through `/cart` because of this), and
+"Continue to checkout" opens a delivery slot picker before the actual
+checkout page, not a payment page directly.
 
 If `find_stores` returns stores, the session and the store-finder selectors
-both work end to end. If it fails with a "layout may have changed" error, the
-selectors in `walmart_mcp_server.py` need adjusting against the real page —
-they're
-centralized under the "DOM-touching helpers" comment specifically so that's a
-local edit, not a hunt.
+both work end to end. If it fails with a "layout may have changed" error,
+the selectors in `walmart_mcp_server.py` need adjusting against the real
+page — they're centralized under the "DOM-touching helpers" comment
+specifically so that's a local edit, not a hunt.
 
 ## Tools
 
@@ -106,7 +98,7 @@ local edit, not a hunt.
 | `update_cart` | Change a quantity. `quantity=0` removes it. |
 | `remove_from_cart` | Take an item off the cart entirely. |
 | `checkout_preview` | Read-only cart summary + a confirmation token. Orders nothing. |
-| `place_order` | The only tool that spends money. Requires a valid token from `checkout_preview`. |
+| `open_checkout` | Brings the cart back on screen for the user to log in and buy it themselves. Requires a valid token from `checkout_preview`. Never places an order. |
 
 Every one is also a CLI subcommand through the same dispatch path:
 
@@ -135,27 +127,29 @@ sum to the same number). The token:
 - **Expires in 5 minutes** (`WALMART_CHECKOUT_TOKEN_TTL`) — long enough for a
   human to read the summary and reply, short enough that a price or stock
   change during the window is the exception.
-- **Is single-use** — spent the moment `place_order` accepts it, before the
-  order is actually dispatched, so a crash mid-order can't be replayed into a
-  double order.
+- **Is single-use** — spent the moment `open_checkout` accepts it.
 - **Lives only in this process's memory.** A server restart between preview
-  and order invalidates every pending token. That's intentional — a restart
-  is exactly the kind of discontinuity that should force re-confirmation.
+  and handoff invalidates every pending token. That's intentional — a
+  restart is exactly the kind of discontinuity that should force
+  re-confirmation.
 
-`place_order` checks, in order: a token was passed at all, it's one this
+`open_checkout` checks, in order: a token was passed at all, it's one this
 process actually issued, it hasn't been used, it hasn't expired, and the
 live cart still matches what was previewed. Any failure is a specific,
-named `ToolError` — never a purchase.
+named `ToolError` — and even on success, all it does is bring the existing
+browser window back to `/cart` and stop. It never clicks anything past that.
 
-**This alone does not guarantee a human approved the order** — nothing stops
-a careless caller from calling `checkout_preview` then `place_order`
+**This alone does not guarantee a human approved the checkout** — nothing
+stops a careless caller from calling `checkout_preview` then `open_checkout`
 back-to-back without showing anyone the summary. That half is policy, not
 mechanism, and lives in
 [skills/walmart-shopping/SKILL.md](../skills/walmart-shopping/SKILL.md): the
-skill instructs that `place_order` is never called without pasting the
+skill instructs that `open_checkout` is never called without pasting the
 `checkout_preview` summary into the conversation and getting an explicit yes
 first. The token stops accidental/stale/replayed calls; the skill is what
-puts a person in the loop.
+puts a person in the loop before the window even opens — and the human is
+the one who has to log in and click "Place order" regardless, which is the
+part that actually spends money.
 
 ## Known failure modes
 
@@ -165,20 +159,24 @@ puts a person in the loop.
   what *is* available rather than failing bare.
 - **Price changed between search and add** — `add_to_cart`'s summary states
   the real price that landed, not the one that was searched.
-- **Price or stock changed between preview and order** — caught by the
-  cart-signature check; `place_order` fails and asks for a fresh preview.
-- **Session expired mid-task** — every tool fails once, loudly, pointing at
-  `auth_setup.py`. None of them retry a login in a loop — that retry pattern
-  is what blew out context in the first place.
+- **Price or stock changed between preview and handoff** — caught by the
+  cart-signature check; `open_checkout` fails and asks for a fresh preview.
+- **A "Robot or human? Press & Hold" challenge appears mid-action** —
+  confirmed live, most likely on `add_to_cart`. This server never tries to
+  solve it — simulating a hold gesture to defeat a human-verification check
+  is a different, more aggressive thing than just not looking automated by
+  accident, and it isn't something built here even for the account owner's
+  own shopping. The tool fails with `needs_human: true` and names exactly
+  what to do: check the visible browser window, hold the button for a
+  couple of seconds, then call the same tool again.
 - **Walmart changes their layout** — a selector miss is reported as "needs a
   selector fix, not a retry," not retried with altered arguments.
 
 ## What this doesn't do
 
-- **No `cancel_order`.** Canceling a placed order is a harder, higher-stakes
-  operation (refunds, already-picked items) than anything asked for here.
-  Its absence is deliberate, not an oversight.
+- **No `cancel_order`.** There is no `place_order` either — the human places
+  it, in their own browser session, after logging in themselves.
 - **No browsing by category, no reordering past purchases, no multi-store
   cart merging.** The surface is curated to exactly: select store → search →
-  cart → verify → checkout.
-- **No `login` tool.** Ever. See `auth_setup.py`.
+  cart → verify → hand off.
+- **No `login` tool, and no credentials anywhere in this server.** Ever.

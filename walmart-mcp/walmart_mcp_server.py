@@ -1,66 +1,94 @@
 #!/usr/bin/env python3
 """
-walmart-mcp - select a store, search, manage a cart, and check out on
-Walmart.com through a small number of purpose-built tools, so the agent
-driving Hermes never sees a DOM.
+walmart-mcp - select a store, search, and build a cart on Walmart.com
+through a small number of purpose-built tools, so the agent driving Hermes
+never sees a DOM - then hand the cart to the user, in the same visible
+browser window, to log in and check out themselves.
 
 ## Why this exists, and why it is not the usual shape
 
 DESIGN.md Section 8 ("Deliberately not built") lists automated ordering as
 rejected - brittle scraping, real money, low trust. That reasoning is still
 correct everywhere else in this repo. This server is a deliberate, narrow
-exception: Hermes was driving Walmart.com through a generic browser-automation
-tool (`drive_preview`), and every raw DOM/accessibility-tree read it returned
-got resent on every later turn - a single stuck address-autocomplete field
-alone burned a large share of a 64k context window in one session. The fix is
-architectural, not a tuning knob: this server eats the DOM-reading cost once,
-internally, and hands back compact JSON. See walmart-mcp/README.md for the
-full reasoning and the condition it was built under (checkout never places
-itself without approval).
+exception, and it lands closer to that original caution than it might look:
+**it never places an order itself, at all.** It builds a cart, then opens a
+real browser window and hands control to a human for the purchase. The
+"automated ordering" DESIGN.md rejected was always about a machine spending
+money unattended - that never happens here.
 
-There is no official consumer-facing Walmart API for search + cart + checkout
-- their Commerce/Marketplace APIs are partner/seller-only. Playwright driving
-a persisted, already-logged-in session is the only real option, and this is
-the first browser-automation dependency anywhere in this repo. Login itself is
-never scripted: Walmart's login flow is adversarial toward automation
-specifically (bot detection, likely 2FA on a new device fingerprint), so
-scripting it would mean fighting that arms race on every tool call instead of
-once. `auth_setup.py` is a human, headful, one-time step instead - see there
-and in README for the reasoning.
+The other half of why this exists: Hermes was driving Walmart.com through a
+generic browser-automation tool (`drive_preview`), and every raw DOM/
+accessibility-tree read it returned got resent on every later turn - a
+single stuck address-autocomplete field alone burned a large share of a 64k
+context window in one session. The fix is architectural, not a tuning knob:
+this server eats the DOM-reading cost once, internally, and hands back
+compact JSON instead.
+
+## No login, ever, on the automation side - and no headless, either
+
+Every tool here (`find_stores` through `checkout_preview`) runs against a
+plain **guest** session - no account, no saved credentials, nothing
+persisted to disk. Confirmed live: search, store selection, and cart
+add/view/update/remove all work fully logged out. This sidesteps a problem
+an earlier version of this server had to solve badly: Walmart's login flow
+is adversarial toward automation specifically (bot detection, 2FA on a new
+device fingerprint), and scripting a login - even a one-time, human-assisted
+one - meant fighting that arms race and keeping a persisted session alive.
+
+There's a second, less expected constraint the guest session runs into:
+**it has to be headful.** Confirmed by direct, repeated testing - an
+otherwise-identical launch with `headless=True` gets walled off by Walmart's
+bot-check ("Robot or human?", redirected to `/blocked`) on the very first
+navigation, every time. Switching to a real installed Chrome via
+`channel="chrome"` made no difference; only headless vs. headful did. So
+this server keeps exactly one visible browser window open for the life of
+the process - not by design preference, by necessity - and every tool drives
+that same window.
+
+That turns out to make the checkout handoff simpler, not harder:
+`open_checkout` doesn't open a second window or copy cookies anywhere, it
+just brings the *same* window (which built the cart) back to `/cart` and
+stops touching it. The user logs in right there, with their own eyes on it -
+not Playwright pretending to be them - and clicks "Place order" themselves.
+This is a stronger safety property than an automated purchase behind a gate
+could ever be: the human is physically the one spending the money, not a
+token proving an agent got permission to. One consequence worth knowing:
+because it's the same window, anything Hermes does with this server *after*
+a completed checkout runs with the account still logged in, not as a fresh
+guest - harmless for search/browsing, and still gated the same way at
+checkout by a new token either way.
 
 ## The checkout gate
 
-`place_order` is the only tool here that spends money, and nothing else in
-this repo has a "structural approval gate" between two tool calls - it needs
-its own justification. DESIGN.md's own argument against relying on a prompt
-alone (Section 8, locks row: "a system prompt is not a control... safety has
-to be a property of the tool surface") applies here too. `checkout_preview`
-mints a short-lived, single-use token bound to the *exact* live cart (not
-just its total - two different carts can sum to the same number); `place_order`
-fails closed unless handed that exact, fresh, unused, matching token. This
-stops accidental, stale, or replayed calls on its own. It does **not** by
-itself guarantee a human saw the summary before approving - that half is
-policy, not mechanism, and lives in skills/walmart-shopping/SKILL.md instead.
+`open_checkout` is the only tool here that opens a real checkout flow, and
+nothing else in this repo has a "structural approval gate" between two tool
+calls - it needs its own justification. DESIGN.md's own argument against
+relying on a prompt alone (Section 8, locks row: "a system prompt is not a
+control... safety has to be a property of the tool surface") applies here
+too. `checkout_preview` mints a short-lived, single-use token bound to the
+*exact* live cart (not just its total - two different carts can sum to the
+same number); `open_checkout` fails closed unless handed that exact, fresh,
+unused, matching token. This stops accidental, stale, or replayed calls on
+its own. It does **not** by itself guarantee a human saw the summary before
+approving - that half is policy, not mechanism, and lives in
+skills/walmart-shopping/SKILL.md instead.
 
 Selectors below were driven and verified against the live site, both as a
-guest and against a real logged-in account: search results, product-page
-add-to-cart, cart line items/quantity/remove/subtotal, the store finder's
-result list and "make this my store" action, the fulfillment (pickup/
-delivery) toggle - which turned out to live only on the cart page, not the
-store finder or homepage, correcting an earlier guess - and checkout up to
-and including the real "Place order for $X.XX" button's exact accessible
-name, reached and screenshotted without ever clicking it. See the git
-history for the exact aria-labels and data-testid/data-automation-id
-attributes observed at each step. The one thing that could not be verified
-without actually placing an order is the order-confirmation page itself
-(`submit_order`'s final selector) - deliberately never reached, for the same
-reason the checkout gate exists at all. Selectors are centralized in one
-place (search for "DOM-touching") so fixing any of this is a local edit, not
-a hunt, and Walmart's own utility CSS class names (which churn constantly,
-e.g. `ld_Ec`) were deliberately avoided in favor of `data-testid`,
-`data-automation-id`, and accessible role/name - all far more stable across
-their deploys. If a selector is wrong anyway, every dependent tool fails
-loudly with a named "layout may have changed" error - never a wrong answer.
+guest and (during development, to nail down the fulfillment toggle and the
+real checkout flow before this handoff design replaced automated placement)
+against a real logged-in account: search results, product-page add-to-cart,
+cart line items/quantity/remove/subtotal, the store finder's result list and
+"make this my store" action, and the fulfillment (pickup/delivery) toggle -
+which turned out to live only on the cart page, not the store finder or
+homepage, correcting an earlier guess. See the git history for the exact
+aria-labels and data-testid/data-automation-id attributes observed at each
+step. Selectors are centralized in one place (search for "DOM-touching") so
+fixing any of this is a local edit, not a hunt, and Walmart's own utility CSS
+class names (which churn constantly, e.g. `ld_Ec`) were deliberately avoided
+in favor of `data-testid`, `data-automation-id`, and accessible role/name -
+all far more stable across their deploys. If a selector is wrong anyway,
+every dependent tool fails loudly with a named "layout may have changed"
+error - never a wrong answer.
 
 Two ways to run it:
 
@@ -82,11 +110,6 @@ from mcpkit import ToolError, b, i, run, s, tool  # noqa: E402
 
 BASE_URL = "https://www.walmart.com"
 
-STORAGE_STATE = os.environ.get(
-    "WALMART_STORAGE_STATE",
-    os.path.join(os.path.expanduser("~"), ".hermes", "walmart_state.json"),
-)
-HEADLESS = os.environ.get("WALMART_HEADLESS", "1").strip().lower() not in ("0", "false", "no")
 DEFAULT_STORE_ID = os.environ.get("WALMART_STORE_ID", "").strip() or None
 TIMEOUT_MS = int(os.environ.get("WALMART_TIMEOUT", "20")) * 1000
 
@@ -99,16 +122,21 @@ CONFIRM_TIMEOUT = int(os.environ.get("WALMART_CONFIRM_TIMEOUT", "15"))
 # exception, not something routinely worked around.
 CHECKOUT_TOKEN_TTL = int(os.environ.get("WALMART_CHECKOUT_TOKEN_TTL", "300"))
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-)
+# No custom user agent. Confirmed live, and worth stating outright since a
+# "realistic desktop Chrome" UA string is the obvious thing to reach for:
+# spoofing one is actively harmful here. Playwright's bundled Chromium is
+# newer than whatever fixed version string gets hardcoded (v151 at the time
+# this was found, a hardcoded "Chrome/124" claim included), and Walmart's
+# bot-check cross-checks the declared UA against the real engine's actual
+# capabilities/Client Hints - a mismatch between "claims to be Chrome 124"
+# and "behaves like Chrome 151" is a bigger tell than not overriding the UA
+# at all. Let Chromium report its own real, internally-consistent one.
 
 # Patches the handful of signals headless Chromium leaves that a bot-detection
 # script checks for. Without this, a headless session can get walled off
 # before any tool call reaches real content - not a way to defeat detection
-# aimed at abuse, just to look like the same browser a human would be sitting
-# in front of for an account this user is already logged into.
+# aimed at abuse, just to look like an ordinary browser instead of an
+# obviously automated one for the plain guest browsing this server does.
 STEALTH_INIT_SCRIPT = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
@@ -124,9 +152,11 @@ if (originalQuery) {
 }
 """
 
-# Login-wall / challenge-page URL fragments. Any navigation that lands here
-# means the saved session is dead - fail once, loudly, never retry in a loop.
-LOGIN_WALL_MARKERS = ("account/login", "account/verify", "blocked", "challenge")
+# URL fragments meaning the guest session got walled off - a login prompt
+# (some flows probe for one even without requiring it) or a bot-check
+# challenge. Either way: fail once, loudly, never retry in a loop - that
+# retry-loop pattern is exactly what blew out Hermes' context before.
+BLOCKED_MARKERS = ("account/login", "account/verify", "blocked", "challenge")
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +174,7 @@ _active_store = {"store_id": DEFAULT_STORE_ID, "fulfillment": None}
 # process-scoped - the same shape every other server here uses for cached
 # state (_server in plex-mcp, _opener in qbt-mcp). One long-lived server
 # process per Hermes session, so there is no cross-session leak to design
-# around. A server restart between checkout_preview and place_order
+# around. A server restart between checkout_preview and open_checkout
 # invalidates every pending token by design: a restart is exactly the kind of
 # discontinuity that should force re-confirmation, not silently honor a stale
 # approval.
@@ -152,22 +182,17 @@ _pending_checkouts = {}
 
 
 # ---------------------------------------------------------------------------
-# Low-level Playwright accessor
+# Low-level Playwright accessors
 # ---------------------------------------------------------------------------
 
 
 def page():
-    """A logged-in page, built once. Never logs in itself - see module docstring."""
+    """The guest browsing session, built once and reused for the life of the
+    process. Always headless, never logs in - see module docstring."""
     global _playwright, _browser, _context, _page
     if _page is not None:
         return _page
 
-    if not os.path.exists(STORAGE_STATE):
-        raise RuntimeError(
-            f"No saved Walmart session at {STORAGE_STATE}. Run `python "
-            f"auth_setup.py` on the host to log in once by hand - this cannot "
-            f"be done from here."
-        )
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -177,14 +202,19 @@ def page():
         )
 
     _playwright = sync_playwright().start()
+    # headless=False is load-bearing, confirmed by direct testing, not a
+    # style choice: an identical launch with headless=True gets walled off
+    # by Walmart's bot-check ("Robot or human?", redirected to /blocked) on
+    # the very first navigation, every time - real Chrome via channel=
+    # "chrome" made no difference, only headless vs headful did. This is the
+    # one visible window this server has, and it stays open the whole
+    # session; open_checkout reuses it rather than opening a second one.
     _browser = _playwright.chromium.launch(
-        headless=HEADLESS,
+        headless=False,
         args=["--disable-blink-features=AutomationControlled"],
     )
     _context = _browser.new_context(
-        storage_state=STORAGE_STATE,
         viewport={"width": 1280, "height": 900},
-        user_agent=USER_AGENT,
     )
     _context.add_init_script(STEALTH_INIT_SCRIPT)
     _context.set_default_timeout(TIMEOUT_MS)
@@ -192,27 +222,49 @@ def page():
     return _page
 
 
-def ensure_logged_in():
-    """Raise a named, final error if the saved session has died mid-task."""
+def check_not_blocked():
+    """Raise a named, final error if the guest session hit a login wall or
+    bot-check mid-task."""
     url = page().url.lower()
-    if any(marker in url for marker in LOGIN_WALL_MARKERS):
+    if any(marker in url for marker in BLOCKED_MARKERS):
         raise ToolError(
-            "Walmart is asking to log in again - the saved session has "
-            "expired. This can't be fixed from here. Run `python "
-            "auth_setup.py` on the host, then retry.",
-            session_expired=True,
+            "Walmart is asking to verify this session (a login prompt or a "
+            "bot-check) instead of showing the page. This can happen under "
+            "heavy automated use. It is not something to retry in a loop - "
+            "report it and try again later.",
+            blocked=True,
         )
 
 
 def dom_action(description, fn):
     """Run a Playwright interaction, translating a timeout/missing-element
     into a named error instead of a raw traceback. Layout drift is a code
-    problem, not something a retry with different arguments fixes."""
+    problem, not something a retry with different arguments fixes - except
+    one specific case, checked for explicitly: a "Robot or human? Press &
+    Hold" challenge, confirmed live to appear on add_to_cart. This server
+    never attempts to solve it. Simulating a hold gesture to defeat a
+    "prove you're human" check is a materially different, more aggressive
+    act than just not looking automated by accident (the stealth patches
+    and real user agent elsewhere in this file), and it isn't something
+    this server does even for the account owner's own shopping. The window
+    is already visible for exactly this reason - solving it is one
+    press-and-hold away for whoever is sitting at it, so this reports the
+    challenge by name and asks for a human instead of failing generically
+    or, worse, trying to script past it."""
     from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
     try:
         return fn()
     except PlaywrightTimeoutError:
+        if page().get_by_text("Robot or human?").count():
+            raise ToolError(
+                f"Walmart is asking for human verification (a 'press and "
+                f"hold' challenge) before {description} can continue. This "
+                f"needs a person, not a retry - ask the user to check the "
+                f"browser window, hold the button for a couple of seconds, "
+                f"then call this again.",
+                needs_human=True,
+            )
         raise ToolError(
             f"Could not {description} - the page didn't respond as expected. "
             f"Walmart's layout may have changed, or the page loaded slowly. "
@@ -245,7 +297,7 @@ def _dom_find_stores(location):
     (the numeric store_id) and either "Make this my store" or "My store"."""
     p = page()
     dom_action("open the store finder", lambda: p.goto(f"{BASE_URL}/store/finder", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     box = p.locator('input[name="zipCodeOrCityState"]')
     dom_action("enter the search location", lambda: box.fill(location))
     find_button = p.get_by_role("button", name="Find store")
@@ -278,7 +330,9 @@ def _dom_find_stores(location):
 
 
 def _dom_select_store(store_id, fulfillment):
-    """Verified live, both halves, against a real logged-in account.
+    """Verified live, both halves, against a real logged-in account (during
+    development - the finder and store-selection actions themselves work
+    identically as a guest, confirmed separately).
 
     Making a store active happens on /store/finder itself (the store detail
     page /store/<id> has no such control) - click the "Make this my store"
@@ -289,13 +343,13 @@ def _dom_select_store(store_id, fulfillment):
     (data-automation-id="fulfillment-banner", confirmed clicking that does
     something else - never produced the toggle) and it does NOT appear at
     all on /store/finder. It only opens from the **cart page**, via the
-    "Pickup and delivery options heading" button, confirmed twice against a
-    real session. So this function deliberately finishes on /cart rather
-    than wherever setting the store landed - that's the one page the
-    fulfillment toggle is known to work from."""
+    "Pickup and delivery options heading" button, confirmed twice. So this
+    function deliberately finishes on /cart rather than wherever setting the
+    store landed - that's the one page the fulfillment toggle is known to
+    work from."""
     p = page()
     dom_action("open the store finder", lambda: p.goto(f"{BASE_URL}/store/finder", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     card_link = p.locator(f'a[href="/store/{store_id}"]').first
     dom_action(f"find store {store_id} in the results", lambda: card_link.wait_for(timeout=TIMEOUT_MS))
     card = card_link.locator("xpath=..")
@@ -321,7 +375,7 @@ def _dom_search(query, limit):
     p = page()
     url = f"{BASE_URL}/search?q={urllib.parse.quote(query)}"
     dom_action("open the search results", lambda: p.goto(url, timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     dom_action("wait for search results", lambda: p.wait_for_selector("[data-item-id]", timeout=TIMEOUT_MS))
 
     tiles = p.locator("[data-item-id]")
@@ -354,7 +408,7 @@ def _dom_add_to_cart(item_id, quantity):
     the same mechanism update_cart uses."""
     p = page()
     dom_action(f"open item {item_id}", lambda: p.goto(f"{BASE_URL}/ip/x/{item_id}", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     add_button = p.locator('[data-automation-id="atc"]')
     dom_action("click add to cart", lambda: add_button.click())
     if quantity > 1:
@@ -387,7 +441,7 @@ def _dom_set_cart_quantity(item_id, quantity):
     correct button that many times."""
     p = page()
     dom_action("open the cart", lambda: p.goto(f"{BASE_URL}/cart", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     row = _cart_row(p, item_id)
     current = dom_action(f"read the current quantity for {item_id}", lambda: _current_cart_quantity(row))
     delta = quantity - current
@@ -404,7 +458,7 @@ def _dom_remove_from_cart(item_id):
     enough and does not depend on the product name."""
     p = page()
     dom_action("open the cart", lambda: p.goto(f"{BASE_URL}/cart", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
     row = _cart_row(p, item_id)
     remove_button = row.get_by_role("button", name="Remove")
     dom_action(f"remove {item_id} from the cart", lambda: remove_button.click())
@@ -429,7 +483,7 @@ def read_cart():
     """
     p = page()
     dom_action("open the cart", lambda: p.goto(f"{BASE_URL}/cart", timeout=TIMEOUT_MS))
-    ensure_logged_in()
+    check_not_blocked()
 
     rows = p.locator("li:has([data-testid='quantity-stepper'])")
     items = []
@@ -454,63 +508,24 @@ def read_cart():
     return {"items": items, "total": total}
 
 
-def submit_order():
-    """Drive checkout to completion and read back the confirmation page.
+def open_checkout_window():
+    """The entire "place the order" mechanism: bring the cart back on screen
+    and stop. Never clicks anything past that - the human takes it from
+    there, in the same window that built the cart.
 
-    Only ever called after place_order's full validation sequence passes -
-    see module docstring. Returns confirmed:false with whatever's actually
-    on screen if the confirmation page doesn't show what's expected, rather
-    than assuming success from "the click didn't error" (§3 read-back).
+    This used to launch a second browser sharing the first one's cookies,
+    back when the first one ran headless. It doesn't need to anymore -
+    headless is what got blocked (see page()'s docstring), so the guest
+    session has been visible this whole time, and there's nothing to hand
+    off except attention: this just brings the cart back up in case the
+    window navigated elsewhere since.
 
-    Verified live, up to but deliberately not including an actual click of
-    "Place order", against a real logged-in account with a real cart -
-    driven, screenshotted, and backed out of without submitting, precisely
-    so this path is only ever completed for real with approval already in
-    hand (see README).
-
-    The flow is one step longer than first assumed: "Continue to checkout"
-    does not go straight to a payment page - it opens a "Reserve a time"
-    panel (pickup/delivery slot selection) inside the cart. Nothing here is
-    pre-selected; the panel shows "Please choose an option" until a slot
-    radio is picked, and *then* its own "Continue" button proceeds. This
-    function takes the first available slot rather than trying to choose an
-    optimal one - which slot is wanted is exactly the kind of judgment call
-    that belongs to whoever approves the checkout_preview summary, not to a
-    default buried in DOM-driving code; if a specific slot matters, this is
-    the place to extend it.
-
-    Confirmed live: the resulting page is titled "Review your order" and its
-    submit control's accessible name is exactly "Place order for $19.64"
-    (with the real total, not a fixed string) - `name="Place order"` below
-    still matches it correctly under Playwright's default substring role-name
-    matching, so the original placeholder was right by luck rather than
-    verification. The order-confirmation selector past that point is still a
-    guess - reaching it means actually placing an order, which this project
-    deliberately never did.
+    This is the chokepoint open_checkout calls after its validation passes;
+    tests substitute it directly rather than launching a real browser.
     """
     p = page()
-    dom_action("open the cart", lambda: p.goto(f"{BASE_URL}/cart", timeout=TIMEOUT_MS))
-    ensure_logged_in()
-    continue_button = p.get_by_role("button", name="Continue to checkout")
-    dom_action("go to checkout", lambda: continue_button.click())
-
-    slot_panel_continue = p.get_by_role("button", name="Continue")
-    if slot_panel_continue.count():
-        first_slot = p.get_by_role("radio").first
-        if first_slot.count():
-            dom_action("choose a delivery/pickup slot", lambda: first_slot.click())
-        dom_action("confirm the slot", lambda: slot_panel_continue.click())
-
-    place_button = p.get_by_role("button", name="Place order")
-    dom_action("place the order", lambda: place_button.click())
-
-    try:
-        p.wait_for_selector("[data-testid='order-confirmation-number']", timeout=TIMEOUT_MS)
-    except Exception:
-        return {"confirmed": False, "order_number": None, "detail": p.url}
-
-    order_el = p.query_selector("[data-testid='order-confirmation-number']")
-    return {"confirmed": True, "order_number": order_el.inner_text() if order_el else None, "detail": None}
+    dom_action("bring the cart to the front for checkout", lambda: p.goto(f"{BASE_URL}/cart", timeout=TIMEOUT_MS))
+    p.bring_to_front()
 
 
 # ---------------------------------------------------------------------------
@@ -591,9 +606,6 @@ def select_store(store_id, fulfillment):
     if fulfillment not in ("pickup", "delivery"):
         raise ToolError("fulfillment must be 'pickup' or 'delivery'.")
 
-    matches = _dom_find_stores(store_id) if not store_id.isdigit() else None
-    # store_id from find_stores is already a concrete id; only re-resolve if
-    # something non-numeric slipped through.
     _dom_select_store(store_id, fulfillment)
 
     _active_store["store_id"] = store_id
@@ -759,7 +771,7 @@ def remove_from_cart(item_id):
     "quantities, prices, fulfillment detail, total cost - and returns a "
     "confirmation_token bound to this exact cart. Nothing is ordered by "
     "calling this. Show the summary to the user and get an explicit yes "
-    "before calling place_order with the token."
+    "before calling open_checkout with the token."
 )
 def checkout_preview():
     if not _active_store["store_id"]:
@@ -783,7 +795,7 @@ def checkout_preview():
             f"{len(cart['items'])} item(s), total ${cart['total']:.2f}, "
             f"{_active_store['fulfillment']} at store {_active_store['store_id']}. "
             f"Token expires in {CHECKOUT_TOKEN_TTL}s - show this summary to the "
-            f"user and get an explicit yes before calling place_order."
+            f"user and get an explicit yes before calling open_checkout."
         ),
         "items": cart["items"],
         "fulfillment": _active_store["fulfillment"],
@@ -795,19 +807,22 @@ def checkout_preview():
 
 
 @tool(
-    "Place the order. Requires a confirmation_token from a checkout_preview "
-    "called in the last few minutes, whose total and contents still match "
-    "the live cart exactly. This is the only tool here that spends money - "
-    "never call it without the user having explicitly approved the "
+    "Open a real, visible browser window with the cart ready to go, for the "
+    "user to log in and complete checkout themselves. Requires a "
+    "confirmation_token from a checkout_preview called in the last few "
+    "minutes, whose total and contents still match the live cart exactly. "
+    "This tool never places an order and cannot see whether the user "
+    "finishes checking out - it only hands off a matching, freshly-approved "
+    "cart. Never call it without the user having explicitly approved the "
     "checkout_preview summary first, in the same conversation.",
     {"confirmation_token": s("From checkout_preview. Single-use.")},
     ["confirmation_token"],
 )
-def place_order(confirmation_token):
+def open_checkout(confirmation_token):
     confirmation_token = (confirmation_token or "").strip()
     if not confirmation_token:
         raise ToolError(
-            "place_order requires a confirmation_token from checkout_preview. "
+            "open_checkout requires a confirmation_token from checkout_preview. "
             "Call checkout_preview first, show the total to whoever is "
             "approving this, and pass the token back only after they say yes."
         )
@@ -822,10 +837,10 @@ def place_order(confirmation_token):
         )
     if rec["used"]:
         raise ToolError(
-            "This confirmation_token was already used to place an order. "
-            "Each token is single-use. Call checkout_preview again if a new "
-            "order is wanted.",
-            already_ordered=True,
+            "This confirmation_token already opened a checkout window. Each "
+            "token is single-use. Call checkout_preview again if another "
+            "handoff is wanted.",
+            already_opened=True,
         )
     age = time.time() - rec["issued_at"]
     if age > CHECKOUT_TOKEN_TTL:
@@ -833,7 +848,7 @@ def place_order(confirmation_token):
             f"This confirmation_token expired {int(age - CHECKOUT_TOKEN_TTL)}s "
             f"ago (tokens last {CHECKOUT_TOKEN_TTL}s). Prices and stock can "
             f"change in that window - call checkout_preview again for a "
-            f"fresh total before ordering."
+            f"fresh total before opening checkout."
         )
 
     cart = read_cart()
@@ -843,43 +858,34 @@ def place_order(confirmation_token):
             "The cart has changed since checkout_preview - a price, "
             "quantity, or item's availability shifted. Call checkout_preview "
             "again to see the current total and get a new token before "
-            "ordering.",
+            "opening checkout.",
             changed=True,
         )
 
-    # Mark used before dispatching: a crash mid-order can't be replayed into
-    # a double order by resubmitting the same token. The retry path is
-    # calling checkout_preview again, which re-reads the live cart.
+    # Mark used before opening the window: a crash mid-handoff can't be
+    # replayed into two windows for the same approval by resubmitting the
+    # same token. The retry path is calling checkout_preview again.
     rec["used"] = True
 
-    order = submit_order()
-    if order["confirmed"]:
-        return {
-            "ok": True,
-            "confirmed": True,
-            "summary": f"Order placed - confirmation {order['order_number']}, total ${rec['total']:.2f}.",
-            "order_number": order["order_number"],
-            "total": rec["total"],
-        }
+    open_checkout_window()
     return {
         "ok": True,
-        "confirmed": False,
         "summary": (
-            "The order was submitted but the confirmation page did not show "
-            "the expected order number. Check the Walmart account directly "
-            "before assuming it did or didn't go through - do not resubmit."
+            f"A checkout window is now open with {len(cart['items'])} item(s), "
+            f"total ${rec['total']:.2f}. Tell the user it's ready - they need "
+            f"to log in and complete checkout there themselves. This tool "
+            f"cannot see whether they finish it."
         ),
-        "detail": order.get("detail"),
+        "total": rec["total"],
+        "handoff": True,
     }
 
 
 def banner():
     return (
-        f"WALMART_STORAGE_STATE={STORAGE_STATE} "
-        f"({'found' if os.path.exists(STORAGE_STATE) else 'MISSING - run auth_setup.py'})  "
-        f"WALMART_HEADLESS={HEADLESS}  "
         f"WALMART_STORE_ID={DEFAULT_STORE_ID or 'unset'}  "
-        f"WALMART_CHECKOUT_TOKEN_TTL={CHECKOUT_TOKEN_TTL}s"
+        f"WALMART_CHECKOUT_TOKEN_TTL={CHECKOUT_TOKEN_TTL}s  "
+        f"WALMART_TIMEOUT={TIMEOUT_MS // 1000}s"
     )
 
 
