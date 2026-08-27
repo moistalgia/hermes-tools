@@ -326,6 +326,54 @@ def vault_status():
 
 
 @tool(
+    "List every folder in the vault, with how many notes are directly in it "
+    "and how many counting subfolders. The discovery tool for where to file "
+    "something new - check here before inventing 'Recipes' when 'Recipe "
+    "Notes' already exists. A folder with zero notes still appears if it "
+    "exists on disk, so an empty category someone already set up is visible "
+    "too."
+)
+def list_folders():
+    root = vault_root()
+
+    direct_counts = {}
+    for abs_path in iter_md_files(root, recursive=True):
+        rel_dir = os.path.dirname(os.path.relpath(abs_path, root)).replace(os.sep, "/")
+        direct_counts[rel_dir] = direct_counts.get(rel_dir, 0) + 1
+
+    folders = []
+    for dirpath, dirnames, _filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        rel = os.path.relpath(dirpath, root)
+        if rel != ".":
+            folders.append(rel.replace(os.sep, "/"))
+    folders.sort()
+
+    if not folders:
+        return {
+            "ok": True,
+            "summary": "No folders yet - every note is at the vault root.",
+            "folders": [],
+        }
+
+    rows = []
+    for folder in folders:
+        total = sum(count for path, count in direct_counts.items()
+                    if path == folder or path.startswith(folder + "/"))
+        rows.append({
+            "path": folder,
+            "notes_direct": direct_counts.get(folder, 0),
+            "notes_total": total,
+        })
+
+    return {
+        "ok": True,
+        "summary": f"{len(rows)} folder(s) in the vault.",
+        "folders": rows,
+    }
+
+
+@tool(
     "List notes under a folder, with title, size, and last-modified time. "
     "Empty folder means the whole vault. The discovery tool for browsing - "
     "use it to see what exists before guessing a path.",

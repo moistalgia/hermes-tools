@@ -51,6 +51,7 @@ daily notes are configured — one call instead of finding out three tools in.
 | Tool | Does |
 | --- | --- |
 | `vault_status` | Reachability, note count, top-level folders, daily note config. Run first when something is wrong. |
+| `list_folders` | Every folder in the vault, with note counts. Check here before filing something under a new category name. |
 | `list_notes` | Browse a folder (or the whole vault): path, title, size, modified. The discovery tool. |
 | `read_note` | Full content, plus best-effort parsed frontmatter and the body with it stripped off. |
 | `search_notes` | Full-text search, grouped by note, with line numbers. Reports how many notes were searched. |
@@ -67,6 +68,23 @@ Every one is also a CLI subcommand through the same dispatch path:
 python obsidian-mcp/obsidian_mcp_server.py read_note path="Projects/Climbing.md"
 python obsidian-mcp/obsidian_mcp_server.py search_notes query="paradigm"
 ```
+
+## Organizing: a folder is a notebook
+
+There is no separate "notebook" concept and no tool to create one. `create_note`
+and `append_note` take any vault-relative path and create whatever parent
+folders it needs, so filing something under `Recipes/Pasta.md` or
+`Training/2026-08-27.md` for the first time is exactly the same call as any
+other write — the folder comes into existence because a note landed in it, the
+same way it would in Obsidian's own file explorer.
+
+The only discipline this needs is checking `list_folders` before inventing a
+category, so a vault does not end up with `Recipes/` and `Recipe Notes/` as
+two different places for the same thing. That is why `list_folders` exists and
+why its description says to check it first, rather than this server enforcing
+a fixed set of top-level folders the way `state-mcp` enforces a fixed set of
+task areas — a notes vault's categories are the user's to invent, and a closed
+vocabulary here would fight the way people actually use one.
 
 ## The vault jail
 

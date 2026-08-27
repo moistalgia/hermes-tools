@@ -308,6 +308,49 @@ class TestDailyNote(VaultCase):
             obsidian.daily_note(date="not-a-date")
 
 
+class TestListFolders(VaultCase):
+    """Where the agent looks before inventing a new category name."""
+
+    def test_an_empty_vault_has_no_folders(self):
+        result = obsidian.list_folders()
+        self.assertEqual(result["folders"], [])
+
+    def test_a_folder_with_no_notes_still_appears(self):
+        os.makedirs(os.path.join(self.vault, "Projects", "Empty"))
+        result = obsidian.list_folders()
+        paths = {row["path"] for row in result["folders"]}
+        self.assertIn("Projects", paths)
+        self.assertIn("Projects/Empty", paths)
+
+    def test_direct_counts_only_the_notes_in_that_folder(self):
+        self.write("Recipes/Pasta.md", "x")
+        self.write("Recipes/Mains/Curry.md", "x")
+        by_path = {row["path"]: row for row in obsidian.list_folders()["folders"]}
+        self.assertEqual(by_path["Recipes"]["notes_direct"], 1)
+
+    def test_total_counts_roll_up_subfolders(self):
+        self.write("Recipes/Pasta.md", "x")
+        self.write("Recipes/Mains/Curry.md", "x")
+        by_path = {row["path"]: row for row in obsidian.list_folders()["folders"]}
+        self.assertEqual(by_path["Recipes"]["notes_total"], 2)
+        self.assertEqual(by_path["Recipes/Mains"]["notes_total"], 1)
+
+    def test_a_similarly_named_sibling_folder_is_not_double_counted(self):
+        # 'Recipes' and 'Recipes Archive' share a prefix as strings - the
+        # rollup must not treat one as a subfolder of the other.
+        self.write("Recipes/Pasta.md", "x")
+        self.write("Recipes Archive/Old.md", "x")
+        by_path = {row["path"]: row for row in obsidian.list_folders()["folders"]}
+        self.assertEqual(by_path["Recipes"]["notes_total"], 1)
+        self.assertEqual(by_path["Recipes Archive"]["notes_total"], 1)
+
+    def test_dotfolders_are_never_listed(self):
+        self.write(".obsidian/plugin-notes.md", "x")
+        self.write(".trash/Old.md", "x")
+        result = obsidian.list_folders()
+        self.assertEqual(result["folders"], [])
+
+
 class TestListNotes(VaultCase):
     def test_recursive_by_default(self):
         self.write("A.md", "x")
