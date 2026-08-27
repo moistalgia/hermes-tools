@@ -1,0 +1,6 @@
+# Playwright drives the actual browser session. Installing this package is
+# not enough on its own - it also needs a browser binary, which pip/uv cannot
+# fetch for you. After installing, run:
+#   playwright install chromium
+# See README's Setup section.
+playwright>=1.40

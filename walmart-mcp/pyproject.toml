@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "walmart-mcp"
+version = "0.1.0"
+description = "Single-file MCP server for Walmart store selection, search, cart, and gated checkout"
+requires-python = ">=3.9"
+dependencies = ["playwright>=1.40"]
+
+[project.scripts]
+walmart-mcp = "walmart_mcp_server:main"
+
+[tool.setuptools]
+# Deliberately a single module, not a package.
+py-modules = ["walmart_mcp_server"]
