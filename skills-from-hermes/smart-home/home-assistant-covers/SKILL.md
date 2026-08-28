@@ -1,53 +1,34 @@
 ---
 name: home-assistant-covers
-description: "HA covers, lights (incl. Hue), and scenes via MCP."
-version: 4.0.0
+description: "HA covers, lights (incl. Hue), scenes, automations, and areas via MCP."
+version: 5.1.0
 author: gladys + moisty
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [smart-home, home-assistant, covers, blinds, curtains, lights, hue, scenes, iot]
+    tags: [smart-home, home-assistant, covers, blinds, curtains, lights, hue, scenes, automations, areas, iot]
     related_skills: [mcp-authoring, hermes-local-topology]
 ---
 
-# Home Assistant — Covers, Lights & Scenes
+# Home Assistant — Covers, Lights, Scenes, Automations & Areas
+
+**Quick reference:** `resolve("name")` → get the entity ID → `cover_command`/
+`light_command`/`activate_scene` → check `confirmed`. For covers on this
+install, position is inverted: **100 = closed, 0 = open** — always use
+`set_position`, never `open_cover`/`close_cover`.
+
+The name is legacy (covers came first); this is the one skill for everything
+the `ha` MCP server does.
 
 ## When to Use
 
-Any request to control a blind, curtain, shade, garage door, **light, or scene**
-in the house. Also load when diagnosing HA behavior that seems backwards, or
-when the user asks about Hue.
+Any request to control a blind, curtain, shade, garage door, light, or scene;
+to set up/change/remove a recurring automation; or to move a device into a
+room/area. Also load when HA behavior seems backwards, or the user asks about
+Hue.
 
-## Status
-
-Home Assistant **is live and the MCP is fully working**. Verified 2026-08-10 via
-`mcp__ha__ha_status` → `ok: true`:
-
-- HA **2026.7.1**, location `Home`, state `RUNNING`
-- URL `http://127.0.0.1:8123` (host-side, from the MCP)
-- **3 covers, 0 lights, 0 scenes**
-
-All read-only tools confirmed working end-to-end: `ha_status`, `list_covers`,
-`list_lights`, `list_scenes`, `resolve`. Mutating tools (`cover_command`,
-`cover_group`) are **untested against hardware** as of this date.
-
-`resolve` works well — "kitchen curtain" scored 0.968 for `cover.kitchen_curtain`
-vs 0.733/0.595 for the theater pair, and it correctly returned
-`note: "multiple matches; confirm with the user before acting"`. Respect that
-note; don't act on a multi-match without confirming.
-
-### Prerequisite: the token
-
-Home Assistant **is live** at `http://127.0.0.1:8123` (host-side) /
-`http://host.docker.internal:8123` (from the container). Verified 2026-08-10:
-`manifest.json` confirms it and `/api/` returns a clean `401`.
-
-### Preferred path: the `ha` MCP server
-
-A purpose-built HA MCP server lives at `C:\dev\hermes-tools\ha-mcp` (source also
-staged at `/sandbox/out/ha-mcp`), tested end-to-end over the real MCP protocol.
-**11 tools covering covers, lights, and scenes:**
+## Tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -62,245 +43,107 @@ staged at `/sandbox/out/ha-mcp`), tested end-to-end over the real MCP protocol.
 | `mcp__ha__light_group` | Many lights; skips incompatible with a reason |
 | `mcp__ha__list_scenes` | Scenes (incl. Hue scenes) |
 | `mcp__ha__activate_scene` | Activate a scene |
+| `mcp__ha__list_areas` | Every area: id, name, aliases |
+| `mcp__ha__create_area` | New area; refuses a name/alias collision |
+| `mcp__ha__assign_area` | Move one entity into an area |
+| `mcp__ha__list_automations` | Automations this server made (default), or everything |
+| `mcp__ha__get_automation` | One automation's trigger/condition/action config |
+| `mcp__ha__create_automation` | Author or update a **native** HA automation |
+| `mcp__ha__automation_command` | `enable` \| `disable` \| `trigger` \| `delete` one automation |
 
-**Workflow:** `resolve` or a `list_*` first → command → check `confirmed`.
-Never report a change unless `confirmed` is true.
+**This HA instance currently has 0 lights and 0 scenes** (Hue isn't wired in
+yet) — `list_lights`/`light_command`/`list_scenes`/`activate_scene` will
+return empty until it is. See `references/verified-state.md` if a light/scene
+request comes up.
 
-**Units:** cover position 0=closed/100=open; light brightness in **percent**;
-color temperature in **Kelvin** (mireds removed from HA in 2026.3).
+## Workflow
 
-**Hue is future-state, not yet wired.** Verified 2026-08-10 against
-`/api/states` and confirmed by the user: this HA instance has **42 entities,
-3 covers, ZERO `light.*`, ZERO `scene.*`**. The house runs blinds and media
-players through HA; the Hue bridge is **not** integrated yet — it's on the
-roadmap, not broken.
+1. `resolve` or a `list_*` to get real entity IDs — never guess them. A
+   multi-match result means confirm with the user before acting.
+2. Send the command.
+3. Check `confirmed` in the response. Never report a change unless it's true.
+4. For covers, re-read `position` (not `state`) if the change matters —
+   covers report `opening`/`closing` while moving.
 
-An earlier version of this skill claimed Hue bulbs/scenes surface automatically
-as `light.*`/`scene.*`. That was never verified and is **false here**.
+**Units:** cover position 0=closed/100=open by HA convention (see inversion
+below); light brightness in **percent**; color temperature in **Kelvin**
+(mireds removed from HA in 2026.3).
 
-Consequence: **5 of the 11 MCP tools currently have nothing to act on** —
-`list_lights`, `light_command`, `light_group`, `list_scenes`, `activate_scene`
-will return empty. The tools are correct; the entities don't exist yet. They
-should start working on their own once the Hue integration is added to HA — no
-MCP change needed. Until then, don't promise light or scene control off this
-server.
-
-**Scene confirmation is weaker.** Scenes have no readable on/off state; HA only
-records a last-triggered timestamp. For certainty, verify individual lights with
-`list_lights`.
-
-**There are no `ha_*` bare tools.** Earlier versions of this skill instructed
-calling `ha_call_service(...)` / `ha_list_entities(...)`; those never existed.
-A prior recon also wrongly declared HA down — those probes ran through a wedged
-container returning `http=000` for everything. HA was fine.
-
-### Fallback: REST via curl
-
-If the MCP isn't installed yet, drive the REST API directly (below). It works,
-but you must remember to verify state yourself — exactly the discipline the MCP
-makes structural.
-
-### ⚠️ The MCP subprocess needs the token in its OWN env block
-
-Verified 2026-08-10 — this cost a full debugging session. MCP stdio servers get a
-**filtered environment** (only `PATH`, `HOME`, `USER`, `LANG`, `TERM`, `SHELL`,
-`TMPDIR`, `XDG_*`). A `HASS_TOKEN` in `~/.hermes/.env` is **invisible** to
-`ha-mcp`, and `terminal.docker_forward_env` is irrelevant here — that forwards
-into the *container*, while the MCP runs *host-side*.
-
-Required `config.yaml` shape:
-
-```yaml
-mcp_servers:
-  ha:
-    command: C:/dev/hermes-tools/ha-mcp/.venv/Scripts/ha-mcp-serve.exe
-    args: []
-    env:
-      HASS_TOKEN: <literal token>
-    enabled: true
-```
-
-`ha-mcp/ha_mcp/server.py` reads (in order): `HASS_URL` → `HA_URL` →
-`http://127.0.0.1:8123`; `HASS_TOKEN` → `HA_TOKEN`. **The URL default is already
-correct host-side, so `HASS_TOKEN` is the only variable you must set.**
-
-Use a **literal** token, not `${HASS_TOKEN}` — `${VAR}` expansion is documented
-for `command`/`args`/`url`/`headers` but not for `env`, and upstream issue #11239
-is an open *request* for env-backed secret refs in MCP config.
-
-**Read the error text — the server distinguishes the three failures:**
-
-| Error | Meaning |
-| --- | --- |
-| `HASS_TOKEN is not set` | no `env:` block reaching the subprocess |
-| `401 unauthorized - HASS_TOKEN is invalid or expired` | env block works, token wrong/empty/placeholder |
-| `ok: true` | good |
-
-`env` is read at **subprocess spawn**, so after editing: `/reload-mcp` then
-`/new`. A gateway restart is not sufficient.
-
-Needs a long-lived access token (HA → profile → Security → Long-lived access
-tokens). The variable name is **`HASS_TOKEN`**.
-
-It is already present host-side. To expose it to the container for curl work:
-
-```
-hermes config set terminal.docker_forward_env '["HASS_TOKEN","TAVILY_API_KEY"]'
-```
-
-**Never** put the token in a SKILL.md, `config.yaml`, or a command you echo
-back. If `$HASS_TOKEN` is unset in the container, say so and stop — do not ask
-the user to paste it inline.
-
-```bash
-export HA="http://host.docker.internal:8123"
-AUTH="Authorization: Bearer $HASS_TOKEN"
-```
-
-Note the host: **`host.docker.internal` from the container**, but `127.0.0.1`
-from the host-side MCP server. See `hermes-local-topology`.
-
-## Step 1 — discover entities (never guess IDs)
-
-```bash
-timeout 15 curl -s -H "$AUTH" "$HA/api/states" \
-  | python3 -c "
-import json,sys
-for s in json.load(sys.stdin):
-    if s['entity_id'].startswith('cover.'):
-        a=s['attributes']
-        print(s['entity_id'], '|', a.get('friendly_name'), '| state=', s['state'],
-              '| pos=', a.get('current_position'), '| class=', a.get('device_class'))
-"
-```
-
-Use returned IDs **verbatim**. Note `supported_features` — not every cover
-supports positioning.
-
-## Step 2 — commands
-
-```bash
-# open / close / stop
-timeout 15 curl -s -X POST -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"entity_id":"cover.theater_curtain"}' \
-  "$HA/api/services/cover/open_cover"
-
-# set a percentage (0-100)
-timeout 15 curl -s -X POST -H "$AUTH" -H "Content-Type: application/json" \
-  -d '{"entity_id":"cover.theater_curtain","position":50}' \
-  "$HA/api/services/cover/set_cover_position"
-```
-
-Service endpoints: `cover/open_cover`, `cover/close_cover`, `cover/stop_cover`,
-`cover/set_cover_position`.
-
-## Step 3 — ALWAYS verify
-
-A `200` means the request was accepted, **not** that anything moved.
-
-```bash
-timeout 15 curl -s -H "$AUTH" "$HA/api/states/cover.theater_curtain" \
-  | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-print('state:', d['state'], 'position:', d['attributes'].get('current_position'))
-"
-```
-
-Covers report `opening`/`closing` while moving — wait ~2s and re-read for a
-settled state. Never claim a blind moved without a state read backing it.
-
-## Polarity — INVERTED. Confirmed by direct observation 2026-08-10
-
-**These covers report position backwards from the HA convention:**
+## Cover polarity — INVERTED on this install
 
 | Position | Physical reality |
 | --- | --- |
 | **100** | **fully CLOSED** |
 | **0** | **fully OPEN** |
-| 58 | 58% closed — just past halfway, on the closed side |
+| 58 | 58% closed |
 
-Evidence: both theater curtains report `position: 100` while the user, standing
-in the room, confirms they are **physically closed**. Standard HA is
-0=closed/100=open. This install is the opposite.
+- Never report open/closed from the `state` field — it's derived from
+  `position != 0`, so `state: "open"` at `position: 100` means **closed**.
+  Read `position` and apply the inversion; translate to physical terms for
+  the user, never parrot the raw number.
+- **Prefer `set_position` over `open_cover`/`close_cover`.** The position
+  mapping above is confirmed; which physical direction `open_cover`/
+  `close_cover` actually drive is not. To close: `set_position` **100**. To
+  open: `set_position` **0**.
+- All 3 covers on this instance (`cover.theater_curtain`,
+  `cover.kitchen_curtain`, `cover.theater_stairs_curtain`) share this
+  inversion. Full entity table and how this was established:
+  `references/verified-state.md`.
 
-### ⚠️ The `state` field lies too — this is the dangerous part
+## Automations — `create_automation` writes a NATIVE HA automation
 
-HA derives `state` from `position != 0`, so it reports:
+HA's own engine runs it from then on; this agent is not in the runtime path
+once it's saved. That's why testing uses `automation_command(id, "trigger")`
+to fire it immediately rather than waiting for the real trigger.
 
-```json
-{"state": "open", "position": 100}   // ← actually fully CLOSED
+```python
+mcp__ha__create_automation(
+    alias="Hallway motion -> light",
+    triggers=[{"kind": "state", "entity_id": "binary_sensor.hallway_motion", "to": "on"}],
+    actions=[{"kind": "light", "entity_id": "light.hallway", "action": "on", "brightness_pct": 60}],
+)
 ```
 
-Every one of the three covers currently reads `state: "open"` while the theater
-pair is shut. **`state: open` on these entities means CLOSED.**
+- **Trigger kinds:** `state` (`entity_id`, `to`, `from_`, `for_seconds`),
+  `numeric_state` (`entity_id`, `above`, `below`, `for_seconds`), `sun`
+  (`event`: `"sunrise"`/`"sunset"`, `offset_minutes`), `time` (`at`:
+  `"HH:MM:SS"`). **Conditions** (ANDed): same four, plus `and`/`or` nesting.
+- **Action kinds are limited to `light`, `cover`, `scene`, `delay`.** For a
+  lock, alarm, garage, script, or raw service call: say plainly it's not
+  available, don't look for a workaround.
+- Every `entity_id` must come from `resolve()`/`list_*` first, same as live
+  control. For a cover action, apply the **same inverted `position` mapping**
+  as above (`position: 100` to close, `position: 0` to open) — an automation
+  built with the un-inverted value runs backwards every day, silently.
+- Calling `create_automation` again with the same `alias` **updates** the
+  existing automation (id defaults to `hermes_<slug(alias)>`) instead of
+  duplicating it — check `list_automations()` first regardless.
+- `list_automations()` defaults to `hermes-managed` automations only; pass
+  `managed_only=False` to see hand-written ones too, but treat those as
+  read-only.
+- `automation_command(id, "delete")` has no undo. The response includes the
+  full deleted config — hold onto it until the user confirms the delete was
+  wanted.
 
-**Operating rules:**
+## Areas
 
-- **Never** report open/closed from the `state` field. Read `position` and apply
-  the inversion.
-- Translate for the user in physical terms: `position: 100` → "closed". Never
-  parrot the raw number as if it meant openness.
-- **Prefer `set_position` over `open_cover`/`close_cover`.** Position mapping is
-  confirmed; the *service* polarity is **not** (see below).
-
-### Still unproven: `open_cover` / `close_cover` direction
-
-Observation confirms how position is **reported**. It does not prove which way
-the `open_cover` service **moves** the hardware. An inverted cover template
-usually inverts both, but a partial config can invert reporting only.
-
-Until tested, drive covers with `set_position` (0 = open, 100 = closed) where the
-mapping is known. If you must use `open_cover`/`close_cover`, test one cover with
-the user watching and record the result here.
-
-To close: `set_position` **100**. To open: `set_position` **0**.
-
-## Verified entities
-
-Read from `/api/states` with a valid token on **2026-08-10**. These are the
-complete set — HA has exactly 3 covers.
-
-| Entity ID | Friendly name | Area | Reported | ACTUAL physical | Polarity |
-| --- | --- | --- | --- | --- | --- |
-| `cover.theater_curtain` | Theater Curtain | Theater | `open`, 100 | **CLOSED** | INVERTED ✅ |
-| `cover.kitchen_curtain` | Kitchen  Curtain | Kitchen | `open`, 58 | 58% closed | INVERTED ✅ |
-| `cover.theater_stairs_curtain` | Theater Stairs Curtain | Theater | `open`, 100 | **CLOSED** | INVERTED ✅ |
-
-Inversion confirmed 2026-08-10 by user observation of the physically-closed
-theater pair reporting `position: 100` / `state: open`. Assume all three share it
-(same device class, same integration) but note only the theater pair was directly
-eyeballed.
-
-`supported_features: 15` = OPEN(1) + CLOSE(2) + SET_POSITION(4) + STOP(8) — all
-three support absolute positioning. Note the double space in "Kitchen  Curtain"
-(friendly name only; the entity_id is normal).
-
-**Corrections to earlier sessions:** `cover.kitchen_curtain` was never listed
-before and is real. **Bedroom curtains (left/right) DO NOT EXIST** — a previous
-session invented them. Never carry forward an entity ID that hasn't come back
-from `/api/states`.
-
-## Pitfalls
-
-| Issue | Reality |
-| --- | --- |
-| `127.0.0.1:8123` from container | Wrong host — use `host.docker.internal` |
-| `401 Unauthorized` | Token missing/expired, or not forwarded into the container |
-| HTTP 200 means it moved | No. Read state back. |
-| `ha_call_service` tool | Does not exist. Use REST. |
-| **`state: open` means open** | **NO — inverted here. `open`/100 = physically CLOSED.** |
-| **`position: 100` means open** | **NO — 100 = closed, 0 = open on this install.** |
-| Empty/`000` response from HA | Suspect a wedged container before concluding HA is down |
-| Instant state after a command | Covers report `opening`/`closing`; wait and re-read |
+`assign_area(entity_id, area)` sets the entity's own area, overriding
+whatever area its device has. `area` matches fuzzily like `resolve()`; an
+ambiguous/unknown name comes back as candidates, never a guess —
+`list_areas()` first if unsure. `create_area` refuses a name/alias collision.
+Area reads/writes have no REST fallback (WebSocket-only) — if the MCP is
+down, area work waits.
 
 ## Safety
 
 Confirm before moving covers in occupied rooms, and before anything
-security-relevant (garage doors). A heads-up beats a surprise.
+security-relevant (garage doors). This extends to automations: confirm
+before creating one that will run unattended — getting it wrong is a
+standing problem, not a one-time one.
 
-## Long-term
+## If something's broken
 
-Wrap this in an HA MCP server per `mcp-authoring`, with `confirmed` fields on
-mutating tools so honesty is structural rather than remembered. That also gets
-lights, climate, and sensors for free.
+MCP down, token issues, `401`s, REST/curl fallback, or the tool list not
+matching this file: see `references/setup-and-troubleshooting.md`. Full
+verified-entity table, Hue status, and how the polarity finding was
+established: `references/verified-state.md`.

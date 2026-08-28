@@ -1,5 +1,5 @@
 """
-Home Assistant MCP server for Hermes — covers, lights, scenes.
+Home Assistant MCP server for Hermes — covers, lights, scenes, automations, areas.
 
 Runs HOST-SIDE on Windows (spawned by Hermes), so it reaches HA at 127.0.0.1.
 Install location: C:/dev/hermes-tools/ha-mcp
@@ -15,27 +15,43 @@ Design invariants (learned the hard way — do not regress these):
   * Never send a service the device cannot perform           -> capability checks
   * Never assume polarity or scale                           -> measure, don't infer
   * Position: 0=closed, 100=open. Brightness: percent 0-100. Kelvin for color temp.
+
+Automations authored here are NATIVE Home Assistant automations - HA's own
+engine triggers them, not this agent (see ../AUTOMATIONS_DESIGN.md §0). Action
+steps are restricted to light/cover/scene/delay - the same domains this server
+exposes for live control, nothing more. No locks, alarm, garage, scripts, or
+raw service calls, ever - see AUTOMATIONS_DESIGN.md §3.
+
+Areas have no REST API in Home Assistant - registry reads/writes go over the
+WebSocket API instead (_ws_call), the second and only other transport here.
 """
 
 from __future__ import annotations
 
 import difflib
+import json
 import os
+import re
 import time
 from typing import Any
 
 import httpx
+import websockets.exceptions as _wsexc
+import websockets.sync.client as _wsc
 from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer(
     name="ha",
-    version="2.0.0",
+    version="2.1.0",
     instructions=(
-        "Home Assistant control for covers, lights and scenes. Always call a "
-        "list_* or resolve tool first so real entity_ids are used - never invent "
-        "them. Cover position is 0=closed/100=open; light brightness is percent "
-        "0-100; color temperature is in Kelvin. Never tell the user something "
-        "changed unless the result has confirmed=true."
+        "Home Assistant control for covers, lights, scenes, automations and "
+        "areas. Always call a list_* or resolve tool first so real entity_ids "
+        "are used - never invent them. Cover position is 0=closed/100=open; "
+        "light brightness is percent 0-100; color temperature is in Kelvin. "
+        "Never tell the user something changed unless the result has "
+        "confirmed=true. create_automation authors a NATIVE Home Assistant "
+        "automation that HA itself runs - action steps are restricted to "
+        "light/cover/scene/delay, never locks/alarm/garage/scripts."
     ),
 )
 
@@ -86,6 +102,51 @@ def _req(method: str, path: str, **kw: Any) -> dict[str, Any]:
         return {"ok": True, "data": r.json()}
     except ValueError:
         return {"ok": True, "data": r.text}
+
+
+def _ws_call(msg_type: str, **fields: Any) -> dict[str, Any]:
+    """Single WebSocket choke point - open, auth, send one command, close.
+
+    Mirrors _req(): {"ok": True, "data": ...} or _fail(msg, ...), and never
+    raises past this boundary. Area/entity/device registry writes have no
+    REST equivalent in Home Assistant, so this is the second and only other
+    transport in this server. Short-lived connection per call: registry
+    edits are rare (unlike light commands), so there is no reason to keep a
+    socket open in a stdio MCP server process.
+    """
+    if not TOKEN:
+        return _fail(TOKEN_HELP)
+    ws_url = BASE_URL.replace("https://", "wss://").replace("http://", "ws://") + "/api/websocket"
+    try:
+        with _wsc.connect(ws_url, open_timeout=TIMEOUT, close_timeout=TIMEOUT) as ws:
+            hello = json.loads(ws.recv(timeout=TIMEOUT))
+            if hello.get("type") != "auth_required":
+                return _fail("unexpected handshake from Home Assistant's WebSocket API")
+            ws.send(json.dumps({"type": "auth", "access_token": TOKEN}))
+            auth = json.loads(ws.recv(timeout=TIMEOUT))
+            if auth.get("type") != "auth_ok":
+                return _fail("401 unauthorized - HASS_TOKEN is invalid or expired")
+            ws.send(json.dumps({"id": 1, "type": msg_type, **fields}))
+            reply = json.loads(ws.recv(timeout=TIMEOUT))
+    except TimeoutError:
+        return _fail(f"timed out after {TIMEOUT}s calling websocket command {msg_type!r}")
+    except OSError as e:
+        return _fail(
+            f"cannot reach Home Assistant WebSocket API at {ws_url} - is it running? "
+            f"({type(e).__name__})"
+        )
+    except _wsexc.WebSocketException as e:
+        return _fail(f"WebSocket transport error calling {msg_type!r}: {type(e).__name__}")
+    if not reply.get("success"):
+        err = reply.get("error") or {}
+        return _fail(err.get("message") or f"websocket command {msg_type!r} failed",
+                     code=err.get("code"))
+    return {"ok": True, "data": reply.get("result")}
+
+
+def _slugify(text: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "_", text.strip().lower()).strip("_")
+    return s or "automation"
 
 
 def _decode_cover_features(mask: int) -> list[str]:
@@ -671,6 +732,573 @@ def activate_scene(entity_id: str, transition: float | None = None) -> dict[str,
             "scene activation is timestamp-based, not a readable on/off state. "
             "Verify individual lights with list_lights if certainty is required."
         ),
+    }
+
+
+# ------------------------------------------------------------------ areas
+
+
+def _match_area(areas: list[dict[str, Any]], query: str) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """Fuzzy-match a spoken room name against list_areas() output.
+
+    Mirrors resolve(): an exact name/alias match wins outright; anything else
+    that is ambiguous comes back as candidates rather than a guess.
+    """
+    q = query.strip().lower()
+    exact = [a for a in areas if a["name"].strip().lower() == q or q in [al.lower() for al in a["aliases"]]]
+    if len(exact) == 1:
+        return exact[0], []
+    if exact:
+        return None, exact
+    partial = [a for a in areas if q in a["name"].lower() or any(q in al.lower() for al in a["aliases"])]
+    if len(partial) == 1:
+        return partial[0], []
+    return None, partial
+
+
+@mcp.tool()
+def list_areas() -> dict[str, Any]:
+    """List every area/room Home Assistant knows about: id, name, aliases.
+
+    Discovery tool - call before assign_area() or create_area() so a real
+    area_id is used, never invented.
+    """
+    res = _ws_call("config/area_registry/list")
+    if not res["ok"]:
+        return res
+    areas = [
+        {"area_id": a.get("area_id"), "name": a.get("name"),
+         "aliases": list(a.get("aliases") or []), "floor_id": a.get("floor_id")}
+        for a in (res["data"] or [])
+    ]
+    return {"ok": True, "count": len(areas), "areas": areas}
+
+
+@mcp.tool()
+def create_area(name: str, aliases: list[str] | None = None) -> dict[str, Any]:
+    """Create a new area/room in Home Assistant.
+
+    Refuses if an area with this name, or a name/alias that already contains
+    or is contained by it, exists - call list_areas() first and use
+    assign_area() if the room is already there. A near-duplicate ("Office"
+    next to "Office 2") is a room split across two names that look identical
+    in conversation, and is worse than a refusal that forces a check.
+
+    Args:
+        name: the room name, e.g. "Home Office".
+        aliases: other names this room is called, e.g. ["study", "back room"].
+    """
+    if not name.strip():
+        return _fail("name is empty")
+    listed = list_areas()
+    if not listed["ok"]:
+        return listed
+    match, candidates = _match_area(listed["areas"], name)
+    existing = match or (candidates[0] if candidates else None)
+    if existing:
+        return _fail(
+            f"an area named '{existing['name']}' already exists (area_id={existing['area_id']})",
+            area_id=existing.get("area_id"), permanent=True,
+        )
+    res = _ws_call("config/area_registry/create", name=name, aliases=list(aliases or []))
+    if not res["ok"]:
+        return res
+    d = res["data"] or {}
+    return {"ok": True, "area_id": d.get("area_id"), "name": d.get("name"),
+            "aliases": list(d.get("aliases") or [])}
+
+
+@mcp.tool()
+def assign_area(entity_id: str, area: str) -> dict[str, Any]:
+    """Move one entity into an area/room.
+
+    `area` is matched the same way resolve() matches devices - name or alias,
+    case-insensitive. Ambiguous or unknown names are refused with the
+    candidate list, never guessed.
+
+    This sets the ENTITY-level area, which overrides whatever area the
+    entity's device has - correct for "the theater lamp is in the theater"
+    regardless of what device it is paired with. Call list_areas() first if
+    unsure what exists.
+
+    Args:
+        entity_id: exact id, e.g. "light.theater_lamp".
+        area: room name or alias, e.g. "theater".
+    """
+    state = _read(entity_id)
+    if not state["ok"]:
+        return state
+    listed = list_areas()
+    if not listed["ok"]:
+        return listed
+    match, candidates = _match_area(listed["areas"], area)
+    if not match:
+        return _fail(
+            f"'{area}' matches more than one area" if candidates else f"no area matching '{area}'",
+            known_areas=[a["name"] for a in listed["areas"]],
+            candidates=[a["name"] for a in candidates] or None,
+        )
+    res = _ws_call("config/entity_registry/update", entity_id=entity_id, area_id=match["area_id"])
+    if not res["ok"]:
+        return res
+    check = _ws_call("config/entity_registry/get", entity_id=entity_id)
+    confirmed = check["ok"] and (check["data"] or {}).get("area_id") == match["area_id"]
+    return {
+        "ok": True, "entity_id": entity_id,
+        "area_id": match["area_id"], "area_name": match["name"],
+        "confirmed": confirmed,
+        "note": None if confirmed else (
+            "area write accepted but read-back did not show the change - re-check with list_areas"
+        ),
+    }
+
+
+# ------------------------------------------------------------------ automations
+#
+# These author NATIVE Home Assistant automations - HA's own engine triggers
+# them, this agent is never in the runtime path. See ../AUTOMATIONS_DESIGN.md.
+
+
+class _AutomationBuildError(Exception):
+    """Raised while translating our typed trigger/condition/action dicts into
+    Home Assistant's schema. Always caught inside the tool function and
+    turned into the same _fail() shape every other tool uses."""
+
+    def __init__(self, message: str, **extra: Any):
+        super().__init__(message)
+        self.extra = extra
+
+
+ALLOWED_TRIGGER_KINDS = {"state", "sun", "time", "numeric_state"}
+ALLOWED_CONDITION_KINDS = {"state", "numeric_state", "sun", "time", "and", "or"}
+# Deliberately NOT "notify", "script", or a raw service escape hatch - only
+# the domains this server already exposes for live control. See
+# AUTOMATIONS_DESIGN.md §3: an automation is standing infrastructure, and a
+# bad action step here keeps firing long after the conversation that wrote
+# it is gone. Never add lock/alarm/garage/script kinds without the same
+# deliberate tiering decision FUTURE.md §1 made for live control.
+ALLOWED_ACTION_KINDS = {"light", "cover", "scene", "delay"}
+
+
+def _offset_hhmmss(minutes: int) -> str:
+    sign = "-" if minutes < 0 else "+"
+    total = abs(int(minutes))
+    h, m = divmod(total, 60)
+    return f"{sign}{h:02d}:{m:02d}:00"
+
+
+def _build_trigger(t: dict[str, Any]) -> dict[str, Any]:
+    kind = str(t.get("kind") or "").strip().lower()
+    if kind not in ALLOWED_TRIGGER_KINDS:
+        raise _AutomationBuildError(
+            f"unknown trigger kind '{kind}' - use one of {sorted(ALLOWED_TRIGGER_KINDS)}")
+    if kind in ("state", "numeric_state"):
+        eid = t.get("entity_id")
+        if not eid:
+            raise _AutomationBuildError(f"{kind} trigger needs entity_id")
+        r = _read(eid)
+        if not r["ok"]:
+            raise _AutomationBuildError(
+                f"trigger entity '{eid}' does not exist - call get_state() or resolve() first")
+        out: dict[str, Any] = {"trigger": kind, "entity_id": eid}
+        if t.get("for_seconds") is not None:
+            out["for"] = {"seconds": int(t["for_seconds"])}
+        if kind == "state":
+            if t.get("to") is not None:
+                out["to"] = t["to"]
+            if t.get("from_") is not None:
+                out["from"] = t["from_"]
+        else:
+            if t.get("above") is not None:
+                out["above"] = t["above"]
+            if t.get("below") is not None:
+                out["below"] = t["below"]
+            if "above" not in out and "below" not in out:
+                raise _AutomationBuildError("numeric_state trigger needs 'above' and/or 'below'")
+        return out
+    if kind == "sun":
+        event = str(t.get("event") or "").strip().lower()
+        if event not in ("sunrise", "sunset"):
+            raise _AutomationBuildError("sun trigger 'event' must be 'sunrise' or 'sunset'")
+        out = {"trigger": "sun", "event": event}
+        offset = t.get("offset_minutes")
+        if offset:
+            out["offset"] = _offset_hhmmss(int(offset))
+        return out
+    if kind == "time":
+        at = t.get("at")
+        if not at:
+            raise _AutomationBuildError("time trigger needs 'at' (\"HH:MM:SS\")")
+        return {"trigger": "time", "at": at}
+    raise _AutomationBuildError(f"unhandled trigger kind '{kind}'")  # pragma: no cover
+
+
+def _build_condition(c: dict[str, Any]) -> dict[str, Any]:
+    kind = str(c.get("kind") or "").strip().lower()
+    if kind not in ALLOWED_CONDITION_KINDS:
+        raise _AutomationBuildError(
+            f"unknown condition kind '{kind}' - use one of {sorted(ALLOWED_CONDITION_KINDS)}")
+    if kind in ("and", "or"):
+        sub = c.get("conditions") or []
+        if not sub:
+            raise _AutomationBuildError(f"'{kind}' condition needs a non-empty conditions list")
+        return {"condition": kind, "conditions": [_build_condition(s) for s in sub]}
+    if kind in ("state", "numeric_state"):
+        eid = c.get("entity_id")
+        if not eid:
+            raise _AutomationBuildError(f"{kind} condition needs entity_id")
+        r = _read(eid)
+        if not r["ok"]:
+            raise _AutomationBuildError(f"condition entity '{eid}' does not exist")
+        out: dict[str, Any] = {"condition": kind, "entity_id": eid}
+        if kind == "state":
+            if c.get("state") is None:
+                raise _AutomationBuildError("state condition needs 'state'")
+            out["state"] = c["state"]
+        else:
+            if c.get("above") is not None:
+                out["above"] = c["above"]
+            if c.get("below") is not None:
+                out["below"] = c["below"]
+            if "above" not in out and "below" not in out:
+                raise _AutomationBuildError("numeric_state condition needs 'above' and/or 'below'")
+        return out
+    if kind in ("sun", "time"):
+        out = {"condition": kind}
+        if c.get("after"):
+            out["after"] = c["after"]
+        if c.get("before"):
+            out["before"] = c["before"]
+        if "after" not in out and "before" not in out:
+            raise _AutomationBuildError(f"{kind} condition needs 'after' and/or 'before'")
+        return out
+    raise _AutomationBuildError(f"unhandled condition kind '{kind}'")  # pragma: no cover
+
+
+def _build_action(a: dict[str, Any]) -> dict[str, Any]:
+    kind = str(a.get("kind") or "").strip().lower()
+    if kind not in ALLOWED_ACTION_KINDS:
+        raise _AutomationBuildError(
+            f"unknown action kind '{kind}' - use one of {sorted(ALLOWED_ACTION_KINDS)}. "
+            "Locks, alarm, garage, scripts, notify, and raw service calls are refused "
+            "here on purpose - this server does not expose them for live control either."
+        )
+    if kind == "delay":
+        seconds = a.get("seconds")
+        if seconds is None or float(seconds) <= 0:
+            raise _AutomationBuildError("delay action needs a positive 'seconds'")
+        return {"delay": {"seconds": float(seconds)}}
+    if kind == "scene":
+        eid = a.get("entity_id")
+        if not eid or not str(eid).startswith("scene."):
+            raise _AutomationBuildError(f"'{eid}' is not a scene entity - call list_scenes()")
+        scenes, err = _entities("scene")
+        if err:
+            raise _AutomationBuildError(err.get("error") or "could not verify scene")
+        if not any(s["entity_id"] == eid for s in scenes):
+            raise _AutomationBuildError(f"scene '{eid}' does not exist - call list_scenes()")
+        return {"action": "scene.turn_on", "target": {"entity_id": eid}}
+    if kind == "light":
+        eid = a.get("entity_id")
+        if not eid or not str(eid).startswith("light."):
+            raise _AutomationBuildError(f"'{eid}' is not a light entity - call list_lights()")
+        act = str(a.get("action") or "on").strip().lower()
+        if act not in ("on", "off", "toggle"):
+            raise _AutomationBuildError(f"unknown light action '{act}' - use on/off/toggle")
+        lights, err = _entities("light")
+        if err:
+            raise _AutomationBuildError(err.get("error") or "could not verify light")
+        match = next((l for l in lights if l["entity_id"] == eid), None)
+        if match is None:
+            raise _AutomationBuildError(f"light '{eid}' does not exist - call list_lights()")
+        data: dict[str, Any] = {}
+        if a.get("brightness_pct") is not None:
+            if not match["dimmable"]:
+                raise _AutomationBuildError(
+                    f"'{match['name']}' is not dimmable", supported_color_modes=match["supported_color_modes"])
+            data["brightness_pct"] = int(a["brightness_pct"])
+        if a.get("color_temp_kelvin") is not None:
+            if not match["supports_color_temp"]:
+                raise _AutomationBuildError(f"'{match['name']}' does not support color temperature")
+            data["color_temp_kelvin"] = int(a["color_temp_kelvin"])
+        if a.get("rgb_color") is not None:
+            if not match["supports_rgb"]:
+                raise _AutomationBuildError(f"'{match['name']}' does not support RGB color")
+            data["rgb_color"] = [int(v) for v in a["rgb_color"]]
+        if a.get("transition") is not None:
+            data["transition"] = float(a["transition"])
+        service = {"on": "light.turn_on", "off": "light.turn_off", "toggle": "light.toggle"}[act]
+        step: dict[str, Any] = {"action": service, "target": {"entity_id": eid}}
+        if data:
+            step["data"] = data
+        return step
+    if kind == "cover":
+        eid = a.get("entity_id")
+        if not eid or not str(eid).startswith("cover."):
+            raise _AutomationBuildError(f"'{eid}' is not a cover entity - call list_covers()")
+        act = str(a.get("action") or "").strip().lower()
+        services = {"open": "cover.open_cover", "close": "cover.close_cover", "position": "cover.set_cover_position"}
+        if act not in services:
+            raise _AutomationBuildError(f"unknown cover action '{act}' - use open/close/position")
+        covers, err = _entities("cover")
+        if err:
+            raise _AutomationBuildError(err.get("error") or "could not verify cover")
+        match = next((c for c in covers if c["entity_id"] == eid), None)
+        if match is None:
+            raise _AutomationBuildError(f"cover '{eid}' does not exist - call list_covers()")
+        needed = {"position": "set_position"}.get(act, act)
+        if needed not in match["supports"]:
+            raise _AutomationBuildError(f"'{match['name']}' does not support '{needed}'", supports=match["supports"])
+        step = {"action": services[act], "target": {"entity_id": eid}}
+        if act == "position":
+            position = a.get("position")
+            if position is None or not 0 <= int(position) <= 100:
+                raise _AutomationBuildError("position must be 0-100 (0=closed, 100=open)")
+            step["data"] = {"position": int(position)}
+        return step
+    raise _AutomationBuildError(f"unhandled action kind '{kind}'")  # pragma: no cover
+
+
+def _find_automation_entity(automation_id: str) -> dict[str, Any] | None:
+    """Find the automation.* state whose attributes.id matches - never guess
+    the entity_id from a slugified alias, HA's own slugification and
+    collision suffixing is not this server's to predict."""
+    res = _req("GET", "/api/states")
+    if not res["ok"]:
+        return None
+    for s in res["data"]:
+        eid = s.get("entity_id", "")
+        if eid.startswith("automation.") and (s.get("attributes") or {}).get("id") == automation_id:
+            return s
+    return None
+
+
+def _label_as_managed(entity_id: str) -> dict[str, Any]:
+    got = _ws_call("config/entity_registry/get", entity_id=entity_id)
+    if not got["ok"]:
+        return got
+    existing = list((got["data"] or {}).get("labels") or [])
+    if "hermes-managed" in existing:
+        return {"ok": True}
+    return _ws_call("config/entity_registry/update", entity_id=entity_id,
+                     labels=existing + ["hermes-managed"])
+
+
+@mcp.tool()
+def list_automations(managed_only: bool = True) -> dict[str, Any]:
+    """List automations that exist in Home Assistant right now.
+
+    Defaults to ones this server created (labeled `hermes-managed`) - set
+    managed_only=False to see everything, including hand-written automations
+    this server does not understand and should not casually modify.
+
+    Args:
+        managed_only: True (default) = only automations this server manages.
+    """
+    states = _req("GET", "/api/states")
+    if not states["ok"]:
+        return states
+    reg = _ws_call("config/entity_registry/list")
+    labels_by_entity: dict[str, set[str]] = {}
+    if reg["ok"]:
+        labels_by_entity = {e.get("entity_id"): set(e.get("labels") or []) for e in (reg["data"] or [])}
+
+    out = []
+    for s in states["data"]:
+        eid = s.get("entity_id", "")
+        if not eid.startswith("automation."):
+            continue
+        attrs = s.get("attributes") or {}
+        managed = "hermes-managed" in labels_by_entity.get(eid, set())
+        if managed_only and not managed:
+            continue
+        out.append({
+            "automation_id": attrs.get("id"), "entity_id": eid,
+            "name": attrs.get("friendly_name"), "state": s.get("state"),
+            "last_triggered": attrs.get("last_triggered"), "managed": managed,
+        })
+    return {"ok": True, "count": len(out), "automations": out}
+
+
+@mcp.tool()
+def get_automation(automation_id: str) -> dict[str, Any]:
+    """Read one automation's current config: alias, triggers, conditions,
+    actions, mode, and live entity_id/state.
+
+    Args:
+        automation_id: the id from create_automation() or list_automations().
+    """
+    res = _req("GET", f"/api/config/automation/config/{automation_id}")
+    if not res["ok"]:
+        return res
+    cfg = res["data"] if isinstance(res["data"], dict) else {}
+    entity = _find_automation_entity(automation_id)
+    return {
+        "ok": True, "automation_id": automation_id,
+        "alias": cfg.get("alias"), "description": cfg.get("description"),
+        "mode": cfg.get("mode", "single"),
+        "triggers": cfg.get("triggers", cfg.get("trigger", [])),
+        "conditions": cfg.get("conditions", cfg.get("condition", [])),
+        "actions": cfg.get("actions", cfg.get("action", [])),
+        "entity_id": entity.get("entity_id") if entity else None,
+        "state": entity.get("state") if entity else None,
+    }
+
+
+@mcp.tool()
+def create_automation(
+    alias: str,
+    triggers: list[dict[str, Any]],
+    actions: list[dict[str, Any]],
+    conditions: list[dict[str, Any]] | None = None,
+    mode: str = "single",
+    enabled: bool = True,
+    automation_id: str | None = None,
+) -> dict[str, Any]:
+    """Author a NATIVE Home Assistant automation - HA's own engine does the
+    triggering, this agent is never in the runtime path. Call this again with
+    the same alias (or the same explicit automation_id) to UPDATE it instead
+    of creating a duplicate - check list_automations() first either way.
+
+    Every entity_id must come from resolve()/list_* - never invented. Action
+    steps get the SAME capability checks as light_command/cover_command (a
+    non-dimmable light with brightness_pct set is refused here too, before
+    anything is saved).
+
+    Trigger kinds (need >=1):
+      state:         entity_id, to, from_, for_seconds
+      numeric_state:  entity_id, above, below, for_seconds
+      sun:           event ("sunrise"|"sunset"), offset_minutes (+/-)
+      time:          at ("HH:MM:SS")
+    Condition kinds (ANDed together; optional):
+      state, numeric_state (as above), sun/time (after/before: "sunrise"/
+      "sunset"/"HH:MM:SS"), and/or (nested "conditions" list)
+    Action kinds (need >=1) - ONLY these, ever, no exceptions:
+      light: entity_id, action ("on"|"off"|"toggle"), brightness_pct,
+             color_temp_kelvin, rgb_color, transition
+      cover: entity_id, action ("open"|"close"|"position"), position
+      scene: entity_id
+      delay: seconds
+
+    Args:
+        alias: human-readable name, e.g. "Hallway motion -> light".
+        triggers: list of Trigger dicts, see above.
+        actions: list of Action dicts, see above.
+        conditions: optional list of Condition dicts, ANDed together.
+        mode: HA automation mode - "single" (default), "restart", "queued", "parallel".
+        enabled: create it enabled (default) or disabled for later review.
+        automation_id: omit to derive one from `alias`; pass an existing id
+            to be explicit about which automation is being updated.
+    """
+    if not alias.strip():
+        return _fail("alias is empty")
+    if not triggers:
+        return _fail("triggers is empty - an automation needs at least one trigger")
+    if not actions:
+        return _fail("actions is empty - an automation needs at least one action")
+
+    aid = automation_id or f"hermes_{_slugify(alias)}"
+
+    try:
+        built_triggers = [_build_trigger(t) for t in triggers]
+        built_conditions = [_build_condition(c) for c in (conditions or [])]
+        built_actions = [_build_action(a) for a in actions]
+    except _AutomationBuildError as e:
+        return _fail(str(e), **e.extra)
+
+    pre = _req("GET", f"/api/config/automation/config/{aid}")
+    existed = bool(pre["ok"])
+
+    payload = {
+        "id": aid,
+        "alias": alias,
+        "description": "Hermes-managed. Edit via ha-mcp, not the UI, or the two will drift.",
+        "triggers": built_triggers,
+        "conditions": built_conditions,
+        "actions": built_actions,
+        "mode": mode,
+    }
+    res = _req("POST", f"/api/config/automation/config/{aid}", json=payload)
+    if not res["ok"]:
+        return res
+
+    entity = _find_automation_entity(aid)
+    if entity is None:
+        return {
+            "ok": True, "automation_id": aid, "created": not existed, "confirmed": False,
+            "note": (
+                "config saved but no matching automation.* entity was found yet - "
+                "Home Assistant may need a moment to reload; re-check with get_automation()."
+            ),
+        }
+
+    if enabled != (entity.get("state") == "on"):
+        svc = "turn_on" if enabled else "turn_off"
+        toggled = _req("POST", f"/api/services/automation/{svc}", json={"entity_id": entity["entity_id"]})
+        if toggled["ok"]:
+            time.sleep(0.5)
+            entity = _find_automation_entity(aid) or entity
+
+    label_res = _label_as_managed(entity["entity_id"])
+    warning = None if label_res["ok"] else (
+        f"automation saved but could not be labeled hermes-managed: {label_res.get('error')}"
+    )
+
+    confirmed = (entity.get("state") == "on") == enabled
+    return {
+        "ok": True, "automation_id": aid, "entity_id": entity["entity_id"],
+        "alias": alias, "created": not existed, "state": entity.get("state"),
+        "confirmed": confirmed, "warning": warning,
+    }
+
+
+@mcp.tool()
+def automation_command(automation_id: str, action: str) -> dict[str, Any]:
+    """Enable, disable, manually trigger, or delete one automation.
+
+    `trigger` runs the automation's actions right now, ignoring its own
+    triggers and conditions - use it to test "sunrise -> open blinds" without
+    waiting for sunrise. `delete` returns the full config that was removed so
+    it can be recreated with create_automation() if this was a mistake - Home
+    Assistant has no undo for this.
+
+    Args:
+        automation_id: the id from create_automation() or list_automations().
+        action: "enable" | "disable" | "trigger" | "delete"
+    """
+    action = action.strip().lower()
+    entity = _find_automation_entity(automation_id)
+    if entity is None:
+        return _fail(f"no automation with id '{automation_id}' - call list_automations()")
+    eid = entity["entity_id"]
+
+    if action == "delete":
+        deleted_cfg = get_automation(automation_id)
+        res = _req("DELETE", f"/api/config/automation/config/{automation_id}")
+        if not res["ok"]:
+            return res
+        return {"ok": True, "automation_id": automation_id, "entity_id": eid, "deleted": True,
+                "deleted_config": deleted_cfg if deleted_cfg.get("ok") else None}
+
+    services = {"enable": "turn_on", "disable": "turn_off", "trigger": "trigger"}
+    if action not in services:
+        return _fail(f"unknown action '{action}' - use enable/disable/trigger/delete")
+    res = _req("POST", f"/api/services/automation/{services[action]}", json={"entity_id": eid})
+    if not res["ok"]:
+        return res
+    time.sleep(0.5)
+    after = _find_automation_entity(automation_id) or entity
+    if action == "enable":
+        confirmed = after.get("state") == "on"
+    elif action == "disable":
+        confirmed = after.get("state") == "off"
+    else:
+        confirmed = True  # "trigger" has no readable "it ran" signal beyond last_triggered
+    return {
+        "ok": True, "automation_id": automation_id, "entity_id": eid, "requested": action,
+        "state": after.get("state"),
+        "last_triggered": (after.get("attributes") or {}).get("last_triggered"),
+        "confirmed": confirmed,
     }
 
 
