@@ -134,6 +134,9 @@ class TestMagnets(unittest.TestCase):
         self.server = load()
 
     def test_a_real_magnet_is_passed_through_untouched(self):
+        # No fallback needed here and none is carried - an indexer-supplied
+        # magnet has no tracker gap to work around, so a search does not
+        # spend bytes on a URL nobody will use.
         magnet = "magnet:?xt=urn:btih:" + "b" * 40 + "&dn=Thing"
         got, note, url = self.server.magnet_for(release("Thing", magnetUrl=magnet))
         self.assertEqual(got, magnet)
@@ -141,10 +144,16 @@ class TestMagnets(unittest.TestCase):
         self.assertIsNone(url)
 
     def test_a_missing_magnet_is_rebuilt_from_the_info_hash(self):
-        got, note, _url = self.server.magnet_for(release("Some Film 2019", infoHash="C" * 40))
+        got, note, url = self.server.magnet_for(release("Some Film 2019", infoHash="C" * 40))
         self.assertTrue(got.startswith("magnet:?xt=urn:btih:" + "c" * 40))
         self.assertIn("dn=Some%20Film%202019", got)
         self.assertIn("info hash", note)
+        # The one that matters: a magnet rebuilt from a bare info hash has no
+        # tracker URL, so on a private tracker (DHT and PEX both off) it can
+        # never find a peer. The raw download link is the fallback that
+        # actually reaches one - qbt-mcp's download_torrent can fetch it and
+        # hand qBittorrent the .torrent directly.
+        self.assertEqual(url, "http://prowlarr.test:9696/download/1")
 
     def test_the_magnet_is_unwrapped_from_prowlarrs_proxy_link(self):
         # The one that matters in practice. Prowlarr Base64s the indexer's own
@@ -300,12 +309,54 @@ class TestResolvingMagnetsDuringSearch(unittest.TestCase):
         self.assertEqual(len(result["results"]), 4)
         self.assertEqual(len(self.fetched), 4)
 
-    def test_rows_that_already_have_a_magnet_are_not_fetched_at_all(self):
-        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", infoHash="a" * 40)]) \
+    def test_a_magnet_the_indexer_supplied_directly_is_not_fetched_at_all(self):
+        # No tracker gap to fix here, so this must stay free even though the
+        # release also happens to carry a download_url.
+        magnet = "magnet:?xt=urn:btih:" + "a" * 40
+        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", magnetUrl=magnet)]) \
             .install(self.server)
         self.answer(("magnet", "magnet:?xt=urn:btih:" + "f" * 40))
         self.server.search(query="Film")
         self.assertEqual(self.fetched, [])
+
+    def test_a_bare_info_hash_magnet_is_enriched_with_real_trackers(self):
+        # The case that matters: rebuilding from a bare info hash gives a
+        # magnet with no tracker URL, and that never resolves on a private
+        # tracker - DHT and PEX are both off there. Fetching the .torrent
+        # fixes it automatically, the same way a missing magnet gets one.
+        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", infoHash="a" * 40)]) \
+            .install(self.server)
+        info = {b"name": b"Film 2026", b"length": 1, b"piece length": 1, b"pieces": b"\x00" * 20}
+        self.answer(("torrent",
+                    bencode({b"announce": b"udp://tracker.example:80", b"info": info})))
+
+        row = self.server.search(query="Film")["results"][0]
+        self.assertEqual(len(self.fetched), 1)
+        self.assertIn("tracker.example", row["magnet"])
+        self.assertIn("trackers included", row["magnet_note"])
+
+    def test_a_bare_info_hash_magnet_survives_a_failed_enrichment_attempt(self):
+        # The fetch failing must not erase the fallback magnet - it already
+        # works via DHT on a public tracker, and blanking it would make a
+        # working release look like a dead one.
+        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", infoHash="a" * 40)]) \
+            .install(self.server)
+        self.answer(urllib.error.URLError("nope"))
+
+        row = self.server.search(query="Film")["results"][0]
+        self.assertTrue(row["magnet"].startswith("magnet:?xt=urn:btih:" + "a" * 40))
+        self.assertIn("private tracker", row["magnet_note"])
+
+    def test_turning_resolution_off_leaves_the_bare_magnet_with_a_warning(self):
+        FakeProwlarr(releases=[release("Film.2026.1080p.BluRay.x264", infoHash="a" * 40)]) \
+            .install(self.server)
+        self.answer(("torrent", bencode({b"announce": b"udp://t:80", b"info": {
+            b"name": b"x", b"length": 1, b"piece length": 1, b"pieces": b"\x00" * 20}})))
+
+        row = self.server.search(query="Film", resolve_magnets=False)["results"][0]
+        self.assertEqual(self.fetched, [])
+        self.assertTrue(row["magnet"].startswith("magnet:?xt=urn:btih:" + "a" * 40))
+        self.assertIn("resolve_magnets was off", row["magnet_note"])
 
     def test_one_release_failing_to_resolve_does_not_fail_the_search(self):
         FakeProwlarr(releases=[self.bare(1)]).install(self.server)

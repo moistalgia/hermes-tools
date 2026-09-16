@@ -65,7 +65,8 @@ That checks reachability, the credentials, and both paths in one call.
 | Tool | Does |
 | --- | --- |
 | `qbt_status` | Reachability, credentials, paths, and how much is running. Run first when something is wrong. |
-| `download` | Start a download. Files it by kind, reads it back, returns the infohash. |
+| `download` | Start a download from a magnet. Files it by kind, reads it back, returns the infohash. |
+| `download_torrent` | Start a download from a `.torrent` file instead. Backup path for a magnet that never resolves. |
 | `downloads` | What is running and how it is going. Names anything stalled at 0%. |
 | `download_cancel` | Remove a torrent. Leaves the files unless told otherwise. |
 
@@ -73,8 +74,28 @@ Every one is also a CLI subcommand through the same dispatch path:
 
 ```bash
 python qbt-mcp/qbt_mcp_server.py download magnet="magnet:?xt=urn:btih:..."
+python qbt-mcp/qbt_mcp_server.py download_torrent torrent_path="C:/tmp/x.torrent"
 python qbt-mcp/qbt_mcp_server.py downloads
 ```
+
+## When a magnet never resolves
+
+Some private trackers — BTN among them — disable DHT and PEX. A magnet
+carries peer-discovery information only when it has an embedded tracker URL;
+without one, and with DHT off, it has no way to learn who to ask and sits at
+0% in `metaDL` or `stalledDL` forever. That looks identical to a slow start
+right up until it's been twenty minutes.
+
+`download_torrent` sidesteps discovery entirely: it uploads the `.torrent`
+file itself — via `torrent_url` (fetched directly) or `torrent_path` (already
+on disk) — and qBittorrent reads the tracker list straight off the file. Same
+filing by kind, same read-back confirmation, same two library paths as
+`download`. It's a second way in for the cases `download` gets stuck on, not a
+replacement for it — reach for it only once a magnet is visibly not moving.
+
+If `torrent_url` redirects to a `magnet:` link instead of serving a file, that
+release never needed this path in the first place — the tool says so and
+names the magnet to use with `download` instead.
 
 ## Films and television
 

@@ -33,6 +33,7 @@ download them, `qbt` downloads things and cannot search.
 | What can be searched | `list_indexers` |
 | Find something | `search` |
 | Start a download | `download` |
+| A magnet is stuck and will never resolve | `download_torrent` |
 | What is downloading, and how it is going | `downloads` |
 | Wrong thing, or a dead release | `download_cancel` |
 | Something is wrong with downloading | `qbt_status` |
@@ -158,6 +159,24 @@ is normal. If it has not moved when you look again, say so plainly, offer the
 next release down from the search, and use `download_cancel` on the dead one.
 Do not report it as "downloading" and leave someone waiting all evening for a
 file that was never coming.
+
+**Stuck in `metaDL` used to be a routine private-tracker failure — it mostly
+isn't anymore.** Some private trackers (BTN among them) disable DHT and PEX,
+so a magnet with no tracker URL embedded has no way to find peers at all and
+never gets past discovering metadata, however long you wait. `search` now
+catches the specific case that caused this — a magnet rebuilt from a bare
+info hash — and fetches the real tracker list automatically before handing
+the magnet back, so `download` normally just works.
+
+If a release still sits in `metaDL` for a couple of minutes with zero peers
+despite that, the automatic fix didn't have anything to fetch, or the fetch
+itself failed. Cancel it with `download_cancel` and retry via
+`download_torrent`, which hands qBittorrent a `.torrent` file directly and
+skips discovery entirely — `torrent_path` for one already on disk, or
+`torrent_url` for a link that actually serves the raw file (not a page, and
+not something that redirects to a magnet). Try it once per release; if it
+still finds nobody, the release itself is dead and a different one is the
+answer, same as any other stall.
 
 ## When someone asks how a download is going
 

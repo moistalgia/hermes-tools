@@ -32,6 +32,15 @@ Three things it does beyond wrapping the API:
      Reporting that alongside real progress is how someone waits all evening for
      a file that was never coming.
 
+A fourth thing, for the case the other three don't cover: some private
+trackers (BTN among them) disable DHT and PEX, so a magnet with no embedded
+tracker URL has no way to find peers at all - it isn't slow, it is stuck, and
+sits at 0% in `metaDL` forever. `download_torrent` is the backup path: it hands
+qBittorrent the raw `.torrent` file instead of a magnet, which carries its own
+tracker list and needs no discovery. Same filing, same read-back confirmation
+as `download` - just a different way in when a magnet is visibly never going to
+resolve.
+
 Two ways to run it:
 
   1. As an MCP server over stdio (what the agent uses):
@@ -40,10 +49,12 @@ Two ways to run it:
   2. As a plain CLI (what a human uses to prove it works):
          python qbt_mcp_server.py qbt_status
          python qbt_mcp_server.py download magnet="magnet:?xt=urn:btih:..."
+         python qbt_mcp_server.py download_torrent torrent_path="C:/tmp/x.torrent"
          python qbt_mcp_server.py downloads
 """
 
 import base64
+import hashlib
 import http.cookiejar
 import json
 import os
@@ -53,6 +64,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mcpkit import ToolError, b, i, run, s, tool  # noqa: E402
@@ -72,6 +84,10 @@ SHOWS_PATH = os.environ.get("QBT_SHOWS_PATH", "").strip()
 # unconfirmed. A magnet registers as soon as qBittorrent parses it - well before
 # any metadata arrives - so this is generous.
 CONFIRM_TIMEOUT = int(os.environ.get("QBT_CONFIRM_TIMEOUT", "10"))
+
+# A .torrent for a season pack is a few hundred KB. Anything past this is not a
+# torrent file and should not be read into memory to find out.
+MAX_TORRENT_BYTES = 4 * 1024 * 1024
 
 TV_PATTERNS = [
     r'S\d{1,2}E\d{1,2}',                # S01E02
@@ -140,9 +156,27 @@ def client():
     return _opener
 
 
+def _send(req, label):
+    """Open `req` through the logged-in opener. Shared by `api` and
+    `api_upload`, so the two ways of talking to qBittorrent - form fields for a
+    magnet, a file part for a `.torrent` - fail the same way."""
+    opener = client()
+    try:
+        with opener.open(req, timeout=QBT_TIMEOUT) as resp:
+            return resp.read().decode(errors="replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            raise ToolError(
+                "qBittorrent rejected the request as unauthorised - the session "
+                "expired. Retry once; if it happens again, check QBT_USER / QBT_PASS."
+            )
+        raise ToolError(f"qBittorrent returned HTTP {exc.code} for {label}.")
+    except urllib.error.URLError as exc:
+        raise ToolError(f"Lost the connection to qBittorrent at {QBT_URL} ({exc.reason}).")
+
+
 def api(path, params=None, method="GET"):
     """Call the Web UI API. Returns parsed JSON, or raw text when not JSON."""
-    opener = client()
     url = f"{QBT_URL}/api/v2/{path}"
     data = None
 
@@ -155,26 +189,46 @@ def api(path, params=None, method="GET"):
     req.add_header("Referer", QBT_URL)
     req.add_header("Origin", QBT_URL)
 
-    try:
-        with opener.open(req, timeout=QBT_TIMEOUT) as resp:
-            raw = resp.read().decode(errors="replace")
-    except urllib.error.HTTPError as exc:
-        if exc.code == 403:
-            raise ToolError(
-                "qBittorrent rejected the request as unauthorised - the session "
-                "expired. Retry once; if it happens again, check QBT_USER / QBT_PASS."
-            )
-        raise ToolError(f"qBittorrent returned HTTP {exc.code} for {path}.")
-    except urllib.error.URLError as exc:
-        raise ToolError(f"Lost the connection to qBittorrent at {QBT_URL} ({exc.reason}).")
-
-    raw = raw.strip()
+    raw = _send(req, path).strip()
     if not raw:
         return None
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         return raw
+
+
+def multipart_body(fields, filename, file_bytes):
+    """A `multipart/form-data` body carrying `fields` plus one file part named
+    `torrents` - the field qBittorrent's own upload form uses."""
+    boundary = uuid.uuid4().hex
+    parts = []
+    for key, value in fields.items():
+        parts.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n'
+            f'\r\n{value}\r\n'.encode())
+    parts.append(
+        f'--{boundary}\r\nContent-Disposition: form-data; name="torrents"; '
+        f'filename="{filename}"\r\nContent-Type: application/x-bittorrent\r\n\r\n'
+        .encode())
+    parts.append(file_bytes)
+    parts.append(f"\r\n--{boundary}--\r\n".encode())
+    return b"".join(parts), boundary
+
+
+def api_upload(path, fields, filename, file_bytes):
+    """Call the Web UI API with a file attached.
+
+    `torrents/add` takes a magnet as a plain form field (`urls`), but a
+    `.torrent` can only go in as a file part - and that is what preserves its
+    embedded tracker list, rather than this server trying to reconstruct one.
+    """
+    body, boundary = multipart_body(fields, filename, file_bytes)
+    req = urllib.request.Request(f"{QBT_URL}/api/v2/{path}", data=body, method="POST")
+    req.add_header("Referer", QBT_URL)
+    req.add_header("Origin", QBT_URL)
+    req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+    return _send(req, path).strip() or None
 
 
 def detect_kind(name):
@@ -218,6 +272,117 @@ def magnet_hash(magnet):
     except Exception:
         pass
     return None
+
+
+def bdecode(data, start=0):
+    """Minimal bencode reader. Returns (value, index after it)."""
+    char = data[start:start + 1]
+    if char == b"i":
+        end = data.index(b"e", start)
+        return int(data[start + 1:end]), end + 1
+    if char == b"l":
+        out, index = [], start + 1
+        while data[index:index + 1] != b"e":
+            value, index = bdecode(data, index)
+            out.append(value)
+        return out, index + 1
+    if char == b"d":
+        out, index = {}, start + 1
+        while data[index:index + 1] != b"e":
+            key, index = bdecode(data, index)
+            value, index = bdecode(data, index)
+            out[key] = value
+        return out, index + 1
+    if char.isdigit():
+        colon = data.index(b":", start)
+        length = int(data[start:colon])
+        end = colon + 1 + length
+        return data[colon + 1:end], end
+    raise ValueError(f"not bencoded data at byte {start}")
+
+
+def info_span(data):
+    """Where the `info` dictionary starts and ends in the raw bytes."""
+    if data[0:1] != b"d":
+        raise ValueError("a .torrent is a bencoded dictionary; this is not one")
+    index = 1
+    while data[index:index + 1] != b"e":
+        key, index = bdecode(data, index)
+        start = index
+        _value, index = bdecode(data, index)
+        if key == b"info":
+            return start, index
+    raise ValueError("no info dictionary in this .torrent")
+
+
+def torrent_info_hash_and_name(data):
+    """The v1 infohash and release name read out of raw `.torrent` bytes.
+
+    The hash is the SHA-1 of the `info` dictionary exactly as it appears on the
+    wire - decoding and re-encoding would produce a different hash for any file
+    whose encoder ordered keys differently, and that hash would be silently
+    wrong rather than obviously broken.
+    """
+    start, end = info_span(data)
+    info_hash = hashlib.sha1(data[start:end]).hexdigest()
+    info, _ = bdecode(data, start)
+    name = (info.get(b"name") or b"").decode("utf-8", "replace").strip()
+    return info_hash, name or "Unknown"
+
+
+class KeepRedirect(urllib.request.HTTPRedirectHandler):
+    """Do not follow. A redirect to `magnet:` is the answer, not a detour -
+    urllib cannot open a `magnet:` URL and would raise `unknown url type`,
+    which reads like a bug in this server rather than the news it actually is:
+    this release never needed the torrent-file path at all."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_torrent(url):
+    """The raw bytes of a `.torrent` at `url`. Never touches qBittorrent's own
+    session - this is an arbitrary URL, not the Web UI."""
+    opener = urllib.request.build_opener(KeepRedirect)
+    try:
+        with opener.open(urllib.request.Request(url), timeout=QBT_TIMEOUT) as resp:
+            data = resp.read(MAX_TORRENT_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        location = (exc.headers.get("Location") or "") if exc.headers else ""
+        exc.close()
+        if 300 <= exc.code < 400 and location.startswith("magnet:"):
+            raise ToolError(
+                f"{url} redirects to a magnet, not a .torrent file - this "
+                f"release never needed the torrent-file path. Use `download` "
+                f"with that magnet instead:\n{location}"
+            )
+        raise ToolError(f"Fetching {url} returned HTTP {exc.code}.")
+    except urllib.error.URLError as exc:
+        raise ToolError(f"Could not fetch {url}: {exc.reason}.")
+
+    if len(data) > MAX_TORRENT_BYTES:
+        raise ToolError(
+            f"{url} served more than {MAX_TORRENT_BYTES // 1024 // 1024}MB - "
+            f"that is not a .torrent file."
+        )
+    return data
+
+
+def read_torrent_file(path):
+    """The raw bytes of a `.torrent` already on disk."""
+    if not os.path.isfile(path):
+        raise ToolError(
+            f"No file at {path!r}. This path is read by qbt-mcp's own process, "
+            f"not by whatever asked for the download - check it is readable "
+            f"from there."
+        )
+    if os.path.getsize(path) > MAX_TORRENT_BYTES:
+        raise ToolError(f"{path} is larger than a .torrent file should be.")
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError as exc:
+        raise ToolError(f"Could not read {path}: {exc}.")
 
 
 def describe(t):
@@ -358,6 +523,17 @@ def download(magnet, kind="auto"):
             "name": name, "kind": kind, "save_path": save_path, "infohash": None,
         }
 
+    return _confirm(name, kind, save_path, infohash)
+
+
+def _confirm(name, kind, save_path, infohash, via="", extra=None):
+    """Read an add back until it appears, and report what qBittorrent actually
+    holds rather than what was requested. Shared by `download` and
+    `download_torrent` - the §3 convention from DESIGN.md, applied once."""
+    label = "television" if kind == "show" else "film"
+    base = {"name": name, "kind": kind, "save_path": save_path, "infohash": infohash}
+    base.update(extra or {})
+
     deadline = time.time() + CONFIRM_TIMEOUT
     found = None
     while time.time() < deadline:
@@ -377,12 +553,12 @@ def download(magnet, kind="auto"):
                 f"in the list, or it may have been rejected silently. Check "
                 f"`downloads` before assuming it is running."
             ),
-            "name": name, "kind": kind, "save_path": save_path, "infohash": infohash,
+            **base,
         }
 
     row = describe(found)
     summary = (
-        f"{name!r} added as {label} -> {save_path} (confirmed, state "
+        f"{name!r} added{via} as {label} -> {save_path} (confirmed, state "
         f"{row['state']}, {row['progress_pct']}%)."
     )
     if row["state"] == "stalledDL" and row["progress_pct"] == 0:
@@ -392,16 +568,74 @@ def download(magnet, kind="auto"):
             "release is dead and another one is the answer."
         )
 
-    return {
-        "ok": True,
-        "confirmed": True,
-        "summary": summary,
-        "name": name,
-        "kind": kind,
-        "save_path": save_path,
-        "infohash": infohash,
-        "torrent": row,
-    }
+    return {"ok": True, "confirmed": True, "summary": summary, "torrent": row, **base}
+
+
+@tool(
+    "Start downloading a `.torrent` file directly, bypassing magnet metadata "
+    "discovery entirely.\n\n"
+    "Use this as a backup path when a magnet from `download` sits stuck at 0% "
+    "in `metaDL` or `stalledDL` and never finds peers. Some private trackers "
+    "(BTN among them) disable DHT and PEX, so a magnet with no embedded tracker "
+    "URL has no way to learn who to ask - it is not slow, it is never going to "
+    "resolve. A `.torrent` file carries its own tracker list, and this hands it "
+    "to qBittorrent whole rather than reconstructing a magnet from it.\n\n"
+    "Pass exactly one of `torrent_url` or `torrent_path`. Filing by kind, the "
+    "read-back confirmation, and both library paths all work exactly as in "
+    "`download` - this is a different way in, not a different destination.",
+    {
+        "torrent_url": s("A URL serving the raw .torrent file, fetched "
+                          "directly. If it redirects to a magnet: link instead, "
+                          "this release never needed this path - use `download` "
+                          "with that magnet."),
+        "torrent_path": s("Path to a .torrent file already on disk and "
+                           "readable by this server (not necessarily by "
+                           "whatever is asking for the download)."),
+        "kind": s("Override the film/television detection. Only when it is "
+                  "visibly about to be wrong.", default="auto",
+                  enum=["auto", "movie", "show"]),
+    },
+)
+def download_torrent(torrent_url="", torrent_path="", kind="auto"):
+    torrent_url = (torrent_url or "").strip()
+    torrent_path = (torrent_path or "").strip()
+    if bool(torrent_url) == bool(torrent_path):
+        raise ToolError(
+            "Pass exactly one of torrent_url or torrent_path - both or neither "
+            "were given."
+        )
+
+    if not MOVIES_PATH or not SHOWS_PATH:
+        raise ToolError(
+            "QBT_MOVIES_PATH and QBT_SHOWS_PATH must both be set before anything "
+            "can be downloaded, or releases get filed in the wrong library. Set "
+            "them in the qbt entry of config.yaml. This is final."
+        )
+
+    data = fetch_torrent(torrent_url) if torrent_url else read_torrent_file(torrent_path)
+
+    try:
+        infohash, name = torrent_info_hash_and_name(data)
+    except ValueError as exc:
+        raise ToolError(
+            f"That is not a readable .torrent file ({exc}). qBittorrent was not "
+            f"touched."
+        )
+
+    if kind == "auto":
+        kind = detect_kind(name)
+    save_path = SHOWS_PATH if kind == "show" else MOVIES_PATH
+
+    result = api_upload("torrents/add", {"savepath": save_path},
+                        f"{name}.torrent", data)
+    if isinstance(result, str) and result.strip().lower().startswith("fail"):
+        raise ToolError(
+            f"qBittorrent refused the .torrent file ({result.strip()}). It may "
+            f"be corrupt, or the save path {save_path!r} is not writable."
+        )
+
+    return _confirm(name, kind, save_path, infohash, via=" from .torrent",
+                    extra={"size_bytes": len(data)})
 
 
 @tool(

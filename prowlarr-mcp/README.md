@@ -184,6 +184,30 @@ Each result carries `title`, `resolution`, `source`, `codec`, `hdr`, `cam`,
 `size`, `seeders`, `age`, `indexer`, `magnet`, and — unless the prefix is
 cleared — `fetch_command`.
 
+`download_url` is `null` whenever `magnet` is a magnet the indexer supplied
+directly — there's no gap to fill, so no reason to spend bytes on a URL
+nobody needs. It's populated in the two cases where there's more to say: a
+release with no magnet at all, and a magnet **rebuilt from a bare info hash**.
+
+That second case is handled automatically, not left for you to notice. A
+magnet built from a bare info hash carries no tracker URL — fine on a public
+swarm, where DHT and peer-exchange fill the gap, and useless on a private one
+(BTN among them), which disables both. That magnet would sit at 0% forever,
+correctly built and permanently stuck, looking exactly like an ordinary
+stall. So whenever a `downloadUrl` is available for that release, `search`
+fetches the `.torrent` behind it and replaces the bare magnet with one
+carrying the real tracker list — same mechanism, same "only for rows actually
+returned" cost model as resolving a missing magnet. `magnet_note` says
+`"computed from the .torrent file, trackers included"` when that happens. If
+the fetch fails, the original bare-info-hash magnet is left in place rather
+than blanked out — it still works fine via DHT on a public tracker, and
+`magnet_note` names the failure and warns that a private tracker may never
+find a peer without it.
+
+`qbt-mcp`'s `download_torrent` tool still exists as the last-resort backup —
+for the rare release where even this fails (no `downloadUrl` was ever
+available to enrich with), it takes a `.torrent` file directly.
+
 ## Behaviour worth knowing
 
 **A search takes 30–60 seconds.** An indexer behind a challenge is solved inside

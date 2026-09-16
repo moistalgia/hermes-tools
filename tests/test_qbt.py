@@ -18,8 +18,12 @@ qBittorrent, it is to be able to say "this torrent never appears" or "this one
 has no seeders" on demand, which you cannot stage against a real client.
 """
 
+import hashlib
+import http.server
 import os
 import sys
+import tempfile
+import threading
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +33,65 @@ from mcpkit import ToolError  # noqa: E402
 
 HASH = "c9e15763f722f23e98a29decdfae341b98d53056"
 OTHER = "a1b2c3d4e5f6071829304a5b6c7d8e9f01234567"
+
+
+def bencode(value):
+    """Only what the tests need, and deliberately not the server's own reader."""
+    if isinstance(value, int):
+        return b"i%de" % value
+    if isinstance(value, bytes):
+        return b"%d:%s" % (len(value), value)
+    if isinstance(value, dict):
+        out = [b"d"]
+        for key in sorted(value):
+            out.append(bencode(key))
+            out.append(bencode(value[key]))
+        out.append(b"e")
+        return b"".join(out)
+    raise TypeError(value)
+
+
+def make_torrent(name, announce=b"http://tracker.test/announce"):
+    """A minimal but real `.torrent`. Returns (bytes, infohash_hex)."""
+    info = {b"name": name.encode(), b"piece length": 262144, b"pieces": b"x" * 20,
+            b"length": 123456}
+    data = bencode({b"announce": announce, b"info": info})
+    infohash = hashlib.sha1(bencode(info)).hexdigest()
+    return data, infohash
+
+
+def bdecode(data, start=0):
+    """A second, independent bencode reader - deliberately not the server's
+    own, so a bug shared by both would not go unnoticed."""
+    char = data[start:start + 1]
+    if char == b"i":
+        end = data.index(b"e", start)
+        return int(data[start + 1:end]), end + 1
+    if char == b"d":
+        out, index = {}, start + 1
+        while data[index:index + 1] != b"e":
+            key, index = bdecode(data, index)
+            value, index = bdecode(data, index)
+            out[key] = value
+        return out, index + 1
+    if char.isdigit():
+        colon = data.index(b":", start)
+        length = int(data[start:colon])
+        end = colon + 1 + length
+        return data[colon + 1:end], end
+    raise ValueError("not bencoded data")
+
+
+def torrent_infohash(data):
+    """The infohash a real .torrent parser would compute for `data`."""
+    index = 1
+    while data[index:index + 1] != b"e":
+        key, index = bdecode(data, index)
+        start = index
+        _value, index = bdecode(data, index)
+        if key == b"info":
+            return hashlib.sha1(data[start:index]).hexdigest()
+    raise ValueError("no info dict")
 
 
 def load(**env):
@@ -65,10 +128,22 @@ class FakeQbt:
         self.swallow_adds = swallow_adds
         self.adds = []
         self.deletes = []
+        self.uploads = []
 
     def install(self, module):
         module.api = self.api
+        module.api_upload = self.api_upload
         return self
+
+    def api_upload(self, path, fields, filename, file_bytes):
+        assert path == "torrents/add"
+        self.uploads.append({"fields": dict(fields), "filename": filename,
+                             "bytes": file_bytes})
+        if not self.swallow_adds:
+            self.rows.append(torrent(filename[:-len(".torrent")],
+                                     infohash=torrent_infohash(file_bytes),
+                                     save_path=fields.get("savepath")))
+        return "Ok."
 
     def api(self, path, params=None, method="GET"):
         params = params or {}
@@ -260,6 +335,146 @@ class TestStalls(unittest.TestCase):
         # saying nothing.
         FakeQbt(rows=[torrent("Stalled.2020.1080p", eta=8640000)]).install(self.server)
         self.assertIsNone(self.server.downloads()["torrents"][0]["eta_minutes"])
+
+
+class TestTorrentFile(unittest.TestCase):
+    """The backup path for a magnet that will never resolve: hand qBittorrent
+    the `.torrent` itself instead of reconstructing one."""
+
+    def setUp(self):
+        self.server = load()
+
+    def write_torrent(self, data):
+        path = os.path.join(tempfile.mkdtemp(), "release.torrent")
+        with open(path, "wb") as fh:
+            fh.write(data)
+        return path
+
+    def test_exactly_one_of_url_or_path_is_required(self):
+        FakeQbt().install(self.server)
+        with self.assertRaises(ToolError) as caught:
+            self.server.download_torrent()
+        self.assertIn("exactly one", str(caught.exception))
+        with self.assertRaises(ToolError):
+            self.server.download_torrent(torrent_url="http://x/y.torrent",
+                                          torrent_path="C:/y.torrent")
+
+    def test_a_torrent_file_is_uploaded_not_urlencoded(self):
+        # Preserving the embedded tracker list means sending the file whole -
+        # this is the whole reason the path exists.
+        data, infohash = make_torrent("Tires.S01.Complete.1080p.WEB-DL")
+        fake = FakeQbt().install(self.server)
+        result = self.server.download_torrent(torrent_path=self.write_torrent(data))
+        self.assertTrue(result["confirmed"])
+        self.assertEqual(result["infohash"], infohash)
+        self.assertEqual(result["kind"], "show")
+        self.assertEqual(fake.uploads[0]["fields"]["savepath"], "P:/Shows")
+        self.assertEqual(fake.uploads[0]["bytes"], data)
+        self.assertIn("from .torrent", result["summary"])
+
+    def test_films_and_shows_still_split_by_name(self):
+        data, _hash = make_torrent("Some.Movie.2019.1080p.BluRay.x265")
+        FakeQbt().install(self.server)
+        result = self.server.download_torrent(torrent_path=self.write_torrent(data))
+        self.assertEqual(result["kind"], "movie")
+        self.assertEqual(result["save_path"], "P:/Movies")
+
+    def test_kind_can_still_be_overridden(self):
+        data, _hash = make_torrent("Planet.Earth.II.2016.1080p")
+        FakeQbt().install(self.server)
+        result = self.server.download_torrent(
+            torrent_path=self.write_torrent(data), kind="show")
+        self.assertEqual(result["save_path"], "P:/Shows")
+
+    def test_a_missing_file_is_refused_before_qbittorrent_is_touched(self):
+        fake = FakeQbt().install(self.server)
+        with self.assertRaises(ToolError) as caught:
+            self.server.download_torrent(torrent_path="C:/does/not/exist.torrent")
+        self.assertIn("No file", str(caught.exception))
+        self.assertEqual(fake.uploads, [])
+
+    def test_garbage_bytes_are_refused_as_unreadable_not_uploaded(self):
+        fake = FakeQbt().install(self.server)
+        with self.assertRaises(ToolError) as caught:
+            self.server.download_torrent(
+                torrent_path=self.write_torrent(b"this is not bencoded at all"))
+        self.assertIn("not a readable .torrent file", str(caught.exception))
+        self.assertEqual(fake.uploads, [])
+
+    def test_a_refused_upload_raises_rather_than_reporting_a_download(self):
+        data, _hash = make_torrent("Some.Movie.2019.1080p")
+
+        def refuse(path, fields, filename, file_bytes):
+            return "Fails."
+
+        self.server.api_upload = refuse
+        with self.assertRaises(ToolError) as caught:
+            self.server.download_torrent(torrent_path=self.write_torrent(data))
+        self.assertIn("refused", str(caught.exception))
+
+    def test_a_url_that_redirects_to_a_magnet_says_so_instead_of_uploading(self):
+        # That release never needed this path - `download` with the magnet is
+        # the answer, and pretending to upload a file that was never served
+        # would be worse than refusing. A real local server, not a mocked
+        # urllib internal, because the thing under test is the redirect
+        # handling itself.
+        magnet_link = magnet("Thing")
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", magnet_link)
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        httpd = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with self.assertRaises(ToolError) as caught:
+                self.server.download_torrent(
+                    torrent_url=f"http://127.0.0.1:{httpd.server_port}/x")
+        finally:
+            httpd.shutdown()
+            thread.join(timeout=2)
+        self.assertIn("redirects to a magnet", str(caught.exception))
+        self.assertIn(magnet_link, str(caught.exception))
+
+    def test_a_torrent_file_served_over_http_is_fetched_and_added(self):
+        data, infohash = make_torrent("Tires.S01.Complete.1080p.WEB-DL")
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *a):
+                pass
+
+        httpd = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        fake = FakeQbt().install(self.server)
+        try:
+            result = self.server.download_torrent(
+                torrent_url=f"http://127.0.0.1:{httpd.server_port}/x.torrent")
+        finally:
+            httpd.shutdown()
+            thread.join(timeout=2)
+        self.assertTrue(result["confirmed"])
+        self.assertEqual(result["infohash"], infohash)
+        self.assertEqual(fake.uploads[0]["bytes"], data)
+
+    def test_an_oversized_file_is_refused_before_reading_it_in(self):
+        path = self.write_torrent(b"x" * (self.server.MAX_TORRENT_BYTES + 1))
+        fake = FakeQbt().install(self.server)
+        with self.assertRaises(ToolError) as caught:
+            self.server.download_torrent(torrent_path=path)
+        self.assertIn("larger than a .torrent file", str(caught.exception))
+        self.assertEqual(fake.uploads, [])
 
 
 class TestRemoving(unittest.TestCase):

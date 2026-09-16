@@ -28,10 +28,22 @@ Three things make this more than a REST wrapper:
                                         arrives and the info hash is the SHA-1
                                         of its `info` dictionary.
 
-     Only the last one touches the network, and only for the releases actually
-     being returned. A `.torrent` URL is never returned in the magnet slot:
-     everything downstream takes a magnet, so a near-miss is worse than a
-     refusal - it is discovered three steps later with nothing pointing back.
+     A `.torrent` URL is never returned in the magnet slot: everything
+     downstream takes a magnet, so a near-miss is worse than a refusal - it is
+     discovered three steps later with nothing pointing back.
+
+     **The info-hash rebuild gets a follow-up the other free stages don't.** A
+     magnet built from a bare info hash carries no tracker URL, which is fine
+     on a public swarm - DHT and PEX fill the gap - and useless on a private
+     one, which disables both. That magnet would sit at 0% forever, correctly
+     built and permanently stuck, and nothing about the failure would look
+     different from an ordinary stall. So whenever Prowlarr also supplied a
+     download link for that release, this server fetches the `.torrent` behind
+     it - same mechanism as the last stage - and replaces the bare magnet with
+     one carrying the real tracker list. This is the one case that spends a
+     network request on a release that already "had" a magnet, and it is
+     deliberate: the alternative is a magnet that looks fine and never
+     resolves.
 
   2. It **parses the title**. Raw Prowlarr search returns hundreds of rows whose
      only structure is a filename convention. Resolution, source, codec, size,
@@ -308,6 +320,13 @@ def build_magnet(info_hash, name, trackers=()):
     return "&".join(parts)
 
 
+#  The exact note `magnet_for` attaches to a magnet rebuilt from a bare info
+# hash. `search` matches on this string to decide a row still needs its
+# tracker list fetched - kept as one constant so the two places agree by
+# construction rather than by both spelling the sentence the same way.
+INFO_HASH_NOTE = "rebuilt from the info hash"
+
+
 def magnet_for(release):
     """The magnet, from whatever the release actually carries. No network.
 
@@ -319,7 +338,19 @@ def magnet_for(release):
 
     A `.torrent` URL is deliberately never returned in the magnet slot:
     everything downstream takes a magnet, and a link that is almost one is the
-    failure that gets discovered three steps later.
+    failure that gets discovered three steps later. `download_url` carries it
+    separately, and normally it is only set when there is no other way to get
+    a magnet at all - except for one case, kept deliberately narrow so an
+    ordinary search does not carry a URL nobody asked for on every row: a
+    magnet *rebuilt from a bare info hash* still gets one alongside it. A
+    private tracker disables DHT and PEX, so that magnet has no tracker URL
+    and no way to find a peer at all, however healthy the release actually is.
+    `download_url` is the fallback for exactly that case, and `search` uses it
+    automatically - it fetches the `.torrent` for exactly these rows and
+    replaces the bare magnet with one carrying the real tracker list, the same
+    way it already does for a release with no magnet at all. A magnet the
+    indexer supplied outright (`magnetUrl`) has no such gap, so it stays
+    magnet-only.
     """
     magnet = (release.get("magnetUrl") or "").strip()
     if magnet.startswith("magnet:"):
@@ -327,7 +358,8 @@ def magnet_for(release):
 
     info_hash = (release.get("infoHash") or "").strip()
     if re.fullmatch(r"[0-9a-fA-F]{40}", info_hash):
-        return build_magnet(info_hash, release.get("title")), "rebuilt from the info hash", None
+        fallback = (release.get("downloadUrl") or "").strip() or None
+        return build_magnet(info_hash, release.get("title")), INFO_HASH_NOTE, fallback
 
     download_url = (release.get("downloadUrl") or "").strip()
     for candidate in (unwrap_proxy_link(download_url), (release.get("guid") or "").strip()):
@@ -455,7 +487,18 @@ def fetch_download(url):
 
 
 def resolve_magnet(row):
-    """Turn one magnet-less row into a magnet, over the network. Never raises."""
+    """Turn one under-resolved row into a fully-tracked magnet, over the
+    network. Never raises.
+
+    Two different rows reach here. One has no magnet at all - only a
+    download_url - and this is the universal fallback that gets it one. The
+    other already has a magnet rebuilt from a bare info hash, and that magnet
+    carries no tracker URL: fine on a public swarm, where DHT and PEX fill the
+    gap, but useless on a private one, which disables both - the magnet simply
+    never finds a peer, no matter how healthy the release is. Fetching the
+    .torrent gets the real tracker list either way, so both cases end here.
+    """
+    had_magnet = row["magnet"] is not None
     try:
         kind, payload = fetch_download(row["download_url"])
         if kind == "magnet":
@@ -463,13 +506,21 @@ def resolve_magnet(row):
             row["magnet_note"] = "followed the download link to a magnet"
         else:
             row["magnet"] = magnet_from_torrent(payload)
-            row["magnet_note"] = "computed from the .torrent file"
+            row["magnet_note"] = "computed from the .torrent file, trackers included"
     except Exception as exc:
-        # One release failing to resolve must not fail the search. The row keeps
-        # magnet: null and says why, which is exactly what it said before.
-        row["magnet_note"] = (
-            f"no magnet from this indexer, and its .torrent could not be read "
-            f"({type(exc).__name__}). Pick another release.")
+        # One release failing to resolve must not fail the search.
+        if had_magnet:
+            # The bare-info-hash magnet from before this call is still there -
+            # untouched, not blanked out - so a public-tracker release keeps
+            # working via DHT even though the enrichment attempt failed.
+            row["magnet_note"] = (
+                f"rebuilt from the info hash; fetching the .torrent to confirm "
+                f"trackers failed ({type(exc).__name__}). If this is a private "
+                f"tracker, DHT alone will not find a peer - watch for a stall.")
+        else:
+            row["magnet_note"] = (
+                f"no magnet from this indexer, and its .torrent could not be read "
+                f"({type(exc).__name__}). Pick another release.")
     return row
 
 
@@ -814,15 +865,27 @@ def search(query, kind="any", season=None, episode=None, year=None, indexer=None
     # Only now, and only for what is actually being returned. Each of these
     # makes Prowlarr reach out to the indexer, so resolving all 63 matches to
     # hand back 10 would be sixty wasted round trips through a solver.
-    pending = [r for r in rows if r["magnet"] is None and r["download_url"]]
+    #
+    # Two kinds of row qualify: one has no magnet at all, the other has a
+    # magnet rebuilt from a bare info hash - which needs the same fetch to
+    # pick up a real tracker list, because on a private tracker (DHT and PEX
+    # both off) that magnet otherwise never finds a peer.
+    pending = [r for r in rows if r["download_url"]
+              and (r["magnet"] is None or r["magnet_note"] == INFO_HASH_NOTE)]
     if resolve_magnets and pending:
         workers = min(RESOLVE_WORKERS, len(pending))
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
             list(pool.map(resolve_magnet, pending))
     elif pending:
         for row in pending:
-            row["magnet_note"] = ("no magnet from this indexer, and resolve_magnets "
-                                  "was off, so none was derived")
+            if row["magnet"] is None:
+                row["magnet_note"] = ("no magnet from this indexer, and resolve_magnets "
+                                      "was off, so none was derived")
+            else:
+                row["magnet_note"] = (
+                    "rebuilt from the info hash, and resolve_magnets was off so "
+                    "trackers were not fetched - on a private tracker this may "
+                    "never find a peer")
 
     unusable = sum(1 for r in rows if r["magnet"] is None)
     for rank, row in enumerate(rows, 1):
