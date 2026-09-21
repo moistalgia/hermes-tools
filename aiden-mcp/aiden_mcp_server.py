@@ -1117,8 +1117,8 @@ def set_instant_brew(profile, water_ml=None, settle_seconds=12):
             "ok": True,
             "summary": (
                 f"Instant Brew was already set to {outcome['recipe']!r}"
-                f"{f', {outcome['water_ml']}ml' if outcome['water_ml'] else ''}. "
-                f"Nothing changed."
+                + (f", {outcome['water_ml']}ml" if outcome["water_ml"] else "")
+                + ". Nothing changed."
             ),
             "confirmed": True,
             "recipe": outcome["recipe"],
@@ -1128,9 +1128,9 @@ def set_instant_brew(profile, water_ml=None, settle_seconds=12):
         "ok": True,
         "summary": (
             f"Instant Brew is now {outcome['recipe']!r}"
-            f"{f', {outcome['water_ml']}ml' if outcome['water_ml'] else ''} "
-            f"(confirmed, was {outcome['previous_recipe']!r})."
-            f"{outcome['volume_note']}"
+            + (f", {outcome['water_ml']}ml" if outcome["water_ml"] else "")
+            + f" (confirmed, was {outcome['previous_recipe']!r})."
+            + f"{outcome['volume_note']}"
         ),
         "confirmed": True,
         "recipe": outcome["recipe"],
