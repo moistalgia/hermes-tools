@@ -195,6 +195,7 @@ confirms that the **setpoint** changed and explicitly not that the room is warm.
 | [prowlarr-mcp](prowlarr-mcp/) | Indexer search, returning magnets | Prowlarr |
 | [qbt-mcp](qbt-mcp/) | Starting a download, and confirming it | qBittorrent |
 | [obsidian-mcp](obsidian-mcp/) | Reading, writing, and searching a notes vault | Filesystem only |
+| [aiden-mcp](aiden-mcp/) | Starting and scheduling coffee, and confirming it | Fellow Aiden, via Fellow's cloud |
 
 Plus [tests/](tests/) and [scripts/backup_state.py](scripts/backup_state.py),
 neither of which the agent ever touches — they are for the human running the

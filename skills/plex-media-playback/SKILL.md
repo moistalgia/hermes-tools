@@ -50,8 +50,18 @@ indirection on top. Never reach for it here.
 | **Do we have these titles?** | `check_titles` |
 | **Missing episodes, low-res files, bad metadata** | `find_gaps` |
 | Scan for newly added files | `refresh_library` |
-| Fix one item's metadata | `refresh_item` |
+| Re-pull one item's metadata from the provider | `refresh_item` |
 | Repair watch state | `mark_watched` |
+| **Read one item's editable metadata** | `get_item_metadata` |
+| **Correct a title, year or genres; apply a label** | `update_item_metadata` |
+| **A reviewed correction pass, up to 25 items** | `batch_update_item_metadata` |
+| **Find items that need fixing** | `audit_library` |
+| **What does Plex think this file is?** | `list_match_candidates` |
+| **Re-bind a wrongly matched file** | `fix_match` |
+| **Posters and background art** | `get_artwork`, `set_artwork` |
+| **Alternate / textless / fan-made art** | `find_alternate_art` |
+| Undo a correction's field lock | `unlock_metadata_fields` |
+| **Write the audit up for a human** | `write_review_document` |
 
 ## Playing something
 
@@ -140,6 +150,170 @@ every tool here will correctly report them as missing.
 `refresh_metadata=true` re-pulls metadata for the entire library and can run
 for hours. Do not set it to fix one bad poster — that is `refresh_item`.
 
+## Repairing a broken item
+
+A movie showing as a black rectangle with a title like `The Entity Horror` is
+**not** a missing-poster problem and **not** three wrong fields. It is a file
+Plex never matched: the title is whatever the file was called, and there is no
+poster because there is no provider entry to get one from.
+
+Editing the title and adding a genre gives you a correctly labelled record that
+still has no summary, no cast, no ratings and no artwork. Rematching gives you
+all of it at once.
+
+**The order is: match, look, correct what is left, lock.**
+
+1. `audit_library` — which items are wrong, and why.
+2. `list_match_candidates` — what does Plex think this file is? Pass an
+   explicit `title=` and `year=` for what *you* believe it is; searching under
+   the mangled title usually returns nothing useful.
+3. `fix_match` with `confirm=true` — restores title, year, summary, genres and
+   artwork together.
+4. `get_item_metadata` — see what actually landed.
+5. `update_item_metadata` — only the residue a provider cannot know: a
+   deliberate label, a genre the provider gets wrong.
+
+Never the other way round. `update_item_metadata` locks every field it writes,
+and a locked field is exactly what a rematch cannot replace, so correcting
+first turns into a rematch that looks like it half worked. If that has already
+happened, `unlock_metadata_fields` undoes it; if you know it will,
+`fix_match unlock_first=true`.
+
+`fix_match` replaces the entire record. That is the right repair for an
+unmatched file and a destructive one for something a human already corrected by
+hand. Check `locked_fields` before running it — locks are usually the sign that
+somebody made a deliberate choice you are about to overwrite. Ask.
+
+### Identifying the film is your job
+
+`audit_library` reports *that* a title looks wrong and *why* — a genre word on
+the end, a stranded foreign article, two titles welded together. It never says
+what the film actually is, because that needs knowing which films exist.
+
+Work from the `file` field on each finding. On a broken item the filename is
+usually the only honest identifier left. Then confirm your guess through
+`list_match_candidates` rather than asserting it — if Plex's agent offers *The
+Entity (1982)* for that file, you were right.
+
+If you cannot identify something confidently, say so and leave it in the review
+document as unresolved. A confident wrong correction is worse than a gap,
+because it gets locked and nobody looks twice.
+
+### Artwork
+
+`get_artwork` lists what the item's own agent offers; `set_artwork poster_id=`
+selects one. Prefer that always.
+
+`poster_url` makes the Plex server download a URL you chose. Use it only when
+the agent offers nothing, and tell the user you are doing it.
+
+An item with no poster **and no candidates** is unmatched. Do not upload a
+poster onto it — fix the match and the poster arrives on its own.
+
+### Alternate art
+
+`find_alternate_art` reads three sources at once: what Plex's agent already
+offers, TMDB (every language, plus textless variants), and fanart.tv
+(community-made posters, clearlogos, disc art). It returns candidates and
+changes nothing.
+
+- Apply a `plex` candidate with `set_artwork poster_id=<id>`.
+- Apply a `tmdb` or `fanart` one with `set_artwork poster_url=<url>`.
+- `kind` is `poster`, `background` or `logo`.
+- `language=textless` finds art with no title burned into it, which is what you
+  want wherever Plex draws the title itself.
+
+Read the `unavailable` block before telling anyone there is no alternate art —
+an unset API key looks exactly like an empty result if you do not.
+
+Only hosts on the server's allowlist can be downloaded from, and it defaults to
+the two APIs above. If a URL is refused, that is configuration and not
+something to route around: report it and move on.
+
+### The review pass
+
+For anything beyond one or two items, do not apply as you go:
+
+1. `audit_library` to find the work.
+2. Identify each film and decide the fix.
+3. `write_review_document` with your proposals and the exact
+   `batch_update_item_metadata` payload.
+4. **Show the user the path and wait.**
+5. Apply only what they approve.
+
+This is the whole point of the tooling. Every write tool has a dry run and
+refuses to act without `confirm=true` so that this pass is the easy path.
+
+### Labels a filter depends on
+
+When something downstream filters on a label rather than a genre, find the gaps
+in one call:
+
+`audit_library checks=["labels"] require_label="Horror Marathon" when_genre="Horror"`
+
+Keep the two jobs separate. `Horror` the genre means the film is horror.
+`Horror Marathon` the label means somebody chose to programme it. Adding the
+label must not touch the genres.
+
+## Correcting metadata
+
+`refresh_item` asks the provider again and takes whatever comes back. Use it
+when the item is matched correctly and the data is merely stale. When the match
+itself is wrong — an Italian release title sitting where the English one
+should be, a year off by a decade, a horror film filed as Drama — asking again
+returns the same wrong answer. That is what `update_item_metadata` is for.
+
+Never run `refresh_item` after a correction. It can overwrite a deliberate fix
+with the provider data that was wrong in the first place. Refresh first if at
+all, then correct.
+
+**The workflow is always the same three steps.** Do not collapse it.
+
+1. `get_item_metadata` — read the current state. You need the existing genre
+   list before you can write a correct one.
+2. Propose the change with `dry_run: true` and **show the diff to the user**.
+3. Resend with `confirm: true` once they have agreed.
+
+**Arrays replace.** `genres: ["Horror", "Mystery"]` is the complete intended
+list, not an addition. Send every genre the item should end up with, including
+the ones already there. An empty array is refused outright — erasing takes
+`clear_genres`, `clear_labels`, `clear_collections` or `clear_countries`.
+
+**A write needs a `rating_key`.** `get_item_metadata query="..."` will find one,
+and refuses to choose when the title is ambiguous. Report the candidates and
+ask which one; never pick. Add the year to settle it: `query="Black Sunday
+(1960)"`.
+
+**Check `verified` on every result.** A write that came back `ok: true` with
+`verified: true` landed. Anything else did not, whatever the HTTP status was.
+On `readback_mismatch`, report the `after` block — it is what is actually on
+the server now — and do not retry blindly.
+
+Corrected fields are locked so a later refresh cannot undo them. That is
+deliberate; do not unlock them.
+
+### Genre or label?
+
+Two different jobs. Mixing them pollutes every future "show me a horror film"
+query:
+
+- **Genre** — the film genuinely *is* horror and Plex has it missing or wrong.
+  `genres: ["Horror", "Thriller", "Drama"]`
+- **Label** — deliberate programming. A horror-adjacent title that belongs on
+  the marathon list but should not be filed as Horror.
+  `labels: ["Horror Marathon"]`
+
+Adding the marathon label does not touch the genres, and it must not. Replace
+the genre list only when the correction supplies the full intended list.
+
+### More than one item
+
+`batch_update_item_metadata` takes up to 25, validates every target before
+writing any of them, and verifies each one separately. Same workflow: dry run,
+human reads the diff, confirmed run. A batch that comes back with entries in
+`failed` is partly done — report which rating keys those were rather than
+re-running the whole pass.
+
 ## Stopping and controlling
 
 `control` handles play, pause, stop, next, previous.
@@ -188,5 +362,10 @@ You can still `stop` it.
   result. If a call fails, read why.
 - Never fall back to Home Assistant, raw HTTP, or a hand-written script.
 - Never claim something is playing without `confirmed_playing: true`.
+- Never claim metadata was corrected without `verified: true`.
+- Never upload a poster onto an item that has no match. Fix the match.
+- Never guess what a film is in a confirmed write. Confirm the guess
+  through `list_match_candidates`, or leave it unresolved in the review.
+- Never write metadata without showing the user the dry-run diff first.
 - If a device the user expects is missing, report that rather than substituting
   a different room. Playing a movie on the wrong TV is worse than not playing it.

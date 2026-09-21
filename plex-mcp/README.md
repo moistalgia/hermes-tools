@@ -47,6 +47,10 @@ standard library only and run straight from the checkout — see the
 | `PLEX_PROXY` | `1` | Routes player commands through the Plex server instead of dialing the player's LAN IP. Leave it on unless a device is only reachable directly. |
 | `PLEX_TIMEOUT` | `15` | Seconds. |
 | `PLEX_ALIASES` | `{}` | JSON map of rooms to devices — see [The room map](#the-room-map). Rooms outlive hardware; Plex names like `unknown` are unsayable. |
+| `TMDB_API_KEY` | — | Optional. Unlocks TMDB as an artwork source. v3 key or v4 bearer token; both work. |
+| `FANART_API_KEY` | — | Optional. Unlocks fanart.tv — community-made alternate posters, clearlogos, disc art. |
+| `PLEX_ART_HOSTS` | `image.tmdb.org,assets.fanart.tv` | Hosts `set_artwork` will make the Plex server download from. `*` allows any. |
+| `PLEX_REVIEW_DIR` | `~/plex-reviews` | Where `write_review_document` writes. It cannot write anywhere else. |
 | `ROKU_PLEX_CHANNEL_ID` | `13535` | Roku channel ID for Plex, used to wake the app. |
 
 ## Manual test sequence
@@ -124,6 +128,261 @@ success, 1 on failure, and the JSON body always carries the real error text.
 | `refresh_library` | Scan for new files; optionally re-pull metadata. Reports scan status. |
 | `refresh_item` | Re-download metadata for one item — the wrong-poster fix. |
 | `mark_watched` | Repair watch state. |
+
+**Repairing an item**
+
+| Tool | Purpose |
+| --- | --- |
+| `audit_library` | Sweep for items that need fixing — missing posters, titles that are really filenames, unmatched files, missing labels. Changes nothing. |
+| `get_artwork` | Posters and backgrounds available for one item, and what is set now. |
+| `find_alternate_art` | Every poster, background or clearlogo available — Plex's agent, TMDB and fanart.tv. Changes nothing. |
+| `set_artwork` | Apply a poster, background or clearlogo, by candidate id or by URL. |
+| `list_match_candidates` | Ask Plex's agent what a file might actually be. Changes nothing. |
+| `fix_match` | Re-bind an item to the right provider entry — restores title, year, summary, genres and artwork together. |
+| `unlock_metadata_fields` | Undo the locking a correction applies, so a refresh or rematch can own the field again. |
+| `write_review_document` | Write the audit and its proposed fixes to markdown for a human to read first. |
+
+**Correcting metadata**
+
+| Tool | Purpose |
+| --- | --- |
+| `get_item_metadata` | One item's editable state exactly as Plex holds it, plus which fields are locked and which files back it. Read before writing. |
+| `update_item_metadata` | Fix a title, year, sort title, summary; replace genres, labels, collections, countries. Writes nothing without `confirm=true`. |
+| `batch_update_item_metadata` | Up to 25 corrections in one reviewed pass, validated as a set and verified one at a time. |
+
+## Repairing an item
+
+`refresh_item` asks the provider again and takes whatever comes back. That is
+the right move when an item is matched correctly and its data is merely stale.
+It is no help at all when the match itself is wrong, because asking again
+returns the same wrong answer.
+
+A black rectangle in the poster grid is almost never a missing image. It is a
+file Plex never matched, so its title is whatever the file was called and it
+has no poster because it has no provider entry to get one from. Editing the
+title and adding a genre leaves a correctly labelled record that still has no
+summary, no cast, no ratings and no artwork.
+
+**So the order is: match, look, correct the residue, lock.**
+
+```
+audit_library                 → which items are wrong, and why
+list_match_candidates         → what does Plex think this file is?
+fix_match       confirm=true  → title, year, summary, genres, artwork, at once
+get_item_metadata             → what actually landed
+update_item_metadata          → the residue a provider cannot know
+```
+
+Not the other way round. `update_item_metadata` locks every field it writes,
+and a locked field is exactly what a rematch cannot replace — so a correction
+applied first turns into a rematch that looks like it half worked.
+`unlock_metadata_fields` exists for when that has already happened, and
+`fix_match unlock_first=true` for when you know it will.
+
+`fix_match` is the biggest hammer here. It replaces the whole record, so it is
+the right repair for an unmatched file and a destructive one for something
+somebody already corrected by hand. It refuses a guid that is not on Plex's own
+candidate list, waits for the match to actually settle rather than reporting the
+pre-match record as the result, and returns both sides.
+
+### What the sweep can and cannot see
+
+`find_gaps` finds what is obviously absent: no year, no genres, no summary, a
+title full of release tags. `audit_library` finds what looks fine and is not.
+
+The cases that motivated it all look like this:
+
+| In the library | Actually |
+| --- | --- |
+| `The Entity Horror` (1982) | *The Entity* — a genre word on the end, which is a filing convention |
+| `L'occhio Che Uccide Peeping Tom` | *Peeping Tom* — the Italian release title welded to the English one |
+| `L Ultimo Esorcismo` | *The Last Exorcism* — an apostrophe stripped by a filename |
+| `The Devil's Bath a K a Des Teufels Bad` | *The Devil's Bath* — two titles and an `a.k.a.` |
+| `I 13 Spettri Thir13en Ghosts` | *13 Ghosts* — the same number twice, once styled |
+
+None of those carry release tags, so `find_gaps` sees nothing wrong with any of
+them. `audit_library` reports each with the reason it was flagged and a
+confidence, and never guesses what the film is — that needs knowing which films
+exist, which is the agent's job and not this server's.
+
+It is deliberately quiet. Every signal it uses has a real film behind it — Se7en
+has a digit inside a word, *La Dolce Vita* is a foreign title that is simply
+correct, *L.A. Confidential* folds to a stranded `l` — so a weak signal only
+counts alongside another one. A sweep that cries wolf is one the agent learns to
+skim. The cost of that caution is real: a title in a language with no function
+words in common with English, like `The Queen of Black Magic Ratu Ilmu Hitam`,
+will not be caught by the title check alone. It gets caught by the poster,
+match and genre checks instead, which is why the sweep runs all of them.
+
+One check is not a heuristic at all. `never matched to a provider entry` reads
+the item's guid, and it is either `local://` or it is not.
+
+### Labels for a filter
+
+`audit_library` answers the question a downstream filter actually asks:
+
+```bash
+plex-mcp audit_library checks=labels require_label="Horror Marathon" when_genre=Horror
+```
+
+Every horror film missing the label a marathon list filters on, in one call.
+
+### The review pass
+
+Deciding that `The Entity Horror` is *The Entity* (1982) is a judgement, and
+judgements at library scale want reading before they are committed.
+`write_review_document` renders the sweep and whatever the agent proposes into
+one markdown file, including the exact `batch_update_item_metadata` payload that
+would run. Files land in `PLEX_REVIEW_DIR` and nowhere else — a media server has
+no business taking an arbitrary path from a model.
+
+### Artwork
+
+`get_artwork` lists the posters the item's own agent offers; `set_artwork`
+selects one by id. Prefer that. `poster_url` makes the Plex server download
+whatever is at a URL the model chose, so it is the escape hatch rather than the
+default, and only an `http(s)` URL is accepted.
+
+An item with no poster **and no candidates** is not an artwork problem. That is
+the signature of an unmatched file, and `get_artwork` says so rather than
+letting you paint over it.
+
+### Alternate artwork
+
+Plex's agent offers a handful of posters per film and picks one. There are
+usually dozens: every international release, every textless variant, and on
+fanart.tv a whole layer of community-made art no metadata agent ships.
+
+`find_alternate_art` reads three sources and returns candidates without
+changing anything:
+
+| Source | What it has | Key |
+| --- | --- | --- |
+| `plex` | What the item's own agent already offers | none — always available |
+| `tmdb` | Every poster, backdrop and logo, every language, plus textless | `TMDB_API_KEY` |
+| `fanart` | Community-made alternates: textless posters, clearlogos, disc art | `FANART_API_KEY` |
+
+```bash
+plex-mcp find_alternate_art rating_key=1234 kind=poster
+plex-mcp find_alternate_art rating_key=1234 kind=logo source=fanart
+plex-mcp find_alternate_art rating_key=1234 language=textless
+```
+
+Apply a `plex` candidate with `set_artwork poster_id=<id>`, and a `tmdb` or
+`fanart` one with `set_artwork poster_url=<url>`. `kind` is `poster`,
+`background` or `logo`, and each has its own slot on the item — the background
+locks under `art`, the logo under `clearLogo`.
+
+`language=textless` is worth knowing about. Art with no title burned into it is
+what you want wherever Plex draws the title itself, and it is the variant an
+agent almost never picks.
+
+Neither key is required. Without them this still reports what Plex already
+holds, which on a matched film is usually more than anyone realises — and it
+says so in `unavailable` rather than quietly returning a short list that reads
+like "there is no alternate art".
+
+**These are APIs, not scrapers.** Both keys are free and take a minute to get.
+Scraping IMP Awards or MoviePosterDB would mean parsing HTML nobody promised to
+keep stable, against terms that do not permit it, and hotlinking images off a
+server that pays to serve them. TMDB and fanart.tv hand over the same posters,
+keyed and versioned, and fanart.tv is where the genuinely interesting art is
+because it exists only because somebody made it.
+
+An item with no external id cannot be looked up at either source — that is an
+unmatched file, and `find_alternate_art` says so and points at `fix_match`
+rather than querying with nothing.
+
+### Which hosts Plex may download from
+
+A `*_url` makes the Plex server fetch that URL. The URL is chosen by a model,
+so the set of hosts it can reach is configuration rather than something the
+model argues its way into. `PLEX_ART_HOSTS` is that list, defaulting to the two
+APIs above; a host must match exactly or be a subdomain of one, and `*` turns
+the check off.
+
+This is a deliberate tightening. Arbitrary artwork URLs used to be accepted.
+
+## Correcting metadata
+
+The tools above read the library; these three change it, which makes them the
+only ones here that can quietly destroy something. Four rules, and every one of
+them is a failure that happened before it was a rule:
+
+**Arrays replace, they do not append.** `genres: ["Horror", "Mystery"]` is the
+full intended list, not an addition to it. Appending is how a film ends up
+carrying `Horror` twice after two corrections, and it leaves no way at all to
+take a wrong genre off. Read the current list with `get_item_metadata` first
+and send the one you want to end up with.
+
+**An empty array is refused.** `genres: []` is almost always a payload that did
+not get filled in rather than an instruction to erase every genre, so erasing
+has to be spelled out: `clear_genres`, `clear_labels`, `clear_collections`,
+`clear_countries`.
+
+**Nothing is written without `confirm=true`.** A call without it returns the
+exact diff and writes nothing, so the normal shape of a correction is propose,
+read, confirm. `dry_run=true` forces that even when `confirm` is set.
+
+**`verified` comes from a readback, not from a 200.** Plex accepts edits it
+then declines to apply. Every write is read back and compared against what was
+asked for; a mismatch comes back as `ok: false` with `error_code:
+"readback_mismatch"` and an `after` block showing what is actually on the
+server. A batch verifies each item separately and reports each separately —
+one rejection never hides the other results.
+
+Edited fields are **locked**. An unlocked correction is one the next metadata
+refresh is free to overwrite with the same bad provider data that caused the
+correction, and nobody checks a fix twice. This is also why nothing in here
+calls `refresh_item` for you: refreshing is reasonable *before* an edit and
+destructive after one.
+
+A write needs a `rating_key`. `get_item_metadata` will find one from a title,
+and refuses to choose when the title is ambiguous — `Black Sunday` is two
+films thirteen years apart and both are horror, so a fuzzy pick that lands on
+the wrong one produces a confident, wrong, *locked* correction. It returns the
+candidates with their keys instead. Add the year to settle it yourself:
+`query="Black Sunday (1960)"`.
+
+Structured `error_code`s: `not_found`, `ambiguous_match`, `invalid_request`,
+`plex_rejected`, `readback_mismatch`.
+
+### Genre or label?
+
+Two different jobs, and mixing them is how a marathon list ends up polluting
+every future "show me a horror film" query:
+
+| | Use |
+| --- | --- |
+| The film genuinely *is* horror and Plex has it wrong or missing | Genre: `genres: ["Horror", "Thriller", "Drama"]` |
+| Deliberate programming — a horror-adjacent title on the marathon list that should not be filed as Horror | Label: `labels: ["Horror Marathon"]` |
+
+Adding the label does not touch the genres. Replace the genre list only when
+the reviewed correction supplies the full intended list.
+
+### A correction pass
+
+```bash
+plex-mcp get_item_metadata query="Torso"
+plex-mcp update_item_metadata rating_key=1234 year=1973 dry_run=true
+plex-mcp update_item_metadata rating_key=1234 year=1973 confirm=true
+```
+
+Over MCP the same thing, in three calls: read the current state, send the batch
+with `dry_run: true`, have a human look at the diff, then resend with
+`confirm: true`.
+
+```json
+{
+  "updates": [
+    {"rating_key": "1234", "title": "Peeping Tom", "year": 1960,
+     "genres": ["Horror", "Thriller", "Drama", "Crime"]},
+    {"rating_key": "5678", "title": "Black Sunday", "year": 1960,
+     "genres": ["Horror"]}
+  ],
+  "confirm": true
+}
+```
 
 ## Reading the whole library
 

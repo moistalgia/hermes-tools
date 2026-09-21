@@ -14,6 +14,7 @@ server here follows, and what gets built next.
 | [hass-mcp](hass-mcp/) | Home Assistant — lights, blinds, thermostats, scenes. No dependencies. |
 | [prowlarr-mcp](prowlarr-mcp/) | One search across every indexer, returning magnet links. No dependencies, and drop-in on its own. |
 | [qbt-mcp](qbt-mcp/) | Starts a download in qBittorrent and confirms it started. No dependencies. |
+| [aiden-mcp](aiden-mcp/) | Starts and schedules coffee on a Fellow Aiden, and confirms the brew began. No dependencies. |
 | [paradigm-mcp](paradigm-mcp/) | Climbing training plan from Paradigm — calendar feed, session detail, `.ics` export. No dependencies. |
 | [obsidian-mcp](obsidian-mcp/) | Read, write, and search a local Obsidian vault — notes, tags, links, daily notes. No dependencies. |
 | [mcpkit.py](mcpkit.py) | Shared protocol layer. Not a server; imported by the ones above. |
@@ -56,7 +57,7 @@ git clone https://github.com/moistalgia/hermes-tools.git E:/hermes-mcp/hermes-to
 ```
 
 `state-mcp`, `notify-mcp`, `discord-mcp`, `hass-mcp`, `prowlarr-mcp`, `qbt-mcp`,
-`paradigm-mcp`, and `obsidian-mcp` have **no dependencies** — standard library
+`aiden-mcp`, `paradigm-mcp`, and `obsidian-mcp` have **no dependencies** — standard library
 only. No venv, no install, no packaging. Hermes runs them with the interpreter
 it already has, straight from the checkout.
 

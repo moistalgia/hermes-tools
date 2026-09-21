@@ -38,6 +38,7 @@ import time
 import traceback
 import unicodedata
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -156,7 +157,7 @@ ROKU_PLEX_CHANNEL_ID = os.environ.get("ROKU_PLEX_CHANNEL_ID", "13535")
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "plex"
-SERVER_VERSION = "1.3.0"
+SERVER_VERSION = "1.6.0"
 
 
 def log(msg):
@@ -2452,6 +2453,1962 @@ def refresh_item(rating_key=None, query=None):
         ),
     }
 
+# ---------------------------------------------------------------------------
+# Metadata editing
+#
+# The tools above read the library; these three change it. Everything here
+# exists because a wrong Plex match is a two-part problem: the agent has to be
+# able to see the current state exactly, and it has to be unable to destroy the
+# rest of the record while fixing the part that is wrong.
+#
+# Three rules the rest of this section implements:
+#
+#   Arrays replace, they do not append. Appending is what produces a movie
+#   carrying ["Horror", "Horror", "horror"] after three corrections, and it
+#   makes removing a wrong genre impossible.
+#
+#   A write requires confirm=true. Without it the call returns the diff it
+#   would have made, so the normal shape of a correction is propose, read,
+#   confirm - not "hope the model got it right the first time".
+#
+#   Nothing reports success on the strength of an HTTP 200. Plex accepts edits
+#   it then declines to apply, so every write is read back and only the
+#   readback sets verified.
+#
+# Edited fields are locked. An unlocked correction is one the next metadata
+# refresh is free to overwrite with the same bad provider data that caused the
+# correction, and nobody checks a fix twice. This is also why refresh is not
+# run automatically anywhere in here: refresh_item exists, it is a separate
+# call, and it is a reasonable thing to do *before* an edit and a destructive
+# thing to do after one.
+# ---------------------------------------------------------------------------
+
+# Our argument name -> the Plex field name. Plex's names are inconsistent
+# enough (titleSort, originalTitle) that spelling them at every call site is
+# how the wrong one gets written.
+EDITABLE_FIELDS = {
+    "title": "title",
+    "year": "year",
+    "original_title": "originalTitle",
+    "sort_title": "titleSort",
+    "summary": "summary",
+}
+
+# Our argument name -> (plexapi attribute, Plex tag parameter). The parameter
+# is singular and the attribute is plural; Plex's edit endpoint ignores a
+# plural one without complaining, which looks exactly like a write that worked.
+EDITABLE_TAGS = {
+    "genres": ("genres", "genre"),
+    "labels": ("labels", "label"),
+    "collections": ("collections", "collection"),
+    "countries": ("countries", "country"),
+}
+
+# Editing is a library-item operation. A player, a session or a playlist has a
+# ratingKey too, and an edit aimed at one of those fails in a way that reads
+# like a Plex outage rather than like a wrong argument.
+EDITABLE_TYPES = ("movie", "show", "season", "episode", "artist", "album", "track")
+
+BATCH_LIMIT = 25
+
+
+def tag_values(item, attribute):
+    return [str(t.tag) for t in (getattr(item, attribute, None) or [])
+            if getattr(t, "tag", None)]
+
+
+def locked_fields(item):
+    return sorted(f.name for f in (getattr(item, "fields", None) or [])
+                  if getattr(f, "locked", False) and getattr(f, "name", None))
+
+
+def media_parts(item):
+    """File paths, reported and never touched.
+
+    Here so a correction can be checked against what is actually on disk - a
+    title like "L Ultimo Esorcismo" is a filename problem before it is a
+    metadata problem - and so that checking does not require a second tool that
+    can move files.
+    """
+    out = []
+    for medium in (getattr(item, "media", None) or []):
+        for part in (getattr(medium, "parts", None) or []):
+            out.append({
+                "file": getattr(part, "file", None),
+                "size": getattr(part, "size", None),
+                "container": getattr(part, "container", None),
+            })
+    return out
+
+
+def raw_attributes(item):
+    """The item's own XML attributes, minus anything token-shaped.
+
+    Useful for the fields this tool deliberately does not edit - guid, the
+    matched agent, originallyAvailableAt - because those are what tell you
+    whether a bad match needs a correction or a rematch. The token filter is
+    belt and braces: these attributes do not carry one today.
+    """
+    attrib = getattr(getattr(item, "_data", None), "attrib", None) or {}
+    return {k: v for k, v in dict(attrib).items() if "token" not in k.lower()}
+
+
+def metadata_snapshot(item, include_raw=False):
+    """The exact editable state of one item, in this server's argument names."""
+    out = {
+        "rating_key": str(getattr(item, "ratingKey", "")),
+        "type": getattr(item, "type", None),
+        "library": getattr(item, "librarySectionTitle", None),
+        "title": getattr(item, "title", None),
+        "year": getattr(item, "year", None),
+        "original_title": getattr(item, "originalTitle", None),
+        "sort_title": getattr(item, "titleSort", None),
+        "summary": getattr(item, "summary", None),
+        "locked_fields": locked_fields(item),
+    }
+    for name, (attribute, _param) in EDITABLE_TAGS.items():
+        out[name] = tag_values(item, attribute)
+    if include_raw:
+        out["media_parts"] = media_parts(item)
+        out["raw_metadata"] = raw_attributes(item)
+    return out
+
+
+def resolve_editable_item(rating_key=None, query=None):
+    """One library item, or a refusal that names the alternatives.
+
+    A title is allowed to *find* an item and never to be the only thing
+    standing behind a write: "Black Sunday" is two films thirteen years apart
+    and both are horror, so a fuzzy pick that lands on the wrong one produces a
+    confident, wrong, locked correction. Ambiguity comes back as candidates
+    with their rating keys, which is the thing the caller actually needs.
+    """
+    if rating_key not in (None, ""):
+        try:
+            item = get_by_rating_key(rating_key)
+        except Exception as exc:
+            raise ToolError(
+                f"No item with rating_key {rating_key!r}: {exc}",
+                error_code="not_found",
+            )
+        kind = getattr(item, "type", None)
+        if kind not in EDITABLE_TYPES:
+            raise ToolError(
+                f"rating_key {rating_key!r} is a {kind!r}, which has no "
+                "editable library metadata.",
+                error_code="invalid_request",
+            )
+        if not item.isFullObject():
+            try:
+                item.reload()
+            except Exception:
+                pass
+        return item
+
+    wanted = text(query).strip()
+    if not wanted:
+        raise ToolError("Pass rating_key or query.", error_code="invalid_request")
+
+    # "Torso (1973)" is how a person writes a title that needs its year to be
+    # unambiguous, and that is exactly the case where guessing is worst.
+    title_part, year_part = split_title_year(wanted)
+    matches = [m for m in find_media(title_part, None, 10)
+               if getattr(m, "type", None) in EDITABLE_TYPES]
+    if not matches:
+        raise ToolError(f"Nothing in the library matches {wanted!r}.",
+                        error_code="not_found")
+
+    exact = [m for m in matches
+             if normalize_title(getattr(m, "title", "")) == normalize_title(title_part)]
+    narrowed = exact or matches
+    if year_part:
+        by_year = [m for m in narrowed if getattr(m, "year", None) == year_part]
+        if by_year:
+            narrowed = by_year
+
+    if len(narrowed) == 1:
+        item = narrowed[0]
+        if not item.isFullObject():
+            try:
+                item.reload()
+            except Exception:
+                pass
+        return item
+
+    raise ToolError(
+        f"{wanted!r} matches {len(narrowed)} items. Pass the rating_key of the "
+        "one you mean - a title and year collision is the case this refuses to "
+        "guess at.",
+        error_code="ambiguous_match",
+        candidates=[describe_item(m) for m in narrowed[:10]],
+    )
+
+
+def normalize_tag_list(value, field):
+    """A tag array, however it arrived, deduped case-insensitively in order."""
+    if isinstance(value, (list, tuple)):
+        raw = list(value)
+    else:
+        raw_text = text(value).strip()
+        if not raw_text:
+            raw = []
+        elif raw_text.startswith("["):
+            try:
+                raw = json.loads(raw_text)
+            except ValueError:
+                raise ToolError(
+                    f"{field} looked like a JSON array but did not parse.",
+                    error_code="invalid_request",
+                )
+        else:
+            raw = raw_text.split(",")
+    out, seen = [], set()
+    for entry in raw:
+        entry = text(entry).strip()
+        if entry and entry.lower() not in seen:
+            seen.add(entry.lower())
+            out.append(entry)
+    return out
+
+
+def tag_params(param, values, remove=False):
+    """Plex's repeated tag parameters for one tag type.
+
+    Setting is indexed - genre[0].tag.tag, genre[1].tag.tag - and removal is a
+    single comma-joined minus parameter. Values in the removal are quoted here
+    and again by the query builder on the way out; that double encoding is what
+    Plex expects on the minus form, and dropping it loses every tag containing
+    an ampersand.
+    """
+    if remove:
+        return {
+            f"{param}[].tag.tag-": ",".join(
+                urllib.parse.quote(str(v)) for v in values),
+            f"{param}.locked": 1,
+        }
+    out = {f"{param}.locked": 1}
+    for index, value in enumerate(values):
+        out[f"{param}[{index}].tag.tag"] = value
+    return out
+
+
+def same_tags(a, b):
+    return sorted(x.lower() for x in a) == sorted(x.lower() for x in b)
+
+
+def plan_metadata_update(item, spec):
+    """Work out the diff and the writes, or refuse. Touches nothing.
+
+    Raises ToolError for anything the caller got wrong, so a batch can validate
+    every target before it writes any of them.
+    """
+    before = metadata_snapshot(item)
+    changes, field_edits, tag_edits = {}, {}, []
+    already_locked = set(before["locked_fields"])
+
+    for name, plex_field in EDITABLE_FIELDS.items():
+        supplied = spec.get(name)
+        if supplied is None:
+            continue
+        if name == "year":
+            try:
+                value = int(supplied)
+            except (TypeError, ValueError):
+                raise ToolError(f"year must be a number, got {supplied!r}.",
+                                error_code="invalid_request")
+            if not 1870 <= value <= 2100:
+                raise ToolError(f"year {value} is not a plausible release year.",
+                                error_code="invalid_request")
+        else:
+            value = text(supplied).strip()
+            if not value:
+                # An empty string here is almost always a template that did not
+                # get filled in, and writing it would blank a good title.
+                raise ToolError(
+                    f"{name} was supplied as an empty string. Omit the field to "
+                    "leave it alone.",
+                    error_code="invalid_request",
+                )
+        if before.get(name) != value:
+            changes[name] = {"before": before.get(name), "after": value}
+        elif plex_field in already_locked:
+            continue  # right value, already pinned; nothing to write
+        field_edits[f"{plex_field}.value"] = value
+        field_edits[f"{plex_field}.locked"] = 1
+
+    for name, (_attribute, param) in EDITABLE_TAGS.items():
+        supplied = spec.get(name)
+        cleared = bool(spec.get(f"clear_{name}"))
+        if supplied is None and not cleared:
+            continue
+        desired = normalize_tag_list(supplied, name) if supplied is not None else []
+        if cleared and desired:
+            raise ToolError(
+                f"clear_{name} was set together with a non-empty {name} list. "
+                "Pick one.",
+                error_code="invalid_request",
+            )
+        if not desired and not cleared:
+            # The payload that erases a record is an empty array nobody meant
+            # to send, so erasing has to be spelled out.
+            raise ToolError(
+                f"{name} was supplied as an empty list, which would erase every "
+                f"{name[:-1]} on the item. Pass clear_{name}=true if that is "
+                "what you mean.",
+                error_code="invalid_request",
+            )
+        existing = before.get(name) or []
+        unchanged = same_tags(existing, desired)
+        if unchanged and param in already_locked:
+            continue
+        if not unchanged:
+            changes[name] = {"before": existing, "after": desired}
+        lowered = {d.lower() for d in desired}
+        tag_edits.append({
+            "field": name,
+            "param": param,
+            "desired": desired,
+            "remove": [e for e in existing if e.lower() not in lowered],
+        })
+
+    return before, changes, field_edits, tag_edits
+
+
+def apply_metadata_plan(item, field_edits, tag_edits):
+    """Issue the writes. Returns what was sent, for the caller to report.
+
+    Removals go in their own request ahead of the set, so replacement is two
+    observable steps rather than a thing Plex's edit endpoint may or may not
+    mean by a repeated parameter.
+    """
+    sent = []
+    if field_edits:
+        item.edit(**field_edits)
+        sent.append({
+            "operation": "fields",
+            "fields": sorted(k[:-len(".value")] for k in field_edits
+                             if k.endswith(".value")),
+        })
+    for edit in tag_edits:
+        if edit["remove"]:
+            item.edit(**tag_params(edit["param"], edit["remove"], remove=True))
+            sent.append({"operation": "remove", "field": edit["field"],
+                         "values": edit["remove"]})
+        if edit["desired"]:
+            item.edit(**tag_params(edit["param"], edit["desired"]))
+            sent.append({"operation": "set", "field": edit["field"],
+                         "values": edit["desired"]})
+    return sent
+
+
+def verify_metadata(item, changes):
+    """Read the item back and check every requested value actually landed.
+
+    Plex returns 200 for edits it does not apply. Without this the tool would
+    report a corrected year that is still wrong on the server, which is worse
+    than reporting a failure because it stops anyone looking again.
+    """
+    try:
+        item.reload()
+    except Exception as exc:
+        return False, [{"field": "*", "error": f"readback failed: {exc}"}], None
+    after = metadata_snapshot(item)
+    mismatches = []
+    for field, change in changes.items():
+        want, got = change["after"], after.get(field)
+        if field in EDITABLE_TAGS:
+            if not same_tags(want, got or []):
+                mismatches.append({"field": field, "requested": want, "live": got})
+        elif want != got:
+            mismatches.append({"field": field, "requested": want, "live": got})
+    return not mismatches, mismatches, after
+
+
+def update_spec(args):
+    """The subset of a call that describes what to write."""
+    keys = list(EDITABLE_FIELDS) + list(EDITABLE_TAGS)
+    keys += [f"clear_{name}" for name in EDITABLE_TAGS]
+    return {k: args.get(k) for k in keys}
+
+
+def tag_array(desc):
+    return {"type": "array", "items": {"type": "string"}, "description": desc}
+
+
+@tool(
+    "Read one item's editable metadata exactly as Plex holds it - title, year, "
+    "sort and original title, genres, labels, collections, countries, which "
+    "fields are locked, and the files behind it. Do this before editing: the "
+    "arrays in update_item_metadata replace what is there, so you need the "
+    "current list to write a correct one.",
+    {
+        "rating_key": s("rating_key of the item, from any search result."),
+        "query": s("Title, if you do not have a rating_key. Add the year - "
+                   "'Black Sunday (1960)' - when the title alone is ambiguous."),
+    },
+)
+def get_item_metadata(rating_key=None, query=None):
+    item = resolve_editable_item(rating_key, query)
+    out = {"ok": True}
+    out.update(metadata_snapshot(item, include_raw=True))
+    out["label"] = describe_item(item)["label"]
+    return out
+
+
+@tool(
+    "Correct one item's metadata: fix a wrong title or year from a bad match, "
+    "replace wrong genres, or apply a label. Arrays REPLACE - pass the full "
+    "intended list, not just the addition. Omitted fields are untouched. "
+    "Nothing is written unless confirm=true; without it you get the diff. "
+    "Edited fields are locked so a later metadata refresh cannot undo the fix.",
+    {
+        "rating_key": s("rating_key of the item. Required - a write is never "
+                        "made off a fuzzy title. Get one from get_item_metadata "
+                        "or search."),
+        "title": s("Replacement title."),
+        "year": i("Replacement release year."),
+        "original_title": s("Original-language title."),
+        "sort_title": s("Title to sort under."),
+        "summary": s("Replacement plot summary."),
+        "genres": tag_array("Full intended genre list. Replaces the existing "
+                            "genres outright, so include the ones to keep."),
+        "labels": tag_array("Full intended label list, e.g. ['Horror Marathon']. "
+                            "Replaces the existing labels."),
+        "collections": tag_array("Full intended collection list. Replaces the "
+                                 "existing collections."),
+        "countries": tag_array("Full intended country list. Replaces the "
+                               "existing countries."),
+        "clear_genres": b("Erase every genre. Required to send an empty list."),
+        "clear_labels": b("Erase every label. Required to send an empty list."),
+        "clear_collections": b("Erase every collection."),
+        "clear_countries": b("Erase every country."),
+        "dry_run": b("Return the diff and write nothing, even if confirm is set.",
+                     False),
+        "confirm": b("Must be true for anything to be written.", False),
+    },
+    required=["rating_key"],
+)
+def update_item_metadata(rating_key=None, title=None, year=None,
+                         original_title=None, sort_title=None, summary=None,
+                         genres=None, labels=None, collections=None,
+                         countries=None, clear_genres=False, clear_labels=False,
+                         clear_collections=False, clear_countries=False,
+                         dry_run=False, confirm=False):
+    if rating_key in (None, ""):
+        raise ToolError(
+            "rating_key is required. Find it with get_item_metadata or search - "
+            "a title alone is not enough to write against.",
+            error_code="invalid_request",
+        )
+    item = resolve_editable_item(rating_key=rating_key)
+    spec = update_spec(locals())
+    before, changes, field_edits, tag_edits = plan_metadata_update(item, spec)
+    label = describe_item(item)["label"]
+
+    if not changes and not field_edits and not tag_edits:
+        log(f"update_item_metadata rating_key={before['rating_key']} no-op")
+        return {
+            "ok": True, "rating_key": before["rating_key"], "item": label,
+            "applied": False, "changes": {}, "before": before,
+            "note": "The item already matches everything requested.",
+        }
+
+    if dry_run or not confirm:
+        log(f"update_item_metadata rating_key={before['rating_key']} "
+            f"fields={sorted(changes)} dry_run")
+        return {
+            "ok": True, "rating_key": before["rating_key"], "item": label,
+            "applied": False, "dry_run": True, "changes": changes,
+            "before": before,
+            "note": ("dry_run was set, so nothing was written."
+                     if dry_run else
+                     "Nothing was written. Call again with confirm=true to "
+                     "apply this diff."),
+        }
+
+    try:
+        sent = apply_metadata_plan(item, field_edits, tag_edits)
+    except Exception as exc:
+        log(f"update_item_metadata rating_key={before['rating_key']} "
+            f"fields={sorted(changes)} rejected")
+        raise ToolError(
+            f"Plex rejected the edit: {type(exc).__name__}: {exc}",
+            error_code="plex_rejected",
+            rating_key=before["rating_key"],
+            attempted=changes,
+        )
+    invalidate_library_cache()
+    verified, mismatches, after = verify_metadata(item, changes)
+    log(f"update_item_metadata rating_key={before['rating_key']} "
+        f"fields={sorted(changes)} applied verified={verified}")
+
+    result = {
+        "ok": bool(verified),
+        "rating_key": before["rating_key"],
+        "item": label,
+        "applied": True,
+        "verified": bool(verified),
+        "changes": changes,
+        "before": before,
+        "after": after,
+        "writes": sent,
+    }
+    if not verified:
+        result["error_code"] = "readback_mismatch"
+        result["error"] = (
+            "Plex accepted the edit but the item does not read back with the "
+            "requested values. The 'after' block is what is on the server now."
+        )
+        result["mismatches"] = mismatches
+    return result
+
+
+@tool(
+    "Apply a reviewed set of metadata corrections in one pass, up to 25 items. "
+    "Every target is resolved and validated before anything is written, so a "
+    "bad entry costs the batch rather than leaving a half-corrected library. "
+    "Each item is then written and read back on its own and reported on its "
+    "own. Nothing is written unless confirm=true.",
+    {
+        "updates": {
+            "type": "array",
+            "description": (
+                "One object per item, each with a rating_key plus the same "
+                "fields update_item_metadata takes. Arrays replace."
+            ),
+            "items": {"type": "object"},
+        },
+        "dry_run": b("Return the full diff and write nothing.", False),
+        "confirm": b("Must be true for anything to be written.", False),
+    },
+    required=["updates"],
+)
+def batch_update_item_metadata(updates=None, dry_run=False, confirm=False):
+    if isinstance(updates, str):
+        try:
+            updates = json.loads(updates)
+        except ValueError:
+            raise ToolError("updates did not parse as JSON.",
+                            error_code="invalid_request")
+    if not isinstance(updates, (list, tuple)) or not updates:
+        raise ToolError("updates must be a non-empty array of objects.",
+                        error_code="invalid_request")
+    if len(updates) > BATCH_LIMIT:
+        raise ToolError(
+            f"{len(updates)} updates is over the {BATCH_LIMIT}-item limit. "
+            "Split the pass - a batch nobody read before confirming is the "
+            "thing the limit is for.",
+            error_code="invalid_request",
+        )
+
+    # Validate everything first. Half a tagging pass is harder to reason about
+    # than none of one, because you cannot tell by looking which half ran.
+    planned, problems, seen = [], [], {}
+    for index, entry in enumerate(updates):
+        if not isinstance(entry, dict):
+            problems.append({"index": index, "error": "not an object",
+                             "error_code": "invalid_request"})
+            continue
+        key = text(entry.get("rating_key")).strip()
+        if not key:
+            problems.append({"index": index, "error": "rating_key is required",
+                             "error_code": "invalid_request"})
+            continue
+        if key in seen:
+            problems.append({
+                "index": index, "rating_key": key,
+                "error": f"rating_key {key} also appears at index {seen[key]}; "
+                         "merge them into one entry.",
+                "error_code": "invalid_request",
+            })
+            continue
+        seen[key] = index
+        try:
+            item = resolve_editable_item(rating_key=key)
+            before, changes, field_edits, tag_edits = plan_metadata_update(
+                item, update_spec(entry))
+        except ToolError as exc:
+            problem = {"index": index, "rating_key": key, "error": str(exc)}
+            problem.update(exc.extra)
+            problems.append(problem)
+            continue
+        except Exception as exc:
+            problems.append({"index": index, "rating_key": key,
+                             "error": f"{type(exc).__name__}: {exc}",
+                             "error_code": "plex_rejected"})
+            continue
+        planned.append({
+            "index": index, "item": item, "label": describe_item(item)["label"],
+            "before": before, "changes": changes,
+            "field_edits": field_edits, "tag_edits": tag_edits,
+        })
+
+    if problems:
+        return {
+            "ok": False,
+            "error": f"{len(problems)} of {len(updates)} updates did not "
+                     "validate; nothing was written.",
+            "error_code": "invalid_request",
+            "applied": False,
+            "problems": problems,
+            "would_change": [{"rating_key": p["before"]["rating_key"],
+                              "item": p["label"], "changes": p["changes"]}
+                             for p in planned],
+        }
+
+    if dry_run or not confirm:
+        log(f"batch_update_item_metadata count={len(planned)} dry_run")
+        return {
+            "ok": True,
+            "applied": False,
+            "dry_run": True,
+            "count": len(planned),
+            "results": [{
+                "rating_key": p["before"]["rating_key"], "item": p["label"],
+                "changes": p["changes"], "before": p["before"],
+            } for p in planned],
+            "note": ("dry_run was set, so nothing was written."
+                     if dry_run else
+                     "Nothing was written. Call again with confirm=true to "
+                     "apply this diff."),
+        }
+
+    results = []
+    for plan in planned:
+        row = {"rating_key": plan["before"]["rating_key"], "item": plan["label"],
+               "changes": plan["changes"], "before": plan["before"]}
+        if not plan["changes"] and not plan["field_edits"] and not plan["tag_edits"]:
+            row.update({"ok": True, "verified": True, "applied": False,
+                        "note": "Already matches everything requested."})
+            results.append(row)
+            continue
+        try:
+            row["writes"] = apply_metadata_plan(
+                plan["item"], plan["field_edits"], plan["tag_edits"])
+        except Exception as exc:
+            # One rejection must not take the report for the others with it.
+            row.update({"ok": False, "verified": False, "applied": False,
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "error_code": "plex_rejected"})
+            results.append(row)
+            continue
+        verified, mismatches, after = verify_metadata(plan["item"], plan["changes"])
+        row.update({"ok": bool(verified), "verified": bool(verified),
+                    "applied": True, "after": after})
+        if not verified:
+            row.update({"error_code": "readback_mismatch",
+                        "error": "Written, but the item does not read back with "
+                                 "the requested values.",
+                        "mismatches": mismatches})
+        results.append(row)
+
+    invalidate_library_cache()
+    failed = [r["rating_key"] for r in results if not r.get("ok")]
+    log(f"batch_update_item_metadata count={len(results)} "
+        f"verified={len(results) - len(failed)} failed={len(failed)}")
+    return {
+        "ok": not failed,
+        "applied": True,
+        "count": len(results),
+        "verified_count": len(results) - len(failed),
+        "failed": failed,
+        "results": results,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Artwork
+#
+# A movie with no poster is a black rectangle in every grid Plex draws, which
+# is the most visible metadata failure there is and the one with no text to
+# search for. Two ways to fix one, and the order matters:
+#
+#   setting a poster Plex's own agent already offers, which is what `posters()`
+#   returns once an item is matched - free, correct, and the right answer
+#   nearly every time;
+#
+#   uploading one from a URL, which makes the Plex server fetch whatever is at
+#   the other end. That is an agent choosing a URL off the internet and a
+#   server downloading it, so it is the escape hatch and not the default.
+#
+# If an item has no provider posters at all, that is not an artwork problem. It
+# is an unmatched item, and fix_match below is the actual repair.
+# ---------------------------------------------------------------------------
+
+ARTWORK_LIMIT = 15
+
+
+def strip_token(value):
+    """plexapi's thumbUrl helpers embed the token. Nothing here returns one."""
+    text_value = text(value)
+    if "X-Plex-Token" not in text_value:
+        return text_value or None
+    return re.sub(r"[?&]X-Plex-Token=[^&]*", "", text_value) or None
+
+
+def artwork_candidates(item, kind):
+    """Posters or backgrounds the item's agent is offering, newest selection first."""
+    try:
+        found = item.posters() if kind == "poster" else item.arts()
+    except Exception as exc:
+        log(f"{kind} listing failed for {item.ratingKey}: {exc}")
+        return [], f"{type(exc).__name__}: {exc}"
+    out = []
+    for entry in found[:ARTWORK_LIMIT]:
+        out.append({
+            "id": getattr(entry, "ratingKey", None),
+            "provider": getattr(entry, "provider", None) or "agent",
+            "selected": bool(getattr(entry, "selected", False)),
+            "preview": strip_token(getattr(entry, "thumb", None)),
+        })
+    return out, None
+
+
+# The three image slots an item has, and what Plex calls each one on the way
+# in and on the way out. Plex is inconsistent enough here - the background is
+# "art", the logo locks under "clearLogo", the poster is "thumb" - that three
+# near-identical code paths is how one of them ends up locking the wrong field.
+ARTWORK_SLOTS = {
+    "poster": {"attr": "thumb", "lock": "thumb",
+               "list": "posters", "upload": "uploadPoster"},
+    "art": {"attr": "art", "lock": "art",
+            "list": "arts", "upload": "uploadArt"},
+    "logo": {"attr": "logo", "lock": "clearLogo",
+             "list": "logos", "upload": "uploadLogo"},
+}
+
+
+def artwork_state(item):
+    locked = set(locked_fields(item))
+    out = {}
+    for slot, spec in ARTWORK_SLOTS.items():
+        value = getattr(item, spec["attr"], None)
+        out[f"has_{slot}"] = bool(value)
+        out[slot] = strip_token(value)
+        out[f"{slot}_locked"] = spec["lock"] in locked
+    return out
+
+
+def check_art_url(url, field):
+    """Refuse a URL the Plex server should not be made to fetch.
+
+    An artwork URL is chosen by a model and downloaded by the media server, so
+    which hosts can reach it is configuration rather than something the model
+    argues its way into. The default list is the two art APIs this server knows
+    how to query; PLEX_ART_HOSTS replaces it, and "*" turns the check off for
+    anyone who would rather manage that themselves.
+    """
+    raw = text(url).strip()
+    parsed = urllib.parse.urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        raise ToolError(
+            f"{field} must be an http(s) URL, not {parsed.scheme or 'a bare path'!r}.",
+            error_code="invalid_request",
+        )
+    host = (parsed.hostname or "").lower()
+    if not host:
+        raise ToolError(f"{field} has no host.", error_code="invalid_request")
+    if "*" in ART_HOSTS:
+        return
+    if not any(host == allowed or host.endswith("." + allowed)
+               for allowed in ART_HOSTS):
+        raise ToolError(
+            f"{host} is not an allowed artwork host. The Plex server would "
+            "have to download from it, so the list is configuration: set "
+            "PLEX_ART_HOSTS to add one, or '*' to allow any.",
+            error_code="invalid_request",
+            allowed_hosts=list(ART_HOSTS),
+        )
+
+
+@tool(
+    "List the posters and background art available for one item, plus what is "
+    "set now. An item with no candidates at all is not missing artwork - it is "
+    "unmatched, and list_match_candidates is the repair.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "query": s("Title, if you do not have a rating_key."),
+    },
+)
+def get_artwork(rating_key=None, query=None):
+    item = resolve_editable_item(rating_key, query)
+    posters, poster_error = artwork_candidates(item, "poster")
+    arts, art_error = artwork_candidates(item, "art")
+    out = {"ok": True, "rating_key": str(item.ratingKey),
+           "item": describe_item(item)["label"]}
+    out.update(artwork_state(item))
+    out["posters"] = posters
+    out["arts"] = arts
+    if poster_error:
+        out["poster_listing_error"] = poster_error
+    if art_error:
+        out["art_listing_error"] = art_error
+    if not posters and not out["has_poster"]:
+        out["note"] = (
+            "No poster set and no candidates offered. That is the signature of "
+            "an unmatched item - run list_match_candidates rather than "
+            "uploading a poster onto a record that is still wrong."
+        )
+    return out
+
+
+@tool(
+    "Set an item's poster, background art or clearlogo. Prefer the *_id form "
+    "with an id from get_artwork or find_alternate_art - those are candidates "
+    "Plex already holds. A URL makes the Plex server download from it, so only "
+    "hosts on the PLEX_ART_HOSTS allowlist are accepted. Writes nothing "
+    "without confirm=true, and reads the result back before reporting success.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "poster_id": s("id of a poster candidate."),
+        "art_id": s("id of a background candidate."),
+        "logo_id": s("id of a clearlogo candidate."),
+        "poster_url": s("URL of a poster, from find_alternate_art. Must be on "
+                        "the artwork host allowlist."),
+        "art_url": s("URL of a background image."),
+        "logo_url": s("URL of a clearlogo image."),
+        "lock": b("Lock the artwork so a later refresh cannot replace it.", True),
+        "dry_run": b("Report what would be set and change nothing.", False),
+        "confirm": b("Must be true for anything to be set.", False),
+    },
+    required=["rating_key"],
+)
+def set_artwork(rating_key=None, poster_id=None, art_id=None, logo_id=None,
+                poster_url=None, art_url=None, logo_url=None, lock=True,
+                dry_run=False, confirm=False):
+    if rating_key in (None, ""):
+        raise ToolError("rating_key is required.", error_code="invalid_request")
+
+    wanted = {}
+    for slot in ARTWORK_SLOTS:
+        chosen_id = {"poster": poster_id, "art": art_id, "logo": logo_id}[slot]
+        chosen_url = {"poster": poster_url, "art": art_url, "logo": logo_url}[slot]
+        if chosen_id and chosen_url:
+            raise ToolError(f"Pass {slot}_id or {slot}_url, not both.",
+                            error_code="invalid_request")
+        if chosen_url:
+            check_art_url(chosen_url, f"{slot}_url")
+            wanted[slot] = {"url": chosen_url}
+        elif chosen_id:
+            wanted[slot] = {"id": str(chosen_id)}
+    if not wanted:
+        raise ToolError(
+            "Nothing to set. Pass one of poster_id, poster_url, art_id, "
+            "art_url, logo_id or logo_url.",
+            error_code="invalid_request",
+        )
+
+    item = resolve_editable_item(rating_key=rating_key)
+    before = artwork_state(item)
+    label = describe_item(item)["label"]
+    plan = {f"{slot}_{'url' if 'url' in how else 'id'}": list(how.values())[0]
+            for slot, how in wanted.items()}
+
+    if dry_run or not confirm:
+        return {
+            "ok": True, "rating_key": str(item.ratingKey), "item": label,
+            "applied": False, "dry_run": True, "before": before, "plan": plan,
+            "note": ("dry_run was set, so nothing was changed." if dry_run else
+                     "Nothing was changed. Call again with confirm=true."),
+        }
+
+    def candidates(slot):
+        lister = getattr(item, ARTWORK_SLOTS[slot]["list"], None)
+        if lister is None:
+            raise ToolError(f"This item has no {slot} candidates to choose from.",
+                            error_code="not_found")
+        return lister()
+
+    # Selecting by id is a lookup against the live candidate list rather than a
+    # bare PUT, so an id that has gone stale is a named error instead of a
+    # silent no-op that still reports success.
+    def select(slot, wanted_id):
+        pool = candidates(slot)
+        for entry in pool:
+            if str(getattr(entry, "ratingKey", "")) == wanted_id:
+                entry.select()
+                return
+        raise ToolError(
+            f"No {slot} with id {wanted_id!r} is offered for this item. "
+            "Re-read get_artwork - the candidate list changes when an item is "
+            "rematched.",
+            error_code="not_found",
+            available=[str(getattr(e, "ratingKey", "")) for e in pool[:ARTWORK_LIMIT]],
+        )
+
+    try:
+        for slot, how in wanted.items():
+            if "id" in how:
+                select(slot, how["id"])
+            else:
+                getattr(item, ARTWORK_SLOTS[slot]["upload"])(url=how["url"])
+        if lock:
+            item.edit(**{f"{ARTWORK_SLOTS[slot]['lock']}.locked": 1
+                         for slot in wanted})
+    except ToolError:
+        raise
+    except Exception as exc:
+        raise ToolError(f"Plex rejected the artwork change: "
+                        f"{type(exc).__name__}: {exc}",
+                        error_code="plex_rejected",
+                        rating_key=str(item.ratingKey))
+
+    invalidate_library_cache()
+    try:
+        item.reload()
+    except Exception as exc:
+        raise ToolError(f"Readback failed: {exc}",
+                        error_code="readback_mismatch",
+                        rating_key=str(item.ratingKey))
+    after = artwork_state(item)
+
+    mismatches = []
+    for slot, how in wanted.items():
+        if "id" in how:
+            # The precise check: the candidate list should now mark that id
+            # chosen. An upload has nothing to compare against, so it is only
+            # ever "changed and non-empty", and the note below says so.
+            try:
+                chosen = [e for e in candidates(slot)
+                          if getattr(e, "selected", False)
+                          and str(getattr(e, "ratingKey", "")) == how["id"]]
+            except ToolError:
+                chosen = []
+            if not chosen:
+                mismatches.append({"field": slot, "requested": how["id"],
+                                   "live": "not marked selected"})
+        elif not after[f"has_{slot}"] or after[slot] == before[slot]:
+            mismatches.append({"field": slot, "requested": how["url"],
+                               "live": after[slot]})
+
+    log(f"set_artwork rating_key={item.ratingKey} set={sorted(plan)} "
+        f"verified={not mismatches}")
+    result = {
+        "ok": not mismatches, "rating_key": str(item.ratingKey), "item": label,
+        "applied": True, "verified": not mismatches, "plan": plan,
+        "before": before, "after": after,
+    }
+    if mismatches:
+        result["error_code"] = "readback_mismatch"
+        result["error"] = "The artwork change did not read back."
+        result["mismatches"] = mismatches
+    elif any("url" in how for how in wanted.values()):
+        result["note"] = (
+            "Uploaded artwork is verified only as 'changed and non-empty' - "
+            "Plex stores it under its own key, so there is nothing to compare "
+            "against the source URL. Look at it before calling it correct."
+        )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Alternate artwork
+#
+# Plex's own agent offers a handful of posters per film and picks one. There
+# are usually dozens: every international release, every textless variant, and
+# on fanart.tv a whole layer of community-made art that no metadata agent ships.
+#
+# This reads them. Two sources, both proper APIs with free keys, neither of
+# them scraped:
+#
+#   TMDB /movie/{id}/images - every poster, backdrop and logo the database
+#   holds, in every language, with the sizes and the vote counts.
+#
+#   fanart.tv - community-curated alternates. This is where the interesting
+#   art is: textless posters, clearlogos, disc art, the stuff that exists
+#   because somebody made it rather than because a studio shipped it.
+#
+# Scraping IMP Awards or MoviePosterDB would mean parsing HTML nobody promised
+# to keep stable, against terms that do not permit it, and then hotlinking
+# images off a server that pays to serve them. Both APIs below give the same
+# posters, keyed and versioned, for free.
+#
+# Neither key is required. Without them this still reports what Plex already
+# has, which on a matched film is more than most people realise.
+# ---------------------------------------------------------------------------
+
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+FANART_API_KEY = os.environ.get("FANART_API_KEY", "")
+
+# Hosts set_artwork will download from. A URL is chosen by a model and fetched
+# by the media server, so the set of hosts that can reach it is configuration
+# and not something the model gets to decide. "*" turns the check off.
+ART_HOSTS = [h.strip().lower() for h in os.environ.get(
+    "PLEX_ART_HOSTS", "image.tmdb.org,assets.fanart.tv").split(",") if h.strip()]
+
+TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/original"
+ART_HTTP_TIMEOUT = 10
+
+# Our name -> (TMDB images key, fanart.tv keys). fanart splits logos by
+# resolution and keeps the old low-res set under a separate name, so both are
+# read and the HD one sorts first.
+ART_KINDS = {
+    "poster": ("posters", ("movieposter",)),
+    "background": ("backdrops", ("moviebackground",)),
+    "logo": ("logos", ("hdmovielogo", "movielogo")),
+}
+
+
+def http_json(url, headers=None, timeout=ART_HTTP_TIMEOUT):
+    """GET some JSON, or raise something with the service's name in it."""
+    request = urllib.request.Request(url, headers=headers or {})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def external_ids(item):
+    """The item's ids at TMDB, IMDB and TVDB, whichever agent matched it.
+
+    The modern Plex agent stores plex:// as the primary guid and hangs the real
+    external ids off <Guid> children; the legacy agents put one of them in the
+    guid itself. Both shapes are read, because a library that has been running
+    for years contains both and the one you cannot read is the one you need.
+    """
+    found = {}
+    for entry in (getattr(item, "guids", None) or []):
+        raw = text(getattr(entry, "id", ""))
+        if "://" in raw:
+            source, _, value = raw.partition("://")
+            value = value.split("?")[0].strip()
+            if value:
+                found.setdefault(source.strip().lower(), value)
+    legacy = text(getattr(item, "guid", ""))
+    match = re.search(r"agents\.(imdb|themoviedb|thetvdb)://([^?/]+)", legacy)
+    if match:
+        source = {"themoviedb": "tmdb", "thetvdb": "tvdb"}.get(match.group(1),
+                                                               match.group(1))
+        found.setdefault(source, match.group(2))
+    return found
+
+
+def tmdb_headers_and_key(base_url):
+    """TMDB takes a v3 key in the query or a v4 token in a header."""
+    if TMDB_API_KEY.startswith("ey"):  # v4 tokens are JWTs
+        return base_url, {"Authorization": f"Bearer {TMDB_API_KEY}"}
+    joiner = "&" if "?" in base_url else "?"
+    return f"{base_url}{joiner}api_key={TMDB_API_KEY}", {}
+
+
+def tmdb_movie_id(ids):
+    """A TMDB id, looked up from IMDB if that is all the item carries."""
+    if ids.get("tmdb"):
+        return ids["tmdb"], None
+    if not ids.get("imdb"):
+        return None, "the item has neither a TMDB nor an IMDB id"
+    url, headers = tmdb_headers_and_key(
+        f"https://api.themoviedb.org/3/find/{ids['imdb']}"
+        "?external_source=imdb_id")
+    try:
+        results = http_json(url, headers).get("movie_results") or []
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+    if not results:
+        return None, f"TMDB knows no movie for {ids['imdb']}"
+    return str(results[0].get("id")), None
+
+
+def tmdb_art(ids, kind):
+    if not TMDB_API_KEY:
+        return [], "TMDB_API_KEY is not set"
+    movie_id, problem = tmdb_movie_id(ids)
+    if not movie_id:
+        return [], problem
+    # include_image_language=null keeps the textless variants, which are the
+    # ones worth having and the ones a language filter would otherwise drop.
+    url, headers = tmdb_headers_and_key(
+        f"https://api.themoviedb.org/3/movie/{movie_id}/images"
+        "?include_image_language=en,null")
+    try:
+        payload = http_json(url, headers)
+    except Exception as exc:
+        return [], f"{type(exc).__name__}: {exc}"
+
+    out = []
+    for entry in (payload.get(ART_KINDS[kind][0]) or []):
+        path = entry.get("file_path")
+        if not path:
+            continue
+        out.append({
+            "source": "tmdb",
+            "kind": kind,
+            "url": TMDB_IMAGE_BASE + path,
+            "language": entry.get("iso_639_1") or "textless",
+            "size": f"{entry.get('width')}x{entry.get('height')}",
+            "score": round(float(entry.get("vote_average") or 0), 2),
+            "votes": entry.get("vote_count"),
+        })
+    out.sort(key=lambda d: (-(d["score"] or 0), -(d["votes"] or 0)))
+    return out, None
+
+
+def fanart_art(ids, kind):
+    if not FANART_API_KEY:
+        return [], "FANART_API_KEY is not set"
+    key = ids.get("tmdb") or ids.get("imdb")
+    if not key:
+        return [], "the item has neither a TMDB nor an IMDB id"
+    try:
+        payload = http_json(
+            f"https://webservice.fanart.tv/v3/movies/{key}"
+            f"?api_key={urllib.parse.quote(FANART_API_KEY)}")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return [], "fanart.tv has nothing for this film"
+        return [], f"HTTP {exc.code}"
+    except Exception as exc:
+        return [], f"{type(exc).__name__}: {exc}"
+
+    out = []
+    for rank, group in enumerate(ART_KINDS[kind][1]):
+        for entry in (payload.get(group) or []):
+            url = entry.get("url")
+            if not url:
+                continue
+            language = text(entry.get("lang")).strip()
+            out.append({
+                "source": "fanart",
+                "kind": kind,
+                "url": url,
+                "language": "textless" if language in ("", "00") else language,
+                "likes": int(entry.get("likes") or 0),
+                "variant": group,
+                "_rank": rank,
+            })
+    out.sort(key=lambda d: (d.pop("_rank"), -d["likes"]))
+    return out, None
+
+
+def plex_art(item, kind):
+    """What the item's own agent already offers. Free, and usually ignored."""
+    try:
+        if kind == "poster":
+            found = item.posters()
+        elif kind == "background":
+            found = item.arts()
+        elif hasattr(item, "logos"):
+            found = item.logos()
+        else:
+            return [], "this plexapi does not expose logos"
+    except Exception as exc:
+        return [], f"{type(exc).__name__}: {exc}"
+    return [{
+        "source": "plex",
+        "kind": kind,
+        "id": getattr(entry, "ratingKey", None),
+        "provider": getattr(entry, "provider", None) or "agent",
+        "selected": bool(getattr(entry, "selected", False)),
+        "preview": strip_token(getattr(entry, "thumb", None)),
+    } for entry in found], None
+
+
+@tool(
+    "Find alternate artwork for one item - every poster, background or "
+    "clearlogo available, not just the one Plex picked. Reads three sources: "
+    "the item's own agent, TMDB (every language plus textless variants) and "
+    "fanart.tv (community-made alternates). Returns candidates and changes "
+    "nothing; apply one with set_artwork, using poster_id for a Plex candidate "
+    "and poster_url for an external one.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "query": s("Title, if you do not have a rating_key."),
+        "kind": s("poster, background or logo. Default poster.", "poster"),
+        "language": s("Two-letter code, or 'textless' for art with no title on "
+                      "it. Default: everything."),
+        "source": s("plex, tmdb, fanart or all. Default all.", "all"),
+        "limit": i("Candidates per source. Default 10.", 10),
+    },
+)
+def find_alternate_art(rating_key=None, query=None, kind="poster",
+                       language=None, source="all", limit=10):
+    kind = text(kind, "poster").strip().lower()
+    if kind in ("art", "background", "backdrop", "fanart"):
+        kind = "background"
+    if kind not in ART_KINDS:
+        raise ToolError(f"Unknown kind {kind!r}.", error_code="invalid_request",
+                        valid_kinds=list(ART_KINDS))
+    source = text(source, "all").strip().lower()
+    valid_sources = ("all", "plex", "tmdb", "fanart")
+    if source not in valid_sources:
+        raise ToolError(f"Unknown source {source!r}.",
+                        error_code="invalid_request", valid_sources=list(valid_sources))
+    limit = max(1, int(limit or 10))
+    want_language = text(language).strip().lower() or None
+
+    item = resolve_editable_item(rating_key, query)
+    ids = external_ids(item)
+    candidates, unavailable = [], {}
+
+    for name, fetch in (("plex", lambda: plex_art(item, kind)),
+                        ("tmdb", lambda: tmdb_art(ids, kind)),
+                        ("fanart", lambda: fanart_art(ids, kind))):
+        if source not in ("all", name):
+            continue
+        found, problem = fetch()
+        if problem:
+            unavailable[name] = problem
+            log(f"find_alternate_art {name} unavailable: {problem}")
+        if want_language:
+            found = [c for c in found
+                     if c.get("language", "").lower() == want_language]
+        candidates.extend(found[:limit])
+
+    out = {
+        "ok": True,
+        "rating_key": str(item.ratingKey),
+        "item": describe_item(item)["label"],
+        "kind": kind,
+        "external_ids": ids,
+        "candidates": candidates,
+        "count": len(candidates),
+        "current": artwork_state(item),
+    }
+    if unavailable:
+        out["unavailable"] = unavailable
+    if not ids:
+        out["note"] = (
+            "This item carries no external id, which means it is unmatched - "
+            "so TMDB and fanart.tv cannot be asked about it. Run fix_match "
+            "first and the artwork usually arrives on its own."
+        )
+    elif not candidates:
+        out["note"] = (
+            "No candidates from any source that answered. Check 'unavailable' "
+            "before concluding the art does not exist."
+        )
+    else:
+        out["note"] = (
+            "Apply a plex candidate with set_artwork poster_id=<id>, and a "
+            "tmdb or fanart one with poster_url=<url>. 'textless' art carries "
+            "no title, which is what you want when Plex draws the title itself."
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Matching
+#
+# The repair that update_item_metadata is not. An item whose title is
+# "The Entity Horror" with no poster is usually not a record with three wrong
+# fields - it is a file Plex never matched to anything, so editing the title
+# and adding a genre leaves a correctly labelled record that still has no
+# summary, no cast, no ratings and no artwork.
+#
+# fix_match re-binds the file to the right provider entry and every one of
+# those arrives at once. So the order for a broken item is: match it, see what
+# landed, correct the residue, lock that. Not the other way round - locked
+# fields are exactly what a rematch cannot overwrite, which is why unlocking is
+# a tool of its own and why fix_match will tell you when locks are in its way.
+# ---------------------------------------------------------------------------
+
+MATCH_WAIT_SECONDS = 12
+
+
+def is_unmatched(item):
+    guid = text(getattr(item, "guid", "")).strip()
+    return not guid or guid.startswith("local://") or "agents.none" in guid
+
+
+@tool(
+    "Ask Plex's metadata agent what this file might actually be. Returns "
+    "candidate matches with name, year and score - it does not change "
+    "anything. Use it on an item whose title looks like a filename, or that "
+    "has no poster and no artwork candidates. Pass title/year to search for "
+    "something other than what the item currently claims to be.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "query": s("Title, if you do not have a rating_key."),
+        "title": s("Search under this title instead of the item's current one. "
+                   "This is the one that matters for a mangled title."),
+        "year": i("Search under this year instead of the item's current one."),
+        "agent": s("Metadata agent to ask, e.g. themoviedb, imdb, thetvdb. "
+                   "Defaults to the library's own agent."),
+    },
+)
+def list_match_candidates(rating_key=None, query=None, title=None, year=None,
+                          agent=None):
+    item = resolve_editable_item(rating_key, query)
+    kwargs = {}
+    if title is not None:
+        kwargs["title"] = text(title).strip()
+    if year is not None:
+        kwargs["year"] = int(year)
+    if agent:
+        kwargs["agent"] = text(agent).strip()
+    try:
+        found = item.matches(**kwargs) if kwargs else item.matches()
+    except Exception as exc:
+        raise ToolError(f"Plex could not search for matches: "
+                        f"{type(exc).__name__}: {exc}",
+                        error_code="plex_rejected",
+                        rating_key=str(item.ratingKey))
+
+    candidates = [{
+        "guid": getattr(m, "guid", None),
+        "name": getattr(m, "name", None),
+        "year": getattr(m, "year", None),
+        "score": getattr(m, "score", None),
+    } for m in found[:10] if getattr(m, "guid", None)]
+
+    current = metadata_snapshot(item)
+    out = {
+        "ok": True,
+        "rating_key": str(item.ratingKey),
+        "item": describe_item(item)["label"],
+        "currently_unmatched": is_unmatched(item),
+        "current_guid": getattr(item, "guid", None),
+        "current": {k: current[k] for k in ("title", "year", "genres", "summary")},
+        "files": [os.path.basename(p["file"] or "") for p in media_parts(item)],
+        "locked_fields": current["locked_fields"],
+        "candidates": candidates,
+    }
+    if not candidates:
+        out["note"] = (
+            "No candidates. The agent found nothing under that title - try "
+            "list_match_candidates again with an explicit title= and year= for "
+            "what you believe the film actually is."
+        )
+    if current["locked_fields"]:
+        out["warning"] = (
+            "Locked fields will survive a rematch unchanged: "
+            f"{', '.join(current['locked_fields'])}. Unlock them with "
+            "unlock_metadata_fields first if the rematch is meant to replace "
+            "them."
+        )
+    return out
+
+
+@tool(
+    "Re-bind an item to the provider entry you picked from "
+    "list_match_candidates. This replaces title, year, summary, genres, cast "
+    "and artwork in one operation, which is the right repair for an unmatched "
+    "or wrongly matched file - and a destructive one for a record someone "
+    "already corrected by hand. Writes nothing without confirm=true.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "guid": s("guid of the chosen candidate from list_match_candidates."),
+        "unlock_first": b("Unlock every locked field so the new match can "
+                          "replace it. Without this, locked fields keep their "
+                          "current values and the rematch looks like it half "
+                          "worked.", False),
+        "dry_run": b("Report what would happen and change nothing.", False),
+        "confirm": b("Must be true for the match to be applied.", False),
+    },
+    required=["rating_key", "guid"],
+)
+def fix_match(rating_key=None, guid=None, unlock_first=False, dry_run=False,
+              confirm=False):
+    if rating_key in (None, "") or not text(guid).strip():
+        raise ToolError("rating_key and guid are both required.",
+                        error_code="invalid_request")
+    item = resolve_editable_item(rating_key=rating_key)
+    before = metadata_snapshot(item)
+    before_art = artwork_state(item)
+    before_guid = text(getattr(item, "guid", ""))
+    label = describe_item(item)["label"]
+    wanted = text(guid).strip()
+
+    # Resolve the guid against a live candidate list rather than trusting it.
+    # A guid invented or carried over from another item would otherwise be a
+    # PUT that Plex accepts and quietly does nothing with.
+    try:
+        found = item.matches()
+        chosen = next((m for m in found
+                       if text(getattr(m, "guid", "")) == wanted), None)
+        if chosen is None and before.get("title"):
+            found = item.matches(title=before["title"], year=before.get("year"))
+            chosen = next((m for m in found
+                           if text(getattr(m, "guid", "")) == wanted), None)
+    except Exception as exc:
+        raise ToolError(f"Plex could not search for matches: "
+                        f"{type(exc).__name__}: {exc}",
+                        error_code="plex_rejected")
+    if chosen is None:
+        raise ToolError(
+            f"guid {wanted!r} is not among the candidates Plex offers for this "
+            "item. Re-run list_match_candidates - candidates depend on the "
+            "title and year you searched under.",
+            error_code="not_found",
+            rating_key=str(item.ratingKey),
+            available=[{"guid": getattr(m, "guid", None),
+                        "name": getattr(m, "name", None),
+                        "year": getattr(m, "year", None)} for m in found[:10]],
+        )
+
+    target = {"guid": wanted, "name": getattr(chosen, "name", None),
+              "year": getattr(chosen, "year", None),
+              "score": getattr(chosen, "score", None)}
+
+    if dry_run or not confirm:
+        out = {
+            "ok": True, "rating_key": str(item.ratingKey), "item": label,
+            "applied": False, "dry_run": True, "before": before,
+            "before_artwork": before_art, "match": target,
+            "note": ("dry_run was set, so nothing was changed." if dry_run else
+                     "Nothing was changed. Call again with confirm=true."),
+        }
+        if before["locked_fields"] and not unlock_first:
+            out["warning"] = (
+                "These fields are locked and will NOT be replaced by the "
+                f"match: {', '.join(before['locked_fields'])}. Pass "
+                "unlock_first=true if the match is meant to own them."
+            )
+        return out
+
+    try:
+        if unlock_first and before["locked_fields"]:
+            item.edit(**{f"{name}.locked": 0 for name in before["locked_fields"]})
+        item.fixMatch(searchResult=chosen)
+    except Exception as exc:
+        raise ToolError(f"Plex rejected the match: {type(exc).__name__}: {exc}",
+                        error_code="plex_rejected",
+                        rating_key=str(item.ratingKey), attempted=target)
+
+    # Plex applies a match asynchronously. Reporting the pre-match record as
+    # the result is the obvious way to get this wrong, so wait for the guid to
+    # actually turn over before reading anything else.
+    settled, after = False, before
+    deadline = time.time() + MATCH_WAIT_SECONDS
+    while time.time() < deadline:
+        time.sleep(1)
+        try:
+            item.reload()
+        except Exception:
+            continue
+        if text(getattr(item, "guid", "")) != before_guid and not is_unmatched(item):
+            settled = True
+            break
+    try:
+        item.reload()
+    except Exception:
+        pass
+    after = metadata_snapshot(item)
+    after_art = artwork_state(item)
+    invalidate_library_cache()
+
+    log(f"fix_match rating_key={item.ratingKey} guid={wanted} "
+        f"settled={settled}")
+    result = {
+        "ok": settled,
+        "rating_key": str(item.ratingKey),
+        "item": label,
+        "applied": True,
+        "verified": settled,
+        "match": target,
+        "before": before,
+        "after": after,
+        "before_artwork": before_art,
+        "after_artwork": after_art,
+        "guid_before": before_guid,
+        "guid_after": getattr(item, "guid", None),
+    }
+    if not settled:
+        result["error_code"] = "readback_mismatch"
+        result["error"] = (
+            f"The match was accepted but the item still reads as "
+            f"{before_guid or 'unmatched'} after {MATCH_WAIT_SECONDS}s. Plex "
+            "may still be working; re-read with get_item_metadata before "
+            "retrying, and do not apply the match twice."
+        )
+    elif not after_art["has_poster"]:
+        result["note"] = (
+            "Matched, but still no poster. Check get_artwork - the agent may "
+            "offer candidates that were not auto-selected."
+        )
+    return result
+
+
+@tool(
+    "Unlock metadata fields so a refresh or a rematch can replace them. The "
+    "counterpart to the automatic locking update_item_metadata does - use it "
+    "when a correction turns out to be wrong and the provider should own the "
+    "field again.",
+    {
+        "rating_key": s("rating_key of the item."),
+        "fields": {"type": "array", "items": {"type": "string"},
+                   "description": "Plex field names to unlock, as reported in "
+                                  "locked_fields, e.g. ['title','genre']. "
+                                  "Omit to unlock every locked field."},
+        "dry_run": b("Report what would be unlocked and change nothing.", False),
+        "confirm": b("Must be true for anything to be unlocked.", False),
+    },
+    required=["rating_key"],
+)
+def unlock_metadata_fields(rating_key=None, fields=None, dry_run=False,
+                           confirm=False):
+    if rating_key in (None, ""):
+        raise ToolError("rating_key is required.", error_code="invalid_request")
+    item = resolve_editable_item(rating_key=rating_key)
+    locked = locked_fields(item)
+    wanted = normalize_tag_list(fields, "fields") if fields is not None else list(locked)
+    unknown = [f for f in wanted if f not in locked]
+    target = [f for f in wanted if f in locked]
+    label = describe_item(item)["label"]
+
+    if not target:
+        return {"ok": True, "rating_key": str(item.ratingKey), "item": label,
+                "applied": False, "locked_fields": locked,
+                "note": ("Nothing to unlock." if not unknown else
+                         f"None of {unknown} are locked on this item."),
+                "not_locked": unknown}
+
+    if dry_run or not confirm:
+        return {"ok": True, "rating_key": str(item.ratingKey), "item": label,
+                "applied": False, "dry_run": True, "would_unlock": target,
+                "locked_fields": locked, "not_locked": unknown,
+                "note": ("dry_run was set, so nothing was changed." if dry_run
+                         else "Nothing was changed. Call again with confirm=true.")}
+
+    try:
+        item.edit(**{f"{name}.locked": 0 for name in target})
+    except Exception as exc:
+        raise ToolError(f"Plex rejected the unlock: {type(exc).__name__}: {exc}",
+                        error_code="plex_rejected")
+    invalidate_library_cache()
+    try:
+        item.reload()
+    except Exception:
+        pass
+    still = locked_fields(item)
+    remaining = [f for f in target if f in still]
+    log(f"unlock_metadata_fields rating_key={item.ratingKey} "
+        f"fields={target} verified={not remaining}")
+    out = {"ok": not remaining, "rating_key": str(item.ratingKey), "item": label,
+           "applied": True, "verified": not remaining, "unlocked": target,
+           "locked_fields": still, "not_locked": unknown}
+    if remaining:
+        out["error_code"] = "readback_mismatch"
+        out["error"] = f"Still locked after the write: {remaining}"
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Auditing
+#
+# find_gaps answers "what is obviously absent" - no year, no genres, no
+# summary, a title full of release tags. It was built for files nobody matched
+# and it finds those. It does not find the case this section exists for: an
+# item that has a year and a summary and a plausible-looking title, and is
+# still wrong.
+#
+# "The Entity Horror (1982)" trips none of find_gaps' checks. Neither does
+# "L'occhio Che Uccide Peeping Tom" or "I 13 Spettri Thir13en Ghosts". They are
+# all the same underlying failure - a filename that was never matched, so its
+# title is whatever the file was called - but the tell is not release-group
+# debris. It is a foreign release title welded to the English one, a stripped
+# apostrophe, a genre word on the end, leetspeak from a stylised poster.
+#
+# Every check here reports a reason and a confidence and nothing else. None of
+# them decides what a film is; that judgement needs to know what films exist,
+# which is the agent's job and not this server's. What this does is turn 500
+# items into the 30 worth looking at, with the filename attached, because the
+# filename is usually the only honest identifier a broken item still has.
+# ---------------------------------------------------------------------------
+
+# Release-group debris. Only ever in a title Plex took from a filename.
+FILENAME_DEBRIS = re.compile(
+    r"\b(2160p|1080p|720p|480p|x264|x265|h ?264|h ?265|hevc|bluray|blu ray|"
+    r"brrip|bdrip|webrip|web dl|hdtv|dvdrip|xvid|divx|aac|ac3|dts|remux|"
+    r"proper|repack|extended cut|uncut|unrated)\b", re.I)
+
+# "a k a" survives the punctuation folding that turns "a.k.a." into it.
+ALIAS_MARKER = re.compile(r"\b(a k a|aka|alias)\b", re.I)
+
+# A bare genre on the end is a filing convention, never a title: nobody
+# released a film called "The Entity Horror".
+GENRE_SUFFIX = re.compile(
+    r"\b(horror|thriller|comedy|drama|action|western|sci fi|scifi|fantasy|"
+    r"mystery|romance|documentary|animation|crime|war|musical|noir)$", re.I)
+
+# A foreign article that kept its apostrophe or lost it to filename sanitising:
+# "L'occhio" and "L Ultimo" are the same tell, so both fold to "l occhio". Two
+# details are load-bearing: the leading boundary, or this matches the "l h"
+# inside "Angel Heart", and the two-letter minimum on what follows, or it
+# matches the "l a" in "L.A. Confidential".
+STRIPPED_APOSTROPHE = re.compile(
+    r"(?:^|\s)(l|d|dell|nell|all|sull|dall)\s+[a-z]{2,}", re.I)
+
+# A digit inside a word - "Thir13en", "Se7en" - is poster styling that a
+# filename kept and a metadata agent would not. Weak on its own: Se7en is a
+# real title, so this only counts alongside something else.
+LEETSPEAK = re.compile(r"[a-z]\d+[a-z]", re.I)
+
+# Function words that are not also English words. Two or more of these next to
+# English is a bilingual smash-up. Single letters and anything that collides
+# with English ("a", "an", "i", "die", "con", "am", "as") are deliberately
+# absent - a false positive here costs a human a read of something that was
+# fine, and there is no shortage of real titles in other languages.
+FOREIGN_FUNCTION_WORDS = frozenset("""
+    il lo la gli della delle degli del dei di da dal dalla al alla allo ai agli
+    sul sulla col nel nella nei che una uno questo questa sono per non tra fra
+    el los las unos unas por que
+    le les une des du dans pour avec qui au aux chez sans sous
+    der das den dem eine einen und mit von fur zum zur auf aus teufels
+    um uma dos nao
+""".split())
+
+
+def fold_title(title):
+    """Lowercase, accent-free, punctuation-as-space.
+
+    Apostrophes become spaces rather than vanishing, so "L'occhio Che Uccide"
+    and "L Ultimo Esorcismo" present the stranded article the same way. Folding
+    the apostrophe away instead - which is what normalize_spoken does, and what
+    it should do for a room name - hides the single clearest sign that a title
+    came out of a filename.
+    """
+    folded = unicodedata.normalize("NFKD", text(title))
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", " ", folded.lower()).strip()
+
+
+def suspect_title(title):
+    """Why this title looks like a filename rather than a film. Reasons only.
+
+    Returns (reasons, confidence). Nothing here identifies the film - that
+    needs knowing what films exist, which is the agent's job. This narrows a
+    library to the titles worth a human read and says why each earned the look.
+
+    Reasons come in two weights. A strong one stands alone; a weak one needs
+    company, because every weak signal here has a real film behind it - Se7en
+    has a digit inside a word, "Dr. Strangelove or: How I Learned to Stop
+    Worrying and Love the Bomb" is thirteen words, and flagging either teaches
+    an agent to distrust the whole sweep.
+
+    Deliberately absent: comparing the title to the filename. A correctly
+    matched film very often sits in a file named after it, so agreement there
+    means nothing at all.
+    """
+    raw = text(title).strip()
+    if not raw:
+        return ["no title at all"], "high"
+    folded = fold_title(raw)
+    strong, weak = [], []
+
+    if FILENAME_DEBRIS.search(folded):
+        strong.append("carries release tags a real title never has")
+    if ALIAS_MARKER.search(folded):
+        strong.append("carries an alias marker - two titles welded together")
+    if STRIPPED_APOSTROPHE.search(folded):
+        strong.append("a stranded foreign article, apostrophe folded away by a "
+                      "filename")
+    if GENRE_SUFFIX.search(folded):
+        strong.append("ends in a bare genre name, which is a filing convention "
+                      "rather than a title")
+
+    # Two of these is a bilingual smash-up. One is "La Dolce Vita" - a real
+    # title in one language - so it only counts alongside something else.
+    foreign = [w for w in folded.split() if w in FOREIGN_FUNCTION_WORDS]
+    if len(foreign) >= 2:
+        strong.append(f"foreign function words ({', '.join(foreign[:4])}) "
+                      "alongside English - a release title and its translation "
+                      "in one string")
+    elif foreign:
+        weak.append(f"a foreign function word ({foreign[0]})")
+
+    if LEETSPEAK.search(raw):
+        weak.append("a digit inside a word - poster styling a filename kept")
+    numerals = re.findall(r"\d+", folded)
+    if len(numerals) > len(set(numerals)):
+        weak.append("the same number twice, which is how a title and its "
+                    "translation read when both are present")
+    words = folded.split()
+    if len(words) >= 8:
+        weak.append(f"{len(words)} words, long enough to be two titles")
+
+    if strong:
+        return strong + weak, "high"
+    if len(weak) >= 2:
+        return weak, "medium"
+    return [], None
+
+
+AUDIT_CHECKS = ("artwork", "title", "match", "fields", "labels")
+AUDIT_LIMIT = 100
+
+
+@tool(
+    "Sweep a library for items that need fixing and report why, without "
+    "changing anything. Finds what find_gaps cannot: missing posters, titles "
+    "that are really filenames (a foreign title welded to the English one, a "
+    "stripped apostrophe, a genre word on the end), unmatched files, and items "
+    "missing the label a filter depends on. Returns the filename with each "
+    "finding, because on a broken item that is the only honest identifier "
+    "left. Identifying the actual film is your job, not this tool's.",
+    {
+        "library": s("Restrict to one library. Default: every library."),
+        "checks": {"type": "array", "items": {"type": "string"},
+                   "description": "Any of artwork, title, match, fields, "
+                                  "labels. Default: all but labels."},
+        "require_label": s("Label that should be present, e.g. 'Horror "
+                           "Marathon'. Enables the labels check."),
+        "when_genre": s("Only require that label on items carrying this genre, "
+                        "e.g. 'Horror'. Without it the label is required on "
+                        "everything in scope."),
+        "limit": i("Findings to return. Default 100.", 100),
+        "offset": i("Skip this many findings, for paging a long sweep.", 0),
+    },
+)
+def audit_library(library=None, checks=None, require_label=None,
+                  when_genre=None, limit=100, offset=0):
+    wanted = [c.lower() for c in normalize_tag_list(checks, "checks")] \
+        if checks is not None else ["artwork", "title", "match", "fields"]
+    if require_label and "labels" not in wanted:
+        wanted.append("labels")
+    unknown = [c for c in wanted if c not in AUDIT_CHECKS]
+    if unknown:
+        raise ToolError(f"Unknown checks {unknown}.",
+                        error_code="invalid_request", valid_checks=list(AUDIT_CHECKS))
+    if "labels" in wanted and not require_label:
+        raise ToolError("The labels check needs require_label.",
+                        error_code="invalid_request")
+
+    limit = max(1, int(limit or AUDIT_LIMIT))
+    offset = max(0, int(offset or 0))
+    want_label = text(require_label).strip().lower()
+    want_genre = text(when_genre).strip().lower()
+
+    findings, scanned, degraded_total = [], 0, 0
+    for section in resolve_sections(library):
+        if section.type not in ("movie", "show"):
+            continue
+        items, degraded = section_items(section, enriched=True)
+        degraded_total += degraded
+        for item in items:
+            scanned += 1
+            problems, confidence = [], None
+            genres = [g.tag for g in (getattr(item, "genres", None) or [])]
+            labels = [l.tag for l in (getattr(item, "labels", None) or [])]
+            parts = media_parts(item)
+            filename = os.path.basename(parts[0]["file"] or "") if parts else None
+
+            if "artwork" in wanted:
+                if not getattr(item, "thumb", None):
+                    problems.append("no poster")
+                if not getattr(item, "art", None):
+                    problems.append("no background art")
+            if "match" in wanted and is_unmatched(item):
+                problems.append("never matched to a provider entry")
+                confidence = "high"
+            if "title" in wanted:
+                reasons, level = suspect_title(getattr(item, "title", ""))
+                problems.extend(reasons)
+                if level == "high" or confidence == "high":
+                    confidence = "high"
+                elif level:
+                    confidence = confidence or level
+            if "fields" in wanted:
+                if not getattr(item, "year", None):
+                    problems.append("no year")
+                if not genres:
+                    problems.append("no genres")
+                if not getattr(item, "summary", None):
+                    problems.append("no summary")
+            if "labels" in wanted:
+                in_scope = not want_genre or want_genre in [g.lower() for g in genres]
+                if in_scope and want_label not in [l.lower() for l in labels]:
+                    problems.append(f"missing the {require_label!r} label")
+
+            if problems:
+                findings.append({
+                    "rating_key": str(item.ratingKey),
+                    "title": getattr(item, "title", None),
+                    "year": getattr(item, "year", None),
+                    "library": section.title,
+                    "file": filename,
+                    "genres": genres,
+                    "labels": labels,
+                    "has_poster": bool(getattr(item, "thumb", None)),
+                    "guid": getattr(item, "guid", None),
+                    "problems": problems,
+                    "confidence": confidence or "low",
+                })
+
+    order = {"high": 0, "medium": 1, "low": 2}
+    findings.sort(key=lambda f: (order.get(f["confidence"], 3),
+                                 -len(f["problems"]), f["title"] or ""))
+    counts = Counter(p for f in findings for p in f["problems"])
+    page = findings[offset:offset + limit]
+
+    out = {
+        "ok": True,
+        "checks": wanted,
+        "scanned": scanned,
+        "finding_count": len(findings),
+        "by_problem": dict(counts.most_common()),
+        "by_confidence": dict(Counter(f["confidence"] for f in findings)),
+        "findings": page,
+        "returned": len(page),
+        "hint": (
+            "High confidence usually means unmatched: run list_match_candidates "
+            "and fix_match, which restores title, year, summary, genres and "
+            "artwork together. Save update_item_metadata for what a rematch "
+            "cannot know - a deliberate label, a genre the provider gets wrong."
+        ),
+    }
+    if offset + limit < len(findings):
+        out["next_offset"] = offset + limit
+    if degraded_total:
+        out["degraded"] = (
+            f"{degraded_total} items fell back to truncated listing data; their "
+            "genres and labels may be incomplete."
+        )
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Review documents
+#
+# Identifying "The Entity Horror" as The Entity (1982) is a judgement, and
+# judgements at library scale want a human read before they are committed. This
+# renders the sweep and whatever the agent proposes into one markdown file, so
+# the pass is: audit, propose, write, someone reads it, confirmed batch.
+#
+# Writes land under PLEX_REVIEW_DIR and nowhere else. A media server has no
+# business taking an arbitrary path from a model.
+# ---------------------------------------------------------------------------
+
+
+def review_dir():
+    path = os.environ.get("PLEX_REVIEW_DIR") or os.path.join(
+        os.path.expanduser("~"), "plex-reviews")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def safe_review_name(name):
+    base = os.path.basename(text(name).strip() or "review")
+    base = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip("-.") or "review"
+    if not base.lower().endswith(".md"):
+        base += ".md"
+    return base
+
+
+def render_row(entry):
+    """One proposal as a markdown block: what is there now, what is proposed."""
+    lines = []
+    title = entry.get("title") or entry.get("rating_key") or "(untitled)"
+    year = entry.get("year")
+    lines.append(f"### {title}{f' ({year})' if year else ''}")
+    lines.append("")
+    lines.append(f"- **rating_key** `{entry.get('rating_key', '?')}`")
+    if entry.get("file"):
+        lines.append(f"- **file** `{entry['file']}`")
+    if entry.get("problems"):
+        lines.append("- **detected**")
+        for problem in entry["problems"]:
+            lines.append(f"  - {problem}")
+    if entry.get("confidence"):
+        lines.append(f"- **confidence** {entry['confidence']}")
+    proposal = entry.get("proposed") or {}
+    if proposal:
+        lines.append("- **proposed**")
+        for field in sorted(proposal):
+            value = proposal[field]
+            if isinstance(value, list):
+                value = ", ".join(str(v) for v in value) or "(cleared)"
+            lines.append(f"  - `{field}` → {value}")
+    if entry.get("note"):
+        lines.append(f"- **note** {entry['note']}")
+    lines.append("")
+    return lines
+
+
+@tool(
+    "Write an audit and its proposed corrections to a markdown file for a "
+    "human to read before anything is applied. Takes the findings from "
+    "audit_library plus whatever you propose for each one. The file lands in "
+    "PLEX_REVIEW_DIR; you cannot write anywhere else.",
+    {
+        "filename": s("File to write, e.g. 'horror-pass.md'. A bare name - "
+                      "directories are not accepted."),
+        "title": s("Heading for the document."),
+        "summary": s("A paragraph on what this pass covered and what you "
+                     "concluded. Written above the items."),
+        "entries": {
+            "type": "array",
+            "description": (
+                "One object per item: rating_key, title, year, file, problems "
+                "(array), confidence, proposed (object of field -> new value), "
+                "note. Anything missing is simply left out of the document."
+            ),
+            "items": {"type": "object"},
+        },
+        "apply_payload": {
+            "type": "object",
+            "description": (
+                "Optional. The exact batch_update_item_metadata arguments this "
+                "document is asking approval for, printed at the bottom so the "
+                "reviewer can see what would actually run."
+            ),
+        },
+    },
+    required=["filename", "entries"],
+)
+def write_review_document(filename=None, title=None, summary=None, entries=None,
+                          apply_payload=None):
+    if isinstance(entries, str):
+        try:
+            entries = json.loads(entries)
+        except ValueError:
+            raise ToolError("entries did not parse as JSON.",
+                            error_code="invalid_request")
+    if not isinstance(entries, (list, tuple)) or not entries:
+        raise ToolError("entries must be a non-empty array of objects.",
+                        error_code="invalid_request")
+    bad = [n for n, e in enumerate(entries) if not isinstance(e, dict)]
+    if bad:
+        raise ToolError(f"entries at {bad} are not objects.",
+                        error_code="invalid_request")
+
+    name = safe_review_name(filename)
+    heading = text(title).strip() or "Plex metadata review"
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    counted_word = "item" if len(entries) == 1 else "items"
+    lines = [f"# {heading}", "",
+             f"*Generated {stamp} — {len(entries)} {counted_word}*", ""]
+    if summary:
+        lines += [text(summary).strip(), ""]
+
+    counted = Counter(p for e in entries for p in (e.get("problems") or []))
+    if counted:
+        lines += ["## What was detected", "", "| Problem | Items |",
+                  "| --- | --- |"]
+        lines += [f"| {problem} | {n} |" for problem, n in counted.most_common()]
+        lines.append("")
+
+    lines += ["## Nothing here has been applied", "",
+              "Every item below is a proposal. Read them, then confirm the "
+              "ones you want. Arrays replace what is on the item, so a genre "
+              "list is the complete intended list.", "", "## Items", ""]
+    for entry in entries:
+        lines += render_row(entry)
+
+    if apply_payload:
+        lines += ["## To apply", "",
+                  "`batch_update_item_metadata` with `confirm: true` and:", "",
+                  "```json", json.dumps(apply_payload, indent=2, default=str),
+                  "```", ""]
+
+    body = "\n".join(lines)
+    path = os.path.join(review_dir(), name)
+    try:
+        with open(path, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(body)
+    except OSError as exc:
+        raise ToolError(f"Could not write {path}: {exc}",
+                        error_code="plex_rejected")
+
+    log(f"write_review_document path={path} entries={len(entries)}")
+    return {
+        "ok": True,
+        "path": path,
+        "filename": name,
+        "entries": len(entries),
+        "bytes": len(body.encode("utf-8")),
+        "by_problem": dict(counted.most_common()),
+        "note": "Nothing has been applied. The document is a proposal.",
+    }
 
 @tool(
     "Mark something watched or unwatched. Use for repairing watch state - a "
